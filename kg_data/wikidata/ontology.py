@@ -9,7 +9,6 @@ from kg_data.config import WIKIDATA_DIR, WIKIDATA_ONTOLOGY_REDIS
 from kg_data.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kg_data.wikidata.wikidatamodels import QNode, WDClass, WDProperty
 from kg_data.wikidata.rdd_datasets import qnodes_en
-from sm_unk.misc import RedisStore
 from sm_unk.prelude import M
 from tqdm.auto import tqdm
 

@@ -11,8 +11,12 @@ orjson = "^3.5.2"
 tqdm = "^4.60.0"
 beautifulsoup4 = "^4.9.3"
 cityhash = "^0.2.3"
+pyspark = "3.0.1"
+rocksdb = "^0.7.0"
+loguru = "^0.5.3"
 
 [tool.poetry.dev-dependencies]
+python-dotenv = "^0.17.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

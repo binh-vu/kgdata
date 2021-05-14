@@ -44,7 +44,7 @@ def get_spark_context():
             for file in (
                 Path(os.path.abspath(__file__)).parent.parent / "dist"
             ).iterdir()
-            if file.name.endswith(".egg")
+            if file.name.endswith(".egg") or file.name.endswith(".whl")
         ]
         assert len(egg_file) == 1, f"{len(egg_file)} != 1"
         egg_file = egg_file[0]
