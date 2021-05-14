@@ -1,5 +1,13 @@
 KGData is a library to process dumps of knowledge graphs.
 
+## Usage
+
+### Wikidata
+
+1. Download the wikidata dumps
+2. Run `wikidata.s00_prepr_data` to preprocess the dump
+2. Run other commands in the wikidata package to: extract ontology, qnodes, and schema.
+
 ## Installation
 
 ### From Source

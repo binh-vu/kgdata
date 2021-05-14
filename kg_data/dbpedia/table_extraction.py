@@ -1,25 +1,18 @@
 import warnings
-import ujson, orjson, glob, bz2, re, shutil
+import shutil
 import os
 
 from kg_data.config import DBPEDIA_DIR
 from kg_data.dbpedia.dbpediamodels import (
     Table,
-    Cell,
-    Row,
-    OverlapSpanException,
-    InvalidColumnSpanException,
 )
-from kg_data.helpers.file_utils import get_open_fn
+from kg_data.deprecated.helpers import get_open_fn
 from pathlib import Path
 from tqdm.auto import tqdm
-from collections import defaultdict
-import gzip
 import numpy as np
 import bz2
-from dataclasses import dataclass, asdict
-from bs4 import BeautifulSoup, Tag, NavigableString
-from kg_data.helpers.ntriples_parser import NTriplesParser, ntriple_loads
+from bs4 import Tag, NavigableString
+from kg_data.misc.ntriples_parser import ntriple_loads
 from kg_data.dbpedia.table_tests import is_relational_table
 from kg_data.dbpedia.dbpediamodels import *
 from kg_data.spark import (
@@ -31,13 +24,12 @@ from kg_data.spark import (
 from kg_data.wikidata.rdd_datasets import wikidata_wikipedia_links
 from kg_data.wikipedia.prelude import get_title_from_url, title2groups
 from kg_data.dbpedia.instances_extraction import (
-    merge_instances_en,
     merge_triples,
     rdfterm_to_json,
     merged_instances_fixed_wiki_id_en,
 )
 from operator import itemgetter, attrgetter
-from typing import Set, List, Dict
+from typing import Set, List
 
 """This module provides functions to extract tables from DBPedia raw table dumps.
 

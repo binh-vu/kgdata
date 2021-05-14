@@ -1,9 +1,15 @@
-"""This is the module that split and prepare the raw data downloaded from Wikidata to make it easier to process with Spark"""
-import bz2, os, shutil, gzip, glob
+import bz2
+import gzip
+import os
+import shutil
+from multiprocessing import Process, Queue
+
 from tqdm.auto import tqdm
-from multiprocessing import Process, Queue, Pool
 
 from kg_data.config import WIKIDATA_DIR
+
+"""This is the module that split and prepare the raw data downloaded from Wikidata to make it easier to process with Spark
+"""
 
 
 def save2file(outfile, q):

@@ -5,7 +5,6 @@ import pickle, codecs
 from operator import add, itemgetter, attrgetter
 from collections import Counter, defaultdict
 from loguru import logger
-from typing_extensions import TypedDict
 from kg_data.config import WIKIDATA_DIR
 from kg_data.spark import (
     get_spark_context,

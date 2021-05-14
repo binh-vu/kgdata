@@ -1,12 +1,11 @@
 import os, orjson
-from rdflib import Literal, URIRef, XSD, BNode
-from typing import Tuple, Set
-from cityhash import CityHash64
+from rdflib import Literal, URIRef
+from typing import Tuple
 
 from kg_data.config import DBPEDIA_DIR
 from kg_data.spark import get_spark_context, ensure_unique_records
-from kg_data.helpers.ntriples_parser import ntriple_loads, ignore_comment
-from operator import itemgetter, add
+from kg_data.misc.ntriples_parser import ntriple_loads, ignore_comment
+from operator import itemgetter
 from kg_data.wikipedia.rdd_datasets import id2groups
 
 

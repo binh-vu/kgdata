@@ -1,16 +1,16 @@
-from dataclasses import dataclass, field
+import os
+from operator import add, itemgetter
+from typing import Dict, Set
 
 import networkx as nx
 import orjson
-import os
-from operator import add, itemgetter
-from typing import Dict, Set, List
-from kg_data.config import WIKIDATA_DIR, WIKIDATA_ONTOLOGY_REDIS
-from kg_data.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kg_data.wikidata.wikidatamodels import QNode, WDClass, WDProperty
-from kg_data.wikidata.rdd_datasets import qnodes_en
-from sm_unk.prelude import M
 from tqdm.auto import tqdm
+
+import kg_data.misc as M
+from kg_data.config import WIKIDATA_DIR
+from kg_data.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kg_data.wikidata.rdd_datasets import qnodes_en
+from kg_data.wikidata.wikidatamodels import QNode, WDClass, WDProperty
 
 """
 This module provides function to extract Wikidata ontology from its dump. 
@@ -93,8 +93,8 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
 
         class_rdd = (
             item_rdd.map(p_1_extract_class)
-            .filter(lambda x: x is not None)
-            .map(orjson.dumps)
+                .filter(lambda x: x is not None)
+                .map(orjson.dumps)
         )
         saveAsSingleTextFile(class_rdd, class_qnode_file)
 
@@ -131,8 +131,8 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
 
         prop_rdd = (
             item_rdd.map(p_2_extract_property)
-            .filter(lambda x: x is not None)
-            .map(orjson.dumps)
+                .filter(lambda x: x is not None)
+                .map(orjson.dumps)
         )
         saveAsSingleTextFile(prop_rdd, prop_qnode_file)
 
@@ -228,7 +228,7 @@ def examine_ontology_property(indir: str = os.path.join(WIKIDATA_DIR, "ontology"
         print("\t> ", cycle)
 
 
-def save_ontology_to_db(in_and_out_dir: str=os.path.join(WIKIDATA_DIR, "ontology")):
+def save_ontology_to_db(in_and_out_dir: str = os.path.join(WIKIDATA_DIR, "ontology")):
     import rocksdb
 
     wdclasses = WDClass.from_file(in_and_out_dir, load_parent_closure=True)

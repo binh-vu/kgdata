@@ -1,14 +1,6 @@
-from typing import *
-import warnings, logging
-import xml.etree.ElementTree as ET
-import requests, bz2, os, gzip, re, ujson
-from tqdm.auto import tqdm
-from dataclasses import dataclass, asdict
-from pathlib import Path
-from operator import itemgetter
-from itertools import islice
+import ujson
 from kg_data.wikipedia.wikimodels import *
-from kg_data.helpers.file_utils import get_open_fn
+from kg_data.deprecated.helpers import get_open_fn
 import orjson, glob
 
 

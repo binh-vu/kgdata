@@ -1,13 +1,12 @@
 import os
 from .dbpediamodels import *
-from kg_data.misc.read_file import get_open_fn
 from pathlib import Path
 from tqdm.auto import tqdm
 import gzip
 from dataclasses import asdict
-from sm_unk.misc.dbpedia.ntriples_parser import NTriplesParser
-from sm_unk.misc.dbpedia.table_tests import *
-from sm_unk.misc.dbpedia.table_extraction import *
+from kg_data.misc import NTriplesParser, get_open_fn
+from kg_data.misc.dbpedia.table_tests import *
+from kg_data.misc.dbpedia.table_extraction import *
 from cityhash import CityHash64
 
 
