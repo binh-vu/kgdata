@@ -23,6 +23,7 @@ redis = "^3.5.3"
 networkx = "^2.5.1"
 numpy = "^1.20.3"
 fastnumbers = "^3.1.0"
+requests = "^2.25.1"
 
 [tool.poetry.dev-dependencies]
 python-dotenv = "^0.17.1"

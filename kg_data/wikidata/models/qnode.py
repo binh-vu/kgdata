@@ -1,12 +1,7 @@
-import glob
-import gzip
+from dataclasses import dataclass
+from typing import List, Dict, Tuple, Union, Optional
 
-import orjson, os, copy
-
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Tuple, Union, Optional, Set
-from kg_data.config import WIKIDATA_DIR
-import kg_data.misc as M
+import orjson
 
 
 @dataclass
@@ -15,8 +10,6 @@ class DataValue:
 
     type: str
     # https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON#Data_Values
-    # for wikibase-entityid, we add additional prop `label` that we populated by linking to other value to make it easier to work with
-    # this is only available if the data has been populated
     value: Union[str, dict]
 
     def is_qnode(self):
@@ -64,7 +57,7 @@ class DataValue:
 @dataclass
 class SiteLink:
     __slots__ = ("site", "title", "badges", "url")
-    
+
     site: str
     title: str
     badges: List[str]
@@ -113,7 +106,7 @@ class MultiLingualStringList(List[str]):
         super().__init__(lang2values[lang])
         self.lang2values = lang2values
         self.lang = lang
-    
+
     def serialize(self):
         return {"lang2values": self.lang2values, "lang": self.lang}
 
@@ -138,7 +131,8 @@ class QNode:
 
     def serialize(self):
         # make it self, so we can serialize
-        odict = {k: getattr(self, k) for k in ['id', 'type', 'label', 'datatype', 'description', 'aliases', 'props', 'sitelinks']}
+        odict = {k: getattr(self, k) for k in
+                 ['id', 'type', 'label', 'datatype', 'description', 'aliases', 'props', 'sitelinks']}
         for k in ['label', 'description', 'aliases']:
             odict[k] = odict[k].serialize()
         return orjson.dumps(odict,
@@ -201,7 +195,7 @@ class QNode:
                 except:
                     print(datavalue)
                     raise
-                
+
                 qualifiers = {}
                 if 'qualifiers' in stmt:
                     assert 'qualifiers-order' in stmt
@@ -220,7 +214,7 @@ class QNode:
                     qualifiers_order = stmt['qualifiers-order']
                 else:
                     qualifiers_order = []
-                
+
                 prop_value.append(Statement(
                     value=DataValue(value=value, type=type),
                     qualifiers=qualifiers,
@@ -260,139 +254,3 @@ class QNode:
             aliases=aliases,
             props=props,
             sitelinks=sitelinks)
-
-
-@dataclass
-class WDClass:
-    id: str
-    label: str
-    description: str
-    datatype: str
-    aliases: List[str]
-    parents: List[str]
-    properties: List[str]
-    different_froms: List[str]
-    equivalent_classes: List[str]
-    # not include itself
-    parents_closure: Set[str] = field(default_factory=set)
-
-    @staticmethod
-    def from_file(indir: str = os.path.join(WIKIDATA_DIR, "ontology"), load_parent_closure: bool = False) -> Dict[str, 'WDClass']:
-        records = M.deserialize_jl(os.path.join(indir, "classes.jl"))
-        records = [WDClass(**c) for c in records]
-
-        if load_parent_closure:
-            parents_closure = M.deserialize_json(os.path.join(indir, "superclasses_closure.json"))
-            for r in records:
-                r.parents_closure = set(parents_closure[r.id])
-
-        return {r.id: r for r in records}
-
-    @staticmethod
-    def deserialize(s):
-        o = orjson.loads(s)
-        o['parents_closure'] = set(o['parents_closure'])
-        return WDClass(**o)
-
-    def serialize(self):
-        return orjson.dumps(asdict(self),
-                            option=orjson.OPT_SERIALIZE_DATACLASS,
-                            default=list)
-
-    def get_uri(self):
-        return f"http://www.wikidata.org/entity/{self.id}"
-
-
-@dataclass
-class WDProperty:
-    id: str
-    label: str
-    description: str
-    # wikibase-lexeme, monolingualtext, wikibase-sense, url, wikibase-property, 
-    # wikibase-form, external-id, time, commonsMedia, quantity, wikibase-item, musical-notation, 
-    # tabular-data, string, math, geo-shape, globe-coordinate
-    datatype: str
-    aliases: List[str]
-    parents: List[str]
-    see_also: List[str]
-    equivalent_properties: List[str]
-    subjects: List[str]
-    inverse_properties: List[str]
-    instanceof: List[str]
-    parents_closure: Set[str] = field(default_factory=set)
-
-    @staticmethod
-    def from_file(indir: str = os.path.join(WIKIDATA_DIR, "ontology"), load_parent_closure: bool = False) -> Dict[str, 'WDProperty']:
-        from sm_unk.prelude import M
-        records = M.deserialize_jl(os.path.join(indir, "properties.jl"))
-        records = [WDProperty(**c) for c in records]
-
-        if load_parent_closure:
-            parents_closure = M.deserialize_json(os.path.join(indir, "superproperties_closure.json"))
-            for r in records:
-                r.parents_closure = set(parents_closure[r.id])
-
-        id2prop: Dict[str, WDProperty] = {r.id: r for r in records}
-        # fix error on the ontology since I don't have permission to update it. some updates was reflected in Wikidata ontology
-        # error 1: start-time is not inversed properties of end-time,
-        not_invertible = {"P582", "P580", "P1619", "P3999", "P571", "P576", "P729", "P730"}
-        for prop in not_invertible:
-            id2prop[prop].inverse_properties = []
-        # this is another error related to the ontology... 150 is inverse of 131 but 131 is not
-        assert len(id2prop['P131'].inverse_properties) == 0 and 'P131' in id2prop['P150'].inverse_properties
-        id2prop['P131'].inverse_properties = ['P150']
-        return id2prop
-
-    @staticmethod
-    def deserialize(s):
-        o = orjson.loads(s)
-        o['parents_closure'] = set(o['parents_closure'])
-        return WDProperty(**o)
-
-    def serialize(self):
-        return orjson.dumps(asdict(self),
-                            option=orjson.OPT_SERIALIZE_DATACLASS,
-                            default=list)
-
-    def get_uri(self):
-        return f"http://www.wikidata.org/prop/{self.id}"
-
-    def is_object_property(self):
-        return self.datatype == 'wikibase-item'
-
-    def is_data_property(self):
-        return not self.is_object_property()
-
-    def is_transitive(self):
-        return 'Q18647515' in self.instanceof
-
-
-@dataclass
-class QuantityStats:
-    units: List[str]
-    min: float
-    max: float
-    mean: float
-    std: float
-    size: float
-    int_size: int
-    n_overi36: int
-
-
-@dataclass
-class WDQuantityPropertyStats:
-    id: str
-    value: QuantityStats
-    qualifiers: Dict[str, QuantityStats]
-
-    @staticmethod
-    def from_dir(indir: str = os.path.join(WIKIDATA_DIR, "step_2/quantity_prop_stats/quantity_stats")) -> Dict[str, 'WDQuantityPropertyStats']:
-        odict = {}
-        for infile in glob.glob(os.path.join(indir, "*.gz")):
-            with gzip.open(infile, "rb") as f:
-                for line in f:
-                    data = orjson.loads(line)
-                    item = WDQuantityPropertyStats(data['id'], QuantityStats(**data['value']), {q: QuantityStats(**qstat) for q, qstat in data['qualifiers'].items()})
-                    odict[item.id] = item
-        return odict
-

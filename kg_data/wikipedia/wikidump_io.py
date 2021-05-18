@@ -1,6 +1,6 @@
 import ujson
 from kg_data.wikipedia.wikimodels import *
-from kg_data.deprecated.helpers import get_open_fn
+from kg_data.misc.deser import get_open_fn
 import orjson, glob
 
 
