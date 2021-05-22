@@ -65,10 +65,10 @@ class WDClass:
 
     def serialize(self):
         odict = {k: getattr(self, k) for k in
-                 ["id", "label", "description", "datatype", "aliases", "parents", "properties", "different_froms", "equivalent_classes"]}
+                 ["id", "label", "description", "datatype", "aliases", "parents", "properties", "different_froms", "equivalent_classes", "parents_closure"]}
         for k in ['label', 'description', 'aliases']:
             odict[k] = odict[k].serialize()
-        return orjson.dumps(asdict(self),
+        return orjson.dumps(odict,
                             option=orjson.OPT_SERIALIZE_DATACLASS,
                             default=list)
 
