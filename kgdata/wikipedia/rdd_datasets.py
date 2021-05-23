@@ -1,7 +1,7 @@
 import orjson, os
 
-from kg_data.config import WIKIPEDIA_DIR
-from kg_data.spark import get_spark_context, ensure_unique_records, itemgetter
+from kgdata.config import WIKIPEDIA_DIR
+from kgdata.spark import get_spark_context, ensure_unique_records, itemgetter
 
 
 """Containing Spark RDD datasets that is built from extracted files in `wikidump_io` module

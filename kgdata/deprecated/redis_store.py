@@ -7,9 +7,9 @@ import orjson
 import redis
 from tqdm.auto import tqdm
 
-from kg_data.config import WIKIDATA_REDIS, DBPEDIA_REDIS, WIKIDATA_ONTOLOGY_REDIS
-from kg_data.dbpedia.prelude import Table
-from kg_data.wikidata.prelude import QNode, WDClass, WDProperty
+from kgdata.config import WIKIDATA_REDIS, DBPEDIA_REDIS, WIKIDATA_ONTOLOGY_REDIS
+from kgdata.dbpedia.prelude import Table
+from kgdata.wikidata.prelude import QNode, WDClass, WDProperty
 from sm_unk.prelude import M
 from sm_unk.misc import RedisStore
 

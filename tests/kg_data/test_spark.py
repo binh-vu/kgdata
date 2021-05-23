@@ -1,5 +1,5 @@
 import pytest, os, orjson, shutil
-from kg_data.spark import get_spark_context, left_outer_join, left_outer_join_broadcast
+from kgdata.spark import get_spark_context, left_outer_join, left_outer_join_broadcast
 from operator import itemgetter
 
 

@@ -6,7 +6,7 @@ from multiprocessing import Process, Queue
 
 from tqdm.auto import tqdm
 
-from kg_data.config import WIKIDATA_DIR
+from kgdata.config import WIKIDATA_DIR
 
 """This is the module that split and prepare the raw data downloaded from Wikidata to make it easier to process with Spark
 """

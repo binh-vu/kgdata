@@ -5,16 +5,16 @@ import pickle, codecs
 from operator import add, itemgetter, attrgetter
 from collections import Counter, defaultdict
 from loguru import logger
-from kg_data.config import WIKIDATA_DIR
-from kg_data.spark import (
+from kgdata.config import WIKIDATA_DIR
+from kgdata.spark import (
     get_spark_context,
     ensure_unique_records,
     left_outer_join,
     does_result_dir_exist,
     cache_rdd
 )
-from kg_data.wikipedia.prelude import get_title_from_url, title2groups
-from kg_data.wikidata.wikidatamodels import QNode, WDProperty, WDClass
+from kgdata.wikipedia.prelude import get_title_from_url, title2groups
+from kgdata.wikidata.wikidatamodels import QNode, WDProperty, WDClass
 
 
 def qnodes(indir: str = os.path.join(WIKIDATA_DIR, "step_1")):
@@ -142,7 +142,7 @@ def wiki_reltables_instances(
 
     if not does_result_dir_exist(step0_file):
         # get qnode ids that connects with links in rel tables
-        from kg_data.dbpedia.table_extraction import wikipedia_links_in_relational_tables_en
+        from kgdata.dbpedia.table_extraction import wikipedia_links_in_relational_tables_en
 
         links_rdd = wikipedia_links_in_relational_tables_en()
 

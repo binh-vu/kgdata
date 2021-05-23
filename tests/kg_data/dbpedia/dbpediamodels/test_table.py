@@ -1,4 +1,4 @@
-from kg_data.dbpedia import Table as T, Row as R, Cell as C, HTMLTableExtractor, RawHTMLTable
+from kgdata.dbpedia import Table as T, Row as R, Cell as C, HTMLTableExtractor, RawHTMLTable
 
 
 def test_span():

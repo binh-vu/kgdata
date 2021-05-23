@@ -4,9 +4,9 @@ from typing import List, Dict, Set
 
 import orjson
 
-from kg_data.config import WIKIDATA_DIR
-from kg_data.misc import deserialize_json, deserialize_jl
-from kg_data.wikidata.models.qnode import QNode, MultiLingualString, MultiLingualStringList
+from kgdata.config import WIKIDATA_DIR
+from kgdata.misc import deserialize_json, deserialize_jl
+from kgdata.wikidata.models.qnode import QNode, MultiLingualString, MultiLingualStringList
 
 
 @dataclass

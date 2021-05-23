@@ -2,10 +2,10 @@ from typing import *
 import requests
 import rocksdb
 
-from kg_data.wikidata.models.qnode import QNode
-from kg_data.wikidata.models.wdclass import WDClass
-from kg_data.wikidata.models.wdproperty import WDProperty
-from kg_data.misc.remote_dict import RocksDBStore
+from kgdata.wikidata.models.qnode import QNode
+from kgdata.wikidata.models.wdclass import WDClass
+from kgdata.wikidata.models.wdproperty import WDProperty
+from kgdata.misc.remote_dict import RocksDBStore
 
 
 V = TypeVar('V', bound=Union[QNode, WDClass, WDProperty])

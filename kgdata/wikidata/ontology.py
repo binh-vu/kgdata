@@ -6,11 +6,11 @@ import networkx as nx
 import orjson
 from tqdm.auto import tqdm
 
-import kg_data.misc as M
-from kg_data.config import WIKIDATA_DIR
-from kg_data.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kg_data.wikidata.rdd_datasets import qnodes_en
-from kg_data.wikidata.wikidatamodels import QNode, WDClass, WDProperty
+import kgdata.misc as M
+from kgdata.config import WIKIDATA_DIR
+from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kgdata.wikidata.rdd_datasets import qnodes_en
+from kgdata.wikidata.wikidatamodels import QNode, WDClass, WDProperty
 
 """
 This module provides function to extract Wikidata ontology from its dump. 

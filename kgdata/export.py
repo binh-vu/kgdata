@@ -5,8 +5,8 @@ from typing import Optional
 import rocksdb
 from tqdm import tqdm
 
-from kg_data.config import WIKIDATA_DIR
-from kg_data.misc import deserialize_key_val_lines, deserialize_jl
+from kgdata.config import WIKIDATA_DIR
+from kgdata.misc import deserialize_key_val_lines, deserialize_jl
 
 """Export datasets to your databases.
 """

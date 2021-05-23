@@ -4,7 +4,7 @@ import ujson, pandas as pd, copy, re, orjson
 from bs4 import BeautifulSoup, Tag
 from operator import itemgetter
 from urllib.parse import urlparse
-from kg_data.wikidata.wikidatamodels import QNode
+from kgdata.wikidata.wikidatamodels import QNode
 
 
 @dataclass

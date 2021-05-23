@@ -1,4 +1,4 @@
-from kg_data.wikipedia import Table as T, Row as R, Cell as C, TableVisitor
+from kgdata.wikipedia import Table as T, Row as R, Cell as C, TableVisitor
 import pytest
 
 

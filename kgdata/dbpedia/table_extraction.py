@@ -2,28 +2,28 @@ import warnings
 import shutil
 import os
 
-from kg_data.config import DBPEDIA_DIR
-from kg_data.dbpedia.dbpediamodels import (
+from kgdata.config import DBPEDIA_DIR
+from kgdata.dbpedia.dbpediamodels import (
     Table,
 )
-from kg_data.deprecated.helpers import get_open_fn
+from kgdata.deprecated.helpers import get_open_fn
 from pathlib import Path
 from tqdm.auto import tqdm
 import numpy as np
 import bz2
 from bs4 import Tag, NavigableString
-from kg_data.misc.ntriples_parser import ntriple_loads
-from kg_data.dbpedia.table_tests import is_relational_table
-from kg_data.dbpedia.dbpediamodels import *
-from kg_data.spark import (
+from kgdata.misc.ntriples_parser import ntriple_loads
+from kgdata.dbpedia.table_tests import is_relational_table
+from kgdata.dbpedia.dbpediamodels import *
+from kgdata.spark import (
     get_spark_context,
     ensure_unique_records,
     left_outer_join,
     does_result_dir_exist,
 )
-from kg_data.wikidata.rdd_datasets import wikidata_wikipedia_links
-from kg_data.wikipedia.prelude import get_title_from_url, title2groups
-from kg_data.dbpedia.instances_extraction import (
+from kgdata.wikidata.rdd_datasets import wikidata_wikipedia_links
+from kgdata.wikipedia.prelude import get_title_from_url, title2groups
+from kgdata.dbpedia.instances_extraction import (
     merge_triples,
     rdfterm_to_json,
     merged_instances_fixed_wiki_id_en,
@@ -813,7 +813,7 @@ def populated_relational_tables_en_inclusive(
 
         if not does_result_dir_exist(step02_file):
             # get the list of wikidata and useful props only
-            from kg_data.wikidata.rdd_datasets import wiki_reltables_instances
+            from kgdata.wikidata.rdd_datasets import wiki_reltables_instances
 
             qnodes_rdd = (
                 wiki_reltables_instances()

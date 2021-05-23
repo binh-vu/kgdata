@@ -2,11 +2,11 @@ import os, orjson
 from rdflib import Literal, URIRef
 from typing import Tuple
 
-from kg_data.config import DBPEDIA_DIR
-from kg_data.spark import get_spark_context, ensure_unique_records
-from kg_data.misc.ntriples_parser import ntriple_loads, ignore_comment
+from kgdata.config import DBPEDIA_DIR
+from kgdata.spark import get_spark_context, ensure_unique_records
+from kgdata.misc.ntriples_parser import ntriple_loads, ignore_comment
 from operator import itemgetter
-from kg_data.wikipedia.rdd_datasets import id2groups
+from kgdata.wikipedia.rdd_datasets import id2groups
 
 
 Triple = Tuple[str, str, str]

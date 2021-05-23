@@ -4,9 +4,9 @@ from pathlib import Path
 from tqdm.auto import tqdm
 import gzip
 from dataclasses import asdict
-from kg_data.misc import NTriplesParser, get_open_fn
-from kg_data.misc.dbpedia.table_tests import *
-from kg_data.misc.dbpedia.table_extraction import *
+from kgdata.misc import NTriplesParser, get_open_fn
+from kgdata.misc.dbpedia.table_tests import *
+from kgdata.misc.dbpedia.table_extraction import *
 from cityhash import CityHash64
 
 

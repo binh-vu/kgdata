@@ -5,8 +5,8 @@ import orjson, os, copy
 
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Tuple, Union, Optional, Set
-from kg_data.config import WIKIDATA_DIR
-import kg_data.misc as M
+from kgdata.config import WIKIDATA_DIR
+import kgdata.misc as M
 
 
 @dataclass
