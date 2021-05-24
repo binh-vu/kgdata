@@ -1,12 +1,11 @@
 from typing import *
-import requests
-import rocksdb
 
+import requests
+
+from kgdata.misc.remote_dict import RocksDBStore
 from kgdata.wikidata.models.qnode import QNode
 from kgdata.wikidata.models.wdclass import WDClass
 from kgdata.wikidata.models.wdproperty import WDProperty
-from kgdata.misc.remote_dict import RocksDBStore
-
 
 V = TypeVar('V', bound=Union[QNode, WDClass, WDProperty])
 
