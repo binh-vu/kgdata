@@ -10,7 +10,7 @@ import kgdata.misc as M
 from kgdata.config import WIKIDATA_DIR
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.rdd_datasets import qnodes_en
-from kgdata.wikidata.wikidatamodels import QNode, WDClass, WDProperty
+from kgdata.wikidata.models import QNode, WDClass, WDProperty
 
 """
 This module provides function to extract Wikidata ontology from its dump. 
@@ -71,30 +71,30 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
             if qnode.type != "item":
                 return None
 
-            return {
-                "id": qnode.id,
-                "label": qnode.label,
-                "description": qnode.description,
-                "datatype": qnode.datatype,
-                "aliases": qnode.aliases,
-                "parents": sorted(
+            return WDClass(
+                id=qnode.id,
+                label=qnode.label,
+                description=qnode.description,
+                datatype=qnode.datatype,
+                aliases=qnode.aliases,
+                parents=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P279", [])}
                 ),
-                "properties": sorted(
+                properties=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1963", [])}
                 ),
-                "different_froms": sorted(
+                different_froms=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1889", [])}
                 ),
-                "equivalent_classes": sorted(
+                equivalent_classes=sorted(
                     {stmt.value.as_string() for stmt in qnode.props.get("P1709", [])}
-                ),
-            }
+                )
+            )
 
         class_rdd = (
             item_rdd.map(p_1_extract_class)
                 .filter(lambda x: x is not None)
-                .map(orjson.dumps)
+                .map(WDClass.serialize)
         )
         saveAsSingleTextFile(class_rdd, class_qnode_file)
 
@@ -103,36 +103,36 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
         def p_2_extract_property(qnode: QNode):
             if qnode.type != "property":
                 return None
-            return {
-                "id": qnode.id,
-                "label": qnode.label,
-                "description": qnode.description,
-                "datatype": qnode.datatype,
-                "aliases": qnode.aliases,
-                "parents": sorted(
+            return WDProperty(
+                id=qnode.id,
+                label=qnode.label,
+                description=qnode.description,
+                datatype=qnode.datatype,
+                aliases=qnode.aliases,
+                parents=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1647", [])}
                 ),
-                "see_also": sorted(
+                see_also=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1659", [])}
                 ),
-                "equivalent_properties": sorted(
+                equivalent_properties=sorted(
                     {stmt.value.as_string() for stmt in qnode.props.get("P1628", [])}
                 ),
-                "subjects": sorted(
+                subjects=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1629", [])}
                 ),
-                "inverse_properties": sorted(
+                inverse_properties=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1696", [])}
                 ),
-                "instanceof": sorted(
+                instanceof=sorted(
                     {stmt.value.as_qnode_id() for stmt in qnode.props.get("P31", [])}
                 ),
-            }
+            )
 
         prop_rdd = (
             item_rdd.map(p_2_extract_property)
                 .filter(lambda x: x is not None)
-                .map(orjson.dumps)
+                .map(WDProperty.serialize)
         )
         saveAsSingleTextFile(prop_rdd, prop_qnode_file)
 
@@ -231,15 +231,22 @@ def examine_ontology_property(indir: str = os.path.join(WIKIDATA_DIR, "ontology"
 def save_ontology_to_db(in_and_out_dir: str = os.path.join(WIKIDATA_DIR, "ontology")):
     import rocksdb
 
-    wdclasses = WDClass.from_file(in_and_out_dir, load_parent_closure=True)
-    # wdprops = WDProperty.from_file(in_and_out_dir, load_parent_closure=True)
-    # assert len(set(wdclasses.keys()).intersection(wdprops.keys())) == 0
+    wdprops = WDProperty.from_file(in_and_out_dir, load_parent_closure=True)
+    db = rocksdb.DB(os.path.join(in_and_out_dir, "wdprops.db"), rocksdb.Options(create_if_missing=True))
+    wb = rocksdb.WriteBatch()
+    for id, item in tqdm(wdprops.items(), total=len(wdprops)):
+        wb.put(id.encode(), item.serialize())
+    db.write(wb)
+    db.close()
 
+    wdclasses = WDClass.from_file(in_and_out_dir, load_parent_closure=True)
+    assert len(set(wdclasses.keys()).intersection(wdprops.keys())) == 0
     db = rocksdb.DB(os.path.join(in_and_out_dir, "wdclasses.db"), rocksdb.Options(create_if_missing=True))
     wb = rocksdb.WriteBatch()
     for id, item in tqdm(wdclasses.items(), total=len(wdclasses)):
         wb.put(id.encode(), item.serialize())
     db.write(wb)
+    db.close()
 
 
 if __name__ == "__main__":

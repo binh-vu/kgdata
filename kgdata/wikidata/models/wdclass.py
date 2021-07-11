@@ -27,7 +27,7 @@ class WDClass:
     def from_file(indir: str = os.path.join(WIKIDATA_DIR, "ontology"), load_parent_closure: bool = False) -> Dict[
         str, 'WDClass']:
         records = deserialize_jl(os.path.join(indir, "classes.jl"))
-        records = [WDClass(**c) for c in records]
+        records = [WDClass.from_dict(c) for c in records]
 
         if load_parent_closure:
             parents_closure = deserialize_json(os.path.join(indir, "superclasses_closure.json"))
