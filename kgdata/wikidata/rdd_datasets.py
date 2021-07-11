@@ -14,7 +14,7 @@ from kgdata.spark import (
     cache_rdd
 )
 from kgdata.wikipedia.prelude import get_title_from_url, title2groups
-from kgdata.wikidata.wikidatamodels import QNode, WDProperty, WDClass
+from kgdata.wikidata.models import QNode, WDProperty, WDClass
 
 
 def qnodes(indir: str = os.path.join(WIKIDATA_DIR, "step_1")):

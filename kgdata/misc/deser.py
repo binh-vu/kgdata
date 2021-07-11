@@ -182,6 +182,21 @@ def deserialize_lines(fpath: Union[str, Path], n_lines: Optional[int]=None, trim
         return lst
 
 
+def deserialize_byte_lines(fpath: Union[str, Path], n_lines: Optional[int]=None):
+    with get_open_fn(str(fpath))(str(fpath), "rb") as f:
+        if n_lines is None:
+            return [line for line in f]
+
+        lst = []
+        for line in f:
+            print(line)
+            break
+            lst.append(line)
+            if len(lst) >= n_lines:
+                break
+        return lst
+
+
 def deserialize_key_val_lines(fpath: Union[str, Path], delimiter="\t"):
     with get_open_fn(str(fpath))(str(fpath), "rb") as f:
         return [line.decode().split(delimiter, 1) for line in f]

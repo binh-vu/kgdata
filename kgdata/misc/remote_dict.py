@@ -1,4 +1,4 @@
-from typing import TypeVar, Dict, Union
+from typing import TypeVar, Dict, Union, Callable
 
 import rocksdb
 
@@ -10,42 +10,9 @@ K = TypeVar('K')
 V = TypeVar('V')
 
 
-class RocksDBStore(Dict[K, V]):
-    def __init__(self, dbfile: str, create_if_missing=True, read_only=False):
-        self.db = rocksdb.DB(str(dbfile), rocksdb.Options(create_if_missing=create_if_missing), read_only=read_only)
-
-    def __contains__(self, key):
-        return self.db.get(key.encode()) is not None
-
-    def __getitem__(self, key):
-        item = self.db.get(key.encode())
-        if item is None:
-            raise KeyError(key)
-        return self.deserialize(item)
-
-    def __setitem__(self, key, value):
-        self.db.put(key.encode(), value.encode())
-
-    def __delitem__(self, key):
-        self.db.delete(key.encode())
-
-    def __len__(self):
-        assert False, "Does not support this operator"
-
-    def get(self, key: str, default=None):
-        item = self.db.get(key.encode())
-        if item is None:
-            return None
-        return self.deserialize(item)
-
-    def cache_dict(self) -> 'CacheDictStore[K, V]':
-        return CacheDictStore(self)
-
-    def deserialize(self, value):
-        return value
-
-
 class CacheDictStore(Dict[K, V]):
+    __slots__ = ('store', 'cache')
+
     def __init__(self, store: Dict[K, V]):
         self.store = store
         self.cache = {}
@@ -75,3 +42,45 @@ class CacheDictStore(Dict[K, V]):
 
     def __len__(self):
         return len(self.store)
+
+
+class RocksDBStore(Dict[K, V]):
+    __slots__ = ('db',)
+
+    def __init__(self, dbfile: str, deserialize: Callable[[bytes], V] = None, create_if_missing=True, read_only=False):
+        self.db = rocksdb.DB(str(dbfile), rocksdb.Options(create_if_missing=create_if_missing), read_only=read_only)
+        if deserialize is not None:
+            self.deserialize = deserialize
+        else:
+            self.deserialize = _identity_func
+
+    def __contains__(self, key):
+        return self.db.get(key.encode()) is not None
+
+    def __getitem__(self, key):
+        item = self.db.get(key.encode())
+        if item is None:
+            raise KeyError(key)
+        return self.deserialize(item)
+
+    def __setitem__(self, key, value):
+        self.db.put(key.encode(), value.encode())
+
+    def __delitem__(self, key):
+        self.db.delete(key.encode())
+
+    def __len__(self):
+        assert False, "Does not support this operator"
+
+    def get(self, key: str, default=None):
+        item = self.db.get(key.encode())
+        if item is None:
+            return None
+        return self.deserialize(item)
+
+    def cache_dict(self) -> CacheDictStore[K, V]:
+        return CacheDictStore(self)
+
+
+def _identity_func(x):
+    return x

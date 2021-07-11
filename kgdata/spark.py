@@ -1,10 +1,13 @@
-import os, orjson, glob, codecs
+import os, orjson, glob, codecs, gzip
 import pickle
 import shutil
 from pathlib import Path
 from pyspark import SparkContext, SparkConf
-from operator import add, itemgetter
+from operator import add, itemgetter, attrgetter
 from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
+from tqdm.auto import tqdm
+from kgdata.misc.deser import deserialize_byte_lines, deserialize_key_val_lines
+
 
 # SparkContext singleton
 _sc = None
@@ -44,7 +47,7 @@ def get_spark_context():
             for file in (
                 Path(os.path.abspath(__file__)).parent.parent / "dist"
             ).iterdir()
-            if file.name.endswith(".egg") or file.name.endswith(".whl")
+            if file.name.endswith(".egg") or file.name.endswith(".zip")
         ]
         assert len(egg_file) == 1, f"{len(egg_file)} != 1"
         egg_file = egg_file[0]
@@ -299,6 +302,59 @@ def fix_rdd():
     os.rename(newfile, infile)
 
 
+def rdd2db(
+    infiles: str, 
+    outfile: str, 
+    format: str = "jsonline",
+    key_fn: Optional[Callable[[bytes], str]] = None,
+    db_type: str = "rocksdb",
+    compression: bool = False,
+    verbose: bool = False
+):
+    if db_type == "rocksdb":
+        import rocksdb
+        db = rocksdb.DB(outfile, rocksdb.Options(create_if_missing=True))
+    else:
+        raise NotImplementedError(db_type)
+
+    if key_fn is None:
+        key_fn = itemgetter("id")
+    
+    if compression:
+        compression = lambda x: gzip.compress(x)
+    else:
+        compression = lambda x: x 
+
+    for infile in tqdm(glob.glob(infiles), desc="load rdd to database", disable=not verbose):
+        if format == "jsonline":
+            data = deserialize_byte_lines(infile)
+            it = (
+                (key_fn(orjson.loads(x)).encode(), x)
+                for x in data
+            )
+        elif format == "tab_key_value":
+            it = (
+                (k.encode(), v.encode())
+                for k, v in deserialize_key_val_lines(infile)
+            )
+        else:
+            raise NotImplementedError(format)
+
+        wb = rocksdb.WriteBatch()
+        for id, item in it:
+            wb.put(id, compression(item))
+        db.write(wb)
+
+
 if __name__ == '__main__':
     # fix RDD
-    fix_rdd()
+    # fix_rdd()
+
+    # load qnodes to rocksdb
+    rdd2db(
+        "/data/binhvu/workspace/sm-dev/data/wikidata/step_2/qnodes_en/*.gz",
+        # "/data/binhvu/workspace/sm-dev/data/home/databases/qnodes.db",
+        "/tmp/data/qnodes.db",
+        compression=True,
+        verbose=True
+    )

@@ -1,5 +1,6 @@
 from typing import *
 
+import gzip
 import requests
 
 from kgdata.misc.remote_dict import RocksDBStore
@@ -10,9 +11,19 @@ from kgdata.wikidata.models.wdproperty import WDProperty
 V = TypeVar('V', bound=Union[QNode, WDClass, WDProperty])
 
 
+def ent_gzip_deserialize(EntClass):
+    def deserialize(value):
+        return EntClass.deserialize(gzip.decompress(value))
+    return deserialize
+
+
 class WDLocalDB(RocksDBStore[str, V]):
-    def __init__(self, EntClass, dbfile: str, create_if_missing=True, read_only=False):
-        super().__init__(dbfile, create_if_missing, read_only)
+    def __init__(self, EntClass, dbfile: str, compression: bool, create_if_missing=True, read_only=False):
+        super().__init__(
+            dbfile,
+            deserialize=ent_gzip_deserialize(EntClass) if compression else EntClass.deserialize,
+            create_if_missing=create_if_missing, 
+            read_only=read_only)
         self.EntClass = EntClass
 
     def __setitem__(self, key, value):
@@ -23,8 +34,14 @@ class WDLocalDB(RocksDBStore[str, V]):
 
 
 class WDProxyDB(RocksDBStore[str, V]):
-    def __init__(self, EntClass, dbfile: str, create_if_missing=True, read_only=False):
-        super().__init__(dbfile, create_if_missing, read_only)
+    def __init__(self, EntClass, dbfile: str, compression: bool, create_if_missing=True, read_only=False):
+        super().__init__(
+            dbfile,
+            deserialize=ent_gzip_deserialize(EntClass) if compression else EntClass.deserialize,
+            create_if_missing=create_if_missing, 
+            read_only=read_only)
+
+        self.compression = compression
         self.EntClass = EntClass
 
         if not hasattr(self.EntClass, "from_qnode"):
@@ -44,12 +61,21 @@ class WDProxyDB(RocksDBStore[str, V]):
                 raise KeyError(key)
             else:
                 ent = self.extract_ent_from_qnode(qnodes[key])
-                self.db.put(key.encode(), ent.serialize())
+                value = ent.serialize()
+                if self.compression:
+                    value = gzip.compress(value)
+                self.db.put(key.encode(), value)
             return ent
+        
+        if self.compression:
+            item = gzip.decompress(item)
         return self.deserialize(item)
 
     def __setitem__(self, key, value):
-        self.db.put(key.encode(), value.serialize())
+        value = value.serialize()
+        if self.compression:
+            value = gzip.compress(value)
+        self.db.put(key.encode(), value)
 
     def __contains__(self, key):
         item = self.db.get(key.encode())
@@ -63,7 +89,10 @@ class WDProxyDB(RocksDBStore[str, V]):
                 return False
 
             ent = self.extract_ent_from_qnode(qnodes[key])
-            self.db.put(key.encode(), ent.serialize())
+            value = ent.serialize()
+            if self.compression:
+                value = gzip.compress(value)
+            self.db.put(key.encode(), value)
         return True
 
     def get(self, key: str, default=None):
@@ -78,21 +107,24 @@ class WDProxyDB(RocksDBStore[str, V]):
                 return default
             else:
                 ent = self.extract_ent_from_qnode(qnodes[key])
-                self.db.put(key.encode(), ent.serialize())
+                value = ent.serialize()
+                if self.compression:
+                    value = gzip.compress(value)
+                self.db.put(key.encode(), value)
             return ent
+        if self.compression:
+            item = gzip.decompress(item)
         return self.deserialize(item)
 
-    def deserialize(self, value):
-        return self.EntClass.deserialize(value)
 
-
-def get_qnode_db(dbfile: str, create_if_missing=True, read_only=False, proxy: bool = False, is_singleton: bool = False,
+def get_qnode_db(dbfile: str, create_if_missing=True, read_only=False, proxy: bool = False, 
+                 compression: bool = False, is_singleton: bool = False,
                  cache_dict={}):
     if not is_singleton or dbfile not in cache_dict:
         if proxy:
-            db = WDProxyDB(QNode, dbfile, create_if_missing, read_only)
+            db = WDProxyDB(QNode, dbfile, compression, create_if_missing, read_only)
         else:
-            db = WDLocalDB(QNode, dbfile, create_if_missing, read_only)
+            db = WDLocalDB(QNode, dbfile, compression, create_if_missing, read_only)
         if is_singleton:
             cache_dict[dbfile] = db
         return db
@@ -100,12 +132,13 @@ def get_qnode_db(dbfile: str, create_if_missing=True, read_only=False, proxy: bo
 
 
 def get_wdclass_db(dbfile: str, create_if_missing=True, read_only=False, proxy: bool = False,
+                   compression: bool = False,
                    is_singleton: bool = False, cache_dict={}):
     if not is_singleton or dbfile not in cache_dict:
         if proxy:
-            db = WDProxyDB(WDClass, dbfile, create_if_missing, read_only)
+            db = WDProxyDB(WDClass, dbfile, compression, create_if_missing, read_only)
         else:
-            db = WDLocalDB(WDClass, dbfile, create_if_missing, read_only)
+            db = WDLocalDB(WDClass, dbfile, compression, create_if_missing, read_only)
         if is_singleton:
             cache_dict[dbfile] = db
         return db
@@ -113,12 +146,12 @@ def get_wdclass_db(dbfile: str, create_if_missing=True, read_only=False, proxy: 
 
 
 def get_wdprop_db(dbfile: str, create_if_missing=True, read_only=False, proxy: bool = False, is_singleton: bool = False,
-                  cache_dict={}):
+                  compression: bool = False, cache_dict={}):
     if not is_singleton or dbfile not in cache_dict:
         if proxy:
-            db = WDProxyDB(WDProperty, dbfile, create_if_missing, read_only)
+            db = WDProxyDB(WDProperty, dbfile, compression, create_if_missing, read_only)
         else:
-            db = WDLocalDB(WDProperty, dbfile, create_if_missing, read_only)
+            db = WDLocalDB(WDProperty, dbfile, compression, create_if_missing, read_only)
         if is_singleton:
             cache_dict[dbfile] = db
         return db
