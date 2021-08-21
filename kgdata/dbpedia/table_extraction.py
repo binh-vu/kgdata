@@ -1,20 +1,28 @@
-import warnings
-import shutil
+import bz2
 import os
+import re
+import shutil
+import warnings
+from operator import attrgetter
+from pathlib import Path
+from typing import List
+
+import numpy as np
+from bs4 import Tag, NavigableString
+from tqdm.auto import tqdm
 
 from kgdata.config import DBPEDIA_DIR
+from kgdata.dbpedia.dbpediamodels import *
 from kgdata.dbpedia.dbpediamodels import (
     Table,
 )
-from kgdata.deprecated.helpers import get_open_fn
-from pathlib import Path
-from tqdm.auto import tqdm
-import numpy as np
-import bz2
-from bs4 import Tag, NavigableString
-from kgdata.misc.ntriples_parser import ntriple_loads
+from kgdata.dbpedia.instances_extraction import (
+    merge_triples,
+    rdfterm_to_json,
+    merged_instances_fixed_wiki_id_en,
+)
 from kgdata.dbpedia.table_tests import is_relational_table
-from kgdata.dbpedia.dbpediamodels import *
+from kgdata.misc.ntriples_parser import ntriple_loads
 from kgdata.spark import (
     get_spark_context,
     ensure_unique_records,
@@ -23,13 +31,7 @@ from kgdata.spark import (
 )
 from kgdata.wikidata.rdd_datasets import wikidata_wikipedia_links
 from kgdata.wikipedia.prelude import get_title_from_url, title2groups
-from kgdata.dbpedia.instances_extraction import (
-    merge_triples,
-    rdfterm_to_json,
-    merged_instances_fixed_wiki_id_en,
-)
-from operator import itemgetter, attrgetter
-from typing import Set, List
+from kgdata.misc.deser import get_open_fn
 
 """This module provides functions to extract tables from DBPedia raw table dumps.
 
@@ -84,8 +86,7 @@ class RawHTMLTable:
 
 
 class InvalidCellSpanException(Exception):
-    """Indicating that the html colspan or rowspan is wrong
-    """
+    """Indicating that the html colspan or rowspan is wrong"""
 
     pass
 
@@ -104,14 +105,14 @@ class HTMLTableExtractor:
         """Extract just one html table, which may contains multiple nested tables. I assume that the outer tables are used for
         formatting and the inner tables are the interested ones. So this function will discard the outer tables and only keep
         tables at the bottom level.
-        
+
         This function right now ignore tables with invalid rowspan or cellspan
 
         Parameters
         ----------
         tbl : RawHTMLTable
             raw table that we are going to extract
-        
+
         Returns
         -------
         List[Table]
@@ -128,7 +129,7 @@ class HTMLTableExtractor:
 
     def _extract_table(self, tbl: RawHTMLTable, el: Tag, results: List[Table]):
         """Extract tables from the table tag.
-        
+
         Parameters
         ----------
         el : Tag
@@ -202,7 +203,7 @@ class HTMLTableExtractor:
 
     def _extract_tbl_tags(self, el: Tag, tags: List[Tag]):
         """Recursive find the first table node
-        
+
         Parameters
         ----------
         el : Tag
@@ -220,7 +221,7 @@ class HTMLTableExtractor:
 
     def _extract_cell(self, tbl: RawHTMLTable, el: Tag) -> Cell:
         """Extract cell from td/th tag. This function does not expect a nested table in the cell
-        
+
         Parameters
         ----------
         tbl : RawHTMLTable
@@ -505,8 +506,8 @@ def wikipedia_links_in_relational_tables_en(
         DBPEDIA_DIR, "tables_en/step_4_wiki_links_in_reltables_en"
     ),
 ):
-    """Get list of wikipedia links in the relational tables including the link of the page containing the table. 
-    
+    """Get list of wikipedia links in the relational tables including the link of the page containing the table.
+
     This RDD contains links that have been resolved redirection, so we should use it instead of the default
 
     Parameters
@@ -568,7 +569,7 @@ def populated_relational_tables_en(
     tables_rdd=None,
     outfile: str = os.path.join(
         DBPEDIA_DIR, "tables_en/step_5_populated_relational_tables"
-    )
+    ),
 ):
     sc = get_spark_context()
     tables_rdd = tables_rdd or relational_tables_en()
@@ -578,19 +579,19 @@ def populated_relational_tables_en(
 
     if not does_result_dir_exist(step0_file):
         links_rdd = wikipedia_links_in_relational_tables_en()
-        
+
         def get_title2urls(link):
-            url_title = get_title_from_url(link['url'])
-            if url_title == link['title']:
-                return [(link['title'], link['url'])]
-            return [(url_title, link['url']), (link['title'], link['url'])]
-        
+            url_title = get_title_from_url(link["url"])
+            if url_title == link["title"]:
+                return [(link["title"], link["url"])]
+            return [(url_title, link["url"]), (link["title"], link["url"])]
+
         title2urls = links_rdd.flatMap(get_title2urls).groupByKey()
-        
+
         def enwiki_title_to_qnodeid(item):
-            if 'enwiki' not in item['sitelinks']:
+            if "enwiki" not in item["sitelinks"]:
                 return None
-            return item['sitelinks']['enwiki']['title'], item['id']
+            return item["sitelinks"]["enwiki"]["title"], item["id"]
 
         def to_url2qnode_ids(args):
             title, (qnode_id, urls) = args
@@ -620,30 +621,31 @@ def populated_relational_tables_en(
         #     .filter(lambda x: x is not None) \
         #     .filter(lambda x: x[1] in  {'Q20965800', 'Q6302754'}) \
         #     .collect())
-        
+
         # print(title2urls \
         #     .map(lambda x: (x[0], list(x[1]))) \
         #     .filter(lambda x: 'http://en.wikipedia.org/wiki/275264_Krisztike' in x[1]).collect())
         # return
-        tmp_rdd = wikidata_wikipedia_links() \
-            .map(enwiki_title_to_qnodeid) \
-            .filter(lambda x: x is not None) \
-            .rightOuterJoin(title2urls) \
-            .flatMap(to_url2qnode_ids) \
-            .groupByKey() \
-            .map(lambda x: (x[0], list(set(x[1])))) \
+        tmp_rdd = (
+            wikidata_wikipedia_links()
+            .map(enwiki_title_to_qnodeid)
+            .filter(lambda x: x is not None)
+            .rightOuterJoin(title2urls)
+            .flatMap(to_url2qnode_ids)
+            .groupByKey()
+            .map(lambda x: (x[0], list(set(x[1]))))
             .map(select_correct_qnodes)
+        )
 
         # tmp_rdd = tmp_rdd.cache()
         # print(tmp_rdd.count(), tmp_rdd.filter(lambda x: len(x[1]) > 1).count())
         # print(tmp_rdd.filter(lambda x: len(x[1]) > 1).take(10))
         # return
 
-        tmp_rdd.map(lambda x: (x[0], x[1][0][1])) \
-            .map(orjson.dumps).saveAsTextFile(
-                step0_file,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+        tmp_rdd.map(lambda x: (x[0], x[1][0][1])).map(orjson.dumps).saveAsTextFile(
+            step0_file,
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        )
 
     # print(sc.textFile(step0_file).map(orjson.loads) \
     #     .filter(lambda x: x[1] == 'Q3366494') \
@@ -655,14 +657,16 @@ def populated_relational_tables_en(
     #     if url_title == link['title']:
     #         return [(link['title'], link['url'])]
     #     return [(url_title, link['url']), (link['title'], link['url'])]
-    
+
     # rdd = links_rdd.flatMap(get_title2url).groupByKey()
     # rdd = rdd.cache()
     # print(rdd.count(), rdd.map(itemgetter(0)).distinct().count())
 
     if not does_result_dir_exist(step1_file):
         # now create populated tables
-        url2qnodeid = sc.broadcast(sc.textFile(step0_file).map(orjson.loads).collectAsMap())
+        url2qnodeid = sc.broadcast(
+            sc.textFile(step0_file).map(orjson.loads).collectAsMap()
+        )
 
         def resolve_wikipedia_links(tbl):
             tbl.external_links = {}
@@ -672,20 +676,21 @@ def populated_relational_tables_en(
                         url = link.url
                         if url not in tbl.external_links:
                             qnode_id = url2qnodeid.value.get(url, None)
-                            tbl.external_links[url] = ExternalLink(qnode_id=qnode_id, dbpedia=None, qnode=None)
+                            tbl.external_links[url] = ExternalLink(
+                                qnode_id=qnode_id, dbpedia=None, qnode=None
+                            )
 
             tbl.external_links[tbl.wikipediaURL] = ExternalLink(
                 qnode_id=url2qnodeid.value.get(tbl.wikipediaURL, None),
-                dbpedia=None, qnode=None
+                dbpedia=None,
+                qnode=None,
             )
             return tbl
 
-        tables_rdd.map(resolve_wikipedia_links).map(Table.ser_bytes) \
-            .saveAsTextFile(
-                step1_file,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
-            )
-    
+        tables_rdd.map(resolve_wikipedia_links).map(Table.ser_bytes).saveAsTextFile(
+            step1_file, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
+        )
+
     rdd = sc.textFile(step1_file).map(Table.deser_str)
     return rdd
 
@@ -718,8 +723,7 @@ def populated_relational_tables_en_inclusive(
         whether to compute a minimal version, which just keep the id
     """
     warnings.warn(
-        "populated_relational_tables_en_inclusive is deprecated",
-        DeprecationWarning
+        "populated_relational_tables_en_inclusive is deprecated", DeprecationWarning
     )
 
     sc = get_spark_context()
@@ -947,7 +951,7 @@ def populated_relational_tables_en_inclusive(
 
 def extract_tables_with_links(infile: str, outdir: str, report: bool = False):
     """Filter tables with links
-    
+
     Parameters
     ----------
     infile : str
@@ -1037,12 +1041,14 @@ if __name__ == "__main__":
         exit(0)
 
     # tbl_id = 'http://dbpedia.org/resource/11th_Lok_Sabha?dbpv=2020-02&nif=table&ref=3.10_2&order=0'
-    tbl_id = 'http://dbpedia.org/resource/59th_General_Assembly_of_Nova_Scotia?dbpv=2020-02&nif=table&ref=3_2&order=0'
+    tbl_id = "http://dbpedia.org/resource/59th_General_Assembly_of_Nova_Scotia?dbpv=2020-02&nif=table&ref=3_2&order=0"
     tbl = rdd.filter(lambda tbl: tbl.id == tbl_id).collect()[0]
     # tbl = rdd.filter(lambda x: 'http://en.wikipedia.org/wiki/Blowout_preventer' in x.external_links).take(1)[0]
     # print(tbl.id)
     print(tbl.external_links)
-    print(tbl.external_links['http://en.wikipedia.org/wiki/Liberal_Party_of_Nova_Scotia'])
+    print(
+        tbl.external_links["http://en.wikipedia.org/wiki/Liberal_Party_of_Nova_Scotia"]
+    )
     # tbl = rdd.take(1)[0]
     # tbl = wiki_links_in_reltables_en().take(20)
     # import IPython

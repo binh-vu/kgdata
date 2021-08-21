@@ -1,14 +1,9 @@
-import os
-from .dbpediamodels import *
-from pathlib import Path
-from tqdm.auto import tqdm
 import gzip
-from dataclasses import asdict
-from kgdata.misc import NTriplesParser, get_open_fn
-from kgdata.misc.dbpedia.table_tests import *
-from kgdata.misc.dbpedia.table_extraction import *
+
 from cityhash import CityHash64
 
+from kgdata.dbpedia.table_extraction import *
+from kgdata.misc import NTriplesParser, get_open_fn
 
 """
 This module provides functions to work with DBPedia raw html dumps

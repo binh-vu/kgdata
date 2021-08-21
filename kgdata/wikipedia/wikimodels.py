@@ -1,15 +1,7 @@
+import logging
+from dataclasses import dataclass, field
 from typing import *
-import warnings, logging
-import xml.etree.ElementTree as ET
-import requests, bz2, os, gzip, re, ujson
-from tqdm.auto import tqdm
-from dataclasses import dataclass, asdict, field
-from pathlib import Path
-from operator import itemgetter
-from itertools import islice
-import deprecation
 from urllib.parse import urlparse, unquote_plus
-
 
 """Module containing code for parsing wikipedia dump from DBPedia at 2016. This module is deprecated as we do not parse the data directly any more
 """
@@ -58,7 +50,7 @@ class WikiPageExtractedTables:
 
 @dataclass
 class Cell:
-    value: Union[str, 'Table']
+    value: Union[str, "Table"]
     attrs: Dict[str, str] = field(default_factory=dict)
     is_header: bool = False
 
@@ -80,6 +72,8 @@ class Table:
 
     @staticmethod
     def parse(text: str):
+        # lazy import here to avoid circular import
+        from kgdata.wikipedia.table_parser import TableVisitor
         return TableVisitor().parse(text)
 
 
@@ -101,5 +95,3 @@ def get_title_from_url(url: str) -> str:
     path = path[6:]
     title = unquote_plus(path).replace("_", " ")
     return title.strip()
-
-

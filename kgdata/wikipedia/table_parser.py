@@ -1,19 +1,24 @@
 from parsimonious import Grammar, NodeVisitor
-from parsimonious.expressions import ZeroOrMore, OneOf, OneOrMore, Optional as PEGOptional, Regex, Literal, Sequence as PEGSequence
-from dataclasses import dataclass, field
-from typing import Optional, List, Union, Dict
-from .wikimodels import *
+from parsimonious.expressions import (
+    ZeroOrMore,
+    OneOf,
+    OneOrMore,
+    Optional as PEGOptional,
+    Sequence as PEGSequence,
+)
 
+from kgdata.wikipedia.wikimodels import Table, Row, Cell
 
 """
 (DEPRECATED) Module for parsing tables from wikipedia markup.
 
 You should use existing wikiparser to get the result as users see in the page as wikiparser are very lenient to user errors.
 """
-        
+
 
 class TableVisitor(NodeVisitor):
-    grammar = Grammar(r"""
+    grammar = Grammar(
+        r"""
         # https://en.wikipedia.org/wiki/Help:Table
         # define the table, attributes of each mark must be on the same line as the mark, except the "|}" does not have any attrs
         tbl = _n "{|" attrs? _e rows "|}" _n
@@ -49,12 +54,13 @@ class TableVisitor(NodeVisitor):
         _n = ~r"[ \n]*"
         # end row
         _e = _ "\n" _n
-    """)
+    """
+    )
 
     def visit_tbl(self, node, children):
         (_n, otag, attrs, _e, rows, ctag, _n) = children
         return Table(rows=rows, attrs=attrs or {}, caption=None)
-    
+
     def visit_attrs(self, node, children):
         # extract html attributes
         attr_seq = children
@@ -129,4 +135,3 @@ class TableVisitor(NodeVisitor):
                 return None
             return children[0]
         return node
-

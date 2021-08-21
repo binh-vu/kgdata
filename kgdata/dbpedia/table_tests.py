@@ -1,4 +1,3 @@
-import pandas as pd, numpy as np
 from .dbpediamodels import Table
 
 """This module contains complex tests for wikipedia html tables that can't be done in one line

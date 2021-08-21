@@ -1,0 +1,12 @@
+version: '2.0'
+services:
+  spark:
+    build: .
+    image: kgdata-spark
+    ports:
+      - 7077:7077
+      - 8080:8080
+      - 8081:8081
+    volumes:
+      - ./:/kg_data
+    command: bash /start_spark.sh

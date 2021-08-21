@@ -22,22 +22,20 @@ def get_spark_context():
     """
     global _sc
     if _sc is None:
-        conf = (
-            SparkConf()
-            .setMaster(os.environ["SPARK_MASTER"])
-            .setAll(
-                [
-                    ("spark.executor.memory", os.environ["SPARK_EXECUTOR_MEM"]),
-                    ("spark.executor.cores", os.environ["SPARK_EXECUTOR_CORES"]),
-                    ("spark.executor.instances", os.environ["SPARK_NUM_EXECUTORS"]),
-                    ("spark.ui.port", int(os.environ["SPARK_UI_PORT"])),
-                    ("spark.driver.memory", os.environ.get("SPARK_DRIVER_MEM", "1g")),
-                    (
-                        "spark.driver.maxResultSize",
-                        os.environ.get("SPARK_DRIVER_RESULTSIZE", "10g"),
-                    ),
+        conf = SparkConf().setAll(
+            [
+                (key, os.environ[key])
+                for key in [
+                    "spark.master",
+                    "spark.ui.port",
+                    "spark.executor.memory",
+                    "spark.executor.cores",
+                    "spark.executor.instances",
+                    "spark.driver.memory",
+                    "spark.driver.maxResultSize",
                 ]
-            )
+                if key in os.environ
+            ]
         )
         _sc = SparkContext(conf=conf)
 
@@ -49,10 +47,10 @@ def get_spark_context():
             ).iterdir()
             if file.name.endswith(".egg") or file.name.endswith(".zip")
         ]
-        assert len(egg_file) == 1, f"{len(egg_file)} != 1"
-        egg_file = egg_file[0]
-
-        _sc.addPyFile(egg_file)
+        if len(egg_file) > 1:
+            assert len(egg_file) == 1, f"{len(egg_file)} != 1"
+            egg_file = egg_file[0]
+            _sc.addPyFile(egg_file)
 
     return _sc
 
@@ -260,7 +258,7 @@ def saveAsSingleTextFile(rdd, outfile, compressionCodecClass=None):
     rdd = rdd.coalesce(1, shuffle=True)
     if os.path.exists(outfile + "_tmp"):
         shutil.rmtree(outfile + "_tmp")
-        
+
     if compressionCodecClass is not None:
         rdd.saveAsTextFile(
             outfile + "_tmp", compressionCodecClass=compressionCodecClass
@@ -273,10 +271,10 @@ def saveAsSingleTextFile(rdd, outfile, compressionCodecClass=None):
 
 def cache_rdd(rdd, outfile, serfn: Callable[[Any], str], deserfn: Callable[[str], Any]):
     if not does_result_dir_exist(outfile):
-        rdd \
-            .map(serfn) \
-            .saveAsTextFile(outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
-    
+        rdd.map(serfn).saveAsTextFile(
+            outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
+        )
+
     return get_spark_context().textFile(outfile).map(deserfn)
 
 
@@ -297,45 +295,46 @@ def fix_rdd():
     # rdd = rdd.map(orjson.dumps)
     # ###############################
 
-    rdd.saveAsTextFile(newfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+    rdd.saveAsTextFile(
+        newfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
+    )
     os.rename(infile, infile + "_old")
     os.rename(newfile, infile)
 
 
 def rdd2db(
-    infiles: str, 
-    outfile: str, 
+    infiles: str,
+    outfile: str,
     format: str = "jsonline",
     key_fn: Optional[Callable[[bytes], str]] = None,
     db_type: str = "rocksdb",
     compression: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ):
     if db_type == "rocksdb":
         import rocksdb
+
         db = rocksdb.DB(outfile, rocksdb.Options(create_if_missing=True))
     else:
         raise NotImplementedError(db_type)
 
     if key_fn is None:
         key_fn = itemgetter("id")
-    
+
     if compression:
         compression = lambda x: gzip.compress(x)
     else:
-        compression = lambda x: x 
+        compression = lambda x: x
 
-    for infile in tqdm(glob.glob(infiles), desc="load rdd to database", disable=not verbose):
+    for infile in tqdm(
+        glob.glob(infiles), desc="load rdd to database", disable=not verbose
+    ):
         if format == "jsonline":
             data = deserialize_byte_lines(infile)
-            it = (
-                (key_fn(orjson.loads(x)).encode(), x)
-                for x in data
-            )
+            it = ((key_fn(orjson.loads(x)).encode(), x) for x in data)
         elif format == "tab_key_value":
             it = (
-                (k.encode(), v.encode())
-                for k, v in deserialize_key_val_lines(infile)
+                (k.encode(), v.encode()) for k, v in deserialize_key_val_lines(infile)
             )
         else:
             raise NotImplementedError(format)
@@ -346,7 +345,7 @@ def rdd2db(
         db.write(wb)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # fix RDD
     # fix_rdd()
 
@@ -356,5 +355,5 @@ if __name__ == '__main__':
         # "/data/binhvu/workspace/sm-dev/data/home/databases/qnodes.db",
         "/tmp/data/qnodes.db",
         compression=True,
-        verbose=True
+        verbose=True,
     )

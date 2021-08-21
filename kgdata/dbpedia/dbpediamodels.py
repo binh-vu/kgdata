@@ -1,10 +1,13 @@
-from dataclasses import dataclass, field, asdict
-from typing import Set, Dict, List, Optional, Tuple, TypeVar, Generic, Type
-import ujson, pandas as pd, copy, re, orjson
-from bs4 import BeautifulSoup, Tag
+from dataclasses import dataclass, field
 from operator import itemgetter
+from typing import Set, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
-from kgdata.wikidata.wikidatamodels import QNode
+
+import copy
+import orjson
+import pandas as pd
+
+from kgdata.wikidata.models import QNode
 
 
 @dataclass
@@ -39,8 +42,8 @@ class ExternalLink:
 
     @staticmethod
     def from_dict(o: dict):
-        if o['qnode'] is not None:
-            o['qnode'] = QNode.from_dict(o['qnode'])
+        if o["qnode"] is not None:
+            o["qnode"] = QNode.from_dict(o["qnode"])
         return ExternalLink(**o)
 
 
@@ -62,33 +65,44 @@ class Cell:
         embedded_links = []
         for i, link in enumerate(self.links):
             if i == 0:
-                embedded_links.append(text[:link.start])
+                embedded_links.append(text[: link.start])
             else:
-                assert self.links[i-1].start <= link.start, "The list is sorted"
-                embedded_links.append(text[self.links[i-1].end:link.start])
-            embedded_links.append(f"<a href=\"{link.url}\" target=\"_blank\" rel=\"noopener\">" + text[link.start:link.end] + "</a>")
+                assert self.links[i - 1].start <= link.start, "The list is sorted"
+                embedded_links.append(text[self.links[i - 1].end : link.start])
+            embedded_links.append(
+                f'<a href="{link.url}" target="_blank" rel="noopener">'
+                + text[link.start : link.end]
+                + "</a>"
+            )
             if i == len(self.links) - 1:
-                embedded_links.append(text[link.end:])
+                embedded_links.append(text[link.end :])
         if len(self.links) == 0:
             embedded_links.append(text)
         return "".join(embedded_links)
 
     @property
     def this(self):
-        """Return its self. Useful if we want to convert the table to list of cells
-        """
+        """Return its self. Useful if we want to convert the table to list of cells"""
         return self
 
     @staticmethod
     def from_dict(o: dict):
-        o['links'] = [Link(**l) for l in o['links']]
+        o["links"] = [Link(**l) for l in o["links"]]
         return Cell(**o)
 
     def clone(self):
         """Clone the current cell. This operator will be much cheaper than the deepcopy operator"""
-        return Cell(value=self.value, html=self.html, links=copy.copy(self.links), 
-                    attrs=copy.copy(self.attrs), is_header=self.is_header,
-                    rowspan=self.rowspan, colspan=self.colspan, original_rowspan=self.original_rowspan, original_colspan=self.original_colspan)
+        return Cell(
+            value=self.value,
+            html=self.html,
+            links=copy.copy(self.links),
+            attrs=copy.copy(self.attrs),
+            is_header=self.is_header,
+            rowspan=self.rowspan,
+            colspan=self.colspan,
+            original_rowspan=self.original_rowspan,
+            original_colspan=self.original_colspan,
+        )
 
 
 @dataclass
@@ -98,7 +112,7 @@ class Row:
 
     @staticmethod
     def from_dict(o: dict):
-        o['cells'] = [Cell.from_dict(c) for c in o['cells']]
+        o["cells"] = [Cell.from_dict(c) for c in o["cells"]]
         return Row(**o)
 
     def __getitem__(self, index):
@@ -107,6 +121,7 @@ class Row:
 
 class OverlapSpanException(Exception):
     """Indicating the table has cell rowspan and cell colspan overlaps"""
+
     pass
 
 
@@ -114,6 +129,7 @@ class InvalidColumnSpanException(Exception):
     """Indicating that the column span is not used in a standard way. In particular, the total of columns' span is beyond the maximum number of columns is considered
     to be non standard with one exception that only the last column spans more than the maximum number of columns
     """
+
     pass
 
 
@@ -130,11 +146,13 @@ class Table:
 
     @staticmethod
     def from_dict(o: dict):
-        o['classes'] = set(o['classes'])
-        o['rows'] = [Row.from_dict(r) for r in o['rows']]
-        if o['external_links'] is not None:
-            for k, v in o['external_links'].items():
-                o['external_links'][k] = ExternalLink.from_dict(v) if v is not None else None
+        o["classes"] = set(o["classes"])
+        o["rows"] = [Row.from_dict(r) for r in o["rows"]]
+        if o["external_links"] is not None:
+            for k, v in o["external_links"].items():
+                o["external_links"][k] = (
+                    ExternalLink.from_dict(v) if v is not None else None
+                )
 
         return Table(**o)
 
@@ -144,9 +162,10 @@ class Table:
 
     @property
     def wikipediaURL(self):
-        """Return a wikipedia URL from dbpedia URI
-        """
-        return urlparse(self.pageURI).path.replace("/resource/", "https://en.wikipedia.org/wiki/")
+        """Return a wikipedia URL from dbpedia URI"""
+        return urlparse(self.pageURI).path.replace(
+            "/resource/", "https://en.wikipedia.org/wiki/"
+        )
 
     def ser_bytes(self):
         return orjson.dumps(self, option=orjson.OPT_SERIALIZE_DATACLASS, default=list)
@@ -161,7 +180,7 @@ class Table:
 
         if self.is_regular_table():
             return self
-        
+
         max_ncols = max(len(r.cells) for r in self.rows)
         default_cell = Cell(value="", html="", original_rowspan=1, original_colspan=1)
 
@@ -172,18 +191,19 @@ class Table:
                 row.cells.append(default_cell.clone())
             rows.append(row)
 
-        return Table(id=self.id,
-                     pageURI=self.pageURI,
-                     classes=copy.copy(self.classes),
-                     rows=rows,
-                     caption=self.caption,
-                     attrs=copy.copy(self.attrs),
-                     is_spanned=True,
-                     external_links=copy.copy(self.external_links))
+        return Table(
+            id=self.id,
+            pageURI=self.pageURI,
+            classes=copy.copy(self.classes),
+            rows=rows,
+            caption=self.caption,
+            attrs=copy.copy(self.attrs),
+            is_spanned=True,
+            external_links=copy.copy(self.external_links),
+        )
 
     def span(self) -> "Table":
-        """Span the table by copying values to merged field
-        """
+        """Span the table by copying values to merged field"""
         pi = 0
         data = []
         pending_ops = {}
@@ -200,8 +220,8 @@ class Table:
                 if cell.rowspan > 1:
                     for j in range(1, cell.rowspan):
                         if i + j < len(cols):
-                            cols[i+j] += 1
-        
+                            cols[i + j] += 1
+
         _row_index, max_ncols = max(enumerate(cols), key=itemgetter(1))
         # sometimes they do show an extra cell for over-colspan row, but it's not consistent or at least not easy for me to find the rule
         # so I decide to not handle that. Hope that we don't have many tables like that.
@@ -237,13 +257,13 @@ class Table:
                     pj += 1
 
                     if pj >= max_ncols:
-                        # our algorithm cannot handle the case where people are bullying the colspan system, and only can handle the case 
+                        # our algorithm cannot handle the case where people are bullying the colspan system, and only can handle the case
                         # where the span that goes beyond the maximum number of columns is in the last column.
                         if cell_index != len(row.cells) - 1:
                             raise InvalidColumnSpanException()
                         else:
                             break
-                    
+
             # add more cells from the top since we reach the end
             while (pi, pj) in pending_ops and pj < max_ncols:
                 new_row.append(pending_ops[pi, pj].clone())
@@ -254,28 +274,29 @@ class Table:
             pi += 1
 
         # len(pending_ops) may > 0, but fortunately, it doesn't matter as the browser also does not render that extra empty lines
-        return Table(id=self.id,
-                     pageURI=self.pageURI,
-                     classes=copy.copy(self.classes),
-                     rows=data,
-                     caption=self.caption,
-                     attrs=copy.copy(self.attrs),
-                     is_spanned=True,
-                     external_links=copy.copy(self.external_links))
+        return Table(
+            id=self.id,
+            pageURI=self.pageURI,
+            classes=copy.copy(self.classes),
+            rows=data,
+            caption=self.caption,
+            attrs=copy.copy(self.attrs),
+            is_spanned=True,
+            external_links=copy.copy(self.external_links),
+        )
 
     def is_regular_table(self) -> bool:
         ncols = len(self.rows[0].cells)
-        return all(
-            len(self.rows[i].cells) == ncols for i in range(1, len(self.rows)))
+        return all(len(self.rows[i].cells) == ncols for i in range(1, len(self.rows)))
 
     def get_shape(self) -> Tuple[int, int]:
         """Get shape of the table.
-        
+
         Returns
         -------
         Tuple[int, int]
             A 2-tuples of rows' number and cols' number
-        
+
         Raises
         ------
         Exception
@@ -285,9 +306,9 @@ class Table:
             raise Exception("Cannot get shape of an irregular table")
         return len(self.rows), len(self.rows[0].cells)
 
-    def to_list(self, value_field: str='value') -> list:
+    def to_list(self, value_field: str = "value") -> list:
         """Convert the table into a list
-        
+
         Parameters
         ----------
         value_field: str, optional
@@ -301,14 +322,16 @@ class Table:
             return self.span().to_list()
         return [[getattr(c, value_field) for c in row.cells] for row in self.rows]
 
-    def to_df(self, use_header_when_possible: bool = True, value_field: str='value') -> pd.DataFrame:
+    def to_df(
+        self, use_header_when_possible: bool = True, value_field: str = "value"
+    ) -> pd.DataFrame:
         """Convert table to dataframe. Auto-span the row by default. This will throw error
         if the current table is not a regular table.
-        
+
         Parameters
         ----------
         use_header_when_possible : bool, optional
-            if the first row is all header cells, we use it as the header. Note that other header cells 
+            if the first row is all header cells, we use it as the header. Note that other header cells
             which aren't on the first row are going to be treated as data cells
         value_field: str, optional
             cell's field that we want to use as a value, default is `value`. Change to html or inner html to see the html

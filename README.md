@@ -10,12 +10,21 @@ KGData is a library to process dumps of knowledge graphs.
 
 ## Installation
 
+### From pip
+
+You need to have gcc in order to install `cityhash`
+
+```bash
+pip install kgdata
+```
+
 ### From Source
 
-This library uses Apache Spark 3.0.1 (`pyspark` version is `3.0.1`). If you use different Spark version, make sure that version of `pyspark` package is matched (in `pyproject.toml`).
+This library uses Apache Spark 3.0.3 (`pyspark` version is `3.0.3`). If you use different Spark version, make sure that version of `pyspark` package is matched (in `pyproject.toml`).
 
 ```bash
 poetry install
-poetry build # build a wheel version to submit to Spark cluster
+mkdir dist; zip -r kgdata.zip kgdata; mv kgdata.zip dist/ # package the application to submit to Spark cluster
 ```
 
+You can also consult the [Dockerfile](./Dockerfile) for guidance to install from scratch.
