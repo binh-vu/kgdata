@@ -3,7 +3,7 @@ from typing import *
 import gzip
 import requests
 
-from kgdata.misc.remote_dict import RocksDBStore
+from sm.misc.big_dict import RocksDBStore
 from kgdata.wikidata.models.qnode import QNode
 from kgdata.wikidata.models.wdclass import WDClass
 from kgdata.wikidata.models.wdproperty import WDProperty

@@ -1,11 +1,12 @@
 import os
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Set
+from pathlib import Path
+from typing import List, Dict, Set, Union
 
 import orjson
 
 from kgdata.config import WIKIDATA_DIR
-from kgdata.misc import deserialize_json, deserialize_jl
+from sm.misc import deserialize_json, deserialize_jl
 from kgdata.wikidata.models.qnode import QNode, MultiLingualString, MultiLingualStringList
 
 
@@ -24,7 +25,7 @@ class WDClass:
     parents_closure: Set[str] = field(default_factory=set)
 
     @staticmethod
-    def from_file(indir: str = os.path.join(WIKIDATA_DIR, "ontology"), load_parent_closure: bool = False) -> Dict[
+    def from_file(indir: Union[str, Path] = os.path.join(WIKIDATA_DIR, "ontology"), load_parent_closure: bool = False) -> Dict[
         str, 'WDClass']:
         records = deserialize_jl(os.path.join(indir, "classes.jl"))
         records = [WDClass.from_dict(c) for c in records]

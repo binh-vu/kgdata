@@ -1,16 +1,18 @@
 import os
 from operator import add, itemgetter
-from typing import Dict, Set
+from pathlib import Path
+from typing import Dict, Set, Union
 
 import networkx as nx
-import orjson
+import rocksdb
+from loguru import logger
 from tqdm.auto import tqdm
 
-import kgdata.misc as M
 from kgdata.config import WIKIDATA_DIR
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kgdata.wikidata.rdd_datasets import qnodes_en
 from kgdata.wikidata.models import QNode, WDClass, WDProperty
+from kgdata.wikidata.rdd_datasets import qnodes_en
+from sm.misc import serialize_jl, serialize_json, deserialize_jl
 
 """
 This module provides function to extract Wikidata ontology from its dump. 
@@ -37,13 +39,17 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
 
         def p_0_get_property_and_class(qnode: QNode):
             if qnode.type == "property":
-                qnode_ids = [stmt.value.as_qnode_id() for stmt in qnode.props.get("P1647", [])]
+                qnode_ids = [
+                    stmt.value.as_qnode_id() for stmt in qnode.props.get("P1647", [])
+                ]
                 qnode_ids.append(qnode.id)
                 return qnode_ids
 
             if "P279" in qnode.props:
                 # this qnode is a class, but we want to get the parent classes as well.
-                qnode_ids = [stmt.value.as_qnode_id() for stmt in qnode.props.get("P279", [])]
+                qnode_ids = [
+                    stmt.value.as_qnode_id() for stmt in qnode.props.get("P279", [])
+                ]
                 qnode_ids.append(qnode.id)
                 return qnode_ids
 
@@ -88,13 +94,13 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
                 ),
                 equivalent_classes=sorted(
                     {stmt.value.as_string() for stmt in qnode.props.get("P1709", [])}
-                )
+                ),
             )
 
         class_rdd = (
             item_rdd.map(p_1_extract_class)
-                .filter(lambda x: x is not None)
-                .map(WDClass.serialize)
+            .filter(lambda x: x is not None)
+            .map(WDClass.serialize)
         )
         saveAsSingleTextFile(class_rdd, class_qnode_file)
 
@@ -131,8 +137,8 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
 
         prop_rdd = (
             item_rdd.map(p_2_extract_property)
-                .filter(lambda x: x is not None)
-                .map(WDProperty.serialize)
+            .filter(lambda x: x is not None)
+            .map(WDProperty.serialize)
         )
         saveAsSingleTextFile(prop_rdd, prop_qnode_file)
 
@@ -165,7 +171,7 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
             else:
                 class_freq[s]["props"][p] = c
 
-        M.serialize_jl(sorted(class_freq.values(), key=itemgetter("class")), step2_file)
+        serialize_jl(sorted(class_freq.values(), key=itemgetter("class")), step2_file)
 
 
 def make_superclass_closure(outdir: str = os.path.join(WIKIDATA_DIR, "ontology")):
@@ -177,29 +183,33 @@ def make_superclass_closure(outdir: str = os.path.join(WIKIDATA_DIR, "ontology")
                 parents.add(pid)
                 get_all_parents(index, pid, parents)
 
-    classes = M.deserialize_jl(os.path.join(outdir, "classes.jl"))
-    classes = {c["id"]: c for c in classes}
+    if not os.path.exists(os.path.join(outdir, "superproperties_closure.json")):
+        logger.info("Make superclass closure...")
+        classes = deserialize_jl(os.path.join(outdir, "classes.jl"))
+        classes = {c["id"]: c for c in classes}
 
-    class_closure = {}
-    for c in tqdm(classes.values()):
-        parents = set()
-        get_all_parents(classes, c["id"], parents)
-        class_closure[c["id"]] = list(parents)
+        class_closure = {}
+        for c in tqdm(classes.values()):
+            parents = set()
+            get_all_parents(classes, c["id"], parents)
+            class_closure[c["id"]] = list(parents)
 
-    M.serialize_json(class_closure, os.path.join(outdir, "superclasses_closure.json"))
+        serialize_json(class_closure, os.path.join(outdir, "superclasses_closure.json"))
 
-    predicates = M.deserialize_jl(os.path.join(outdir, "properties.jl"))
-    predicates = {p["id"]: p for p in predicates}
+        predicates = deserialize_jl(os.path.join(outdir, "properties.jl"))
+        predicates = {p["id"]: p for p in predicates}
 
-    predicate_closure = {}
-    for r in tqdm(predicates.values()):
-        parents = set()
-        get_all_parents(predicates, r["id"], parents)
-        predicate_closure[r["id"]] = list(parents)
+        predicate_closure = {}
+        for r in tqdm(predicates.values()):
+            parents = set()
+            get_all_parents(predicates, r["id"], parents)
+            predicate_closure[r["id"]] = list(parents)
 
-    M.serialize_json(
-        predicate_closure, os.path.join(outdir, "superproperties_closure.json")
-    )
+        serialize_json(
+            predicate_closure, os.path.join(outdir, "superproperties_closure.json")
+        )
+    else:
+        logger.info("Skip superclass closure...")
 
 
 def examine_ontology_property(indir: str = os.path.join(WIKIDATA_DIR, "ontology")):
@@ -228,20 +238,25 @@ def examine_ontology_property(indir: str = os.path.join(WIKIDATA_DIR, "ontology"
         print("\t> ", cycle)
 
 
-def save_ontology_to_db(in_and_out_dir: str = os.path.join(WIKIDATA_DIR, "ontology")):
-    import rocksdb
-
+def save_wdprops(in_and_out_dir: Union[str, Path] = os.path.join(WIKIDATA_DIR, "ontology")):
     wdprops = WDProperty.from_file(in_and_out_dir, load_parent_closure=True)
-    db = rocksdb.DB(os.path.join(in_and_out_dir, "wdprops.db"), rocksdb.Options(create_if_missing=True))
+    db = rocksdb.DB(
+        os.path.join(in_and_out_dir, "wdprops.db"),
+        rocksdb.Options(create_if_missing=True),
+    )
     wb = rocksdb.WriteBatch()
     for id, item in tqdm(wdprops.items(), total=len(wdprops)):
         wb.put(id.encode(), item.serialize())
     db.write(wb)
     db.close()
 
+
+def save_wdclasses(in_and_out_dir: Union[str, Path] = os.path.join(WIKIDATA_DIR, "ontology")):
     wdclasses = WDClass.from_file(in_and_out_dir, load_parent_closure=True)
-    assert len(set(wdclasses.keys()).intersection(wdprops.keys())) == 0
-    db = rocksdb.DB(os.path.join(in_and_out_dir, "wdclasses.db"), rocksdb.Options(create_if_missing=True))
+    db = rocksdb.DB(
+        os.path.join(in_and_out_dir, "wdclasses.db"),
+        rocksdb.Options(create_if_missing=True),
+    )
     wb = rocksdb.WriteBatch()
     for id, item in tqdm(wdclasses.items(), total=len(wdclasses)):
         wb.put(id.encode(), item.serialize())
@@ -250,7 +265,4 @@ def save_ontology_to_db(in_and_out_dir: str = os.path.join(WIKIDATA_DIR, "ontolo
 
 
 if __name__ == "__main__":
-    # make_ontology()
-    # make_superclass_closure()
-    # examine_ontology_property()
-    save_ontology_to_db()
+    examine_ontology_property()

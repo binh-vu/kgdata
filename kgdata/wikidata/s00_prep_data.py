@@ -37,7 +37,7 @@ def save2file(outfile, q):
             writer.write(b"}\n")
         elif record[-2:] == b"}\n":
             writer.write(record)
-        elif record == b']\n':
+        elif record == b"]\n":
             continue
         else:
             print(record)
@@ -47,9 +47,13 @@ def save2file(outfile, q):
 
 
 def prep01(
-        infile: str = os.path.join(WIKIDATA_DIR, "step_0/wikidata-20200831-all.json.bz2"),
-        outdir: str = os.path.join(WIKIDATA_DIR, "step_1")):
+    infile: str = os.path.join(WIKIDATA_DIR, "step_0/wikidata-20200831-all.json.bz2"),
+    outdir: str = os.path.join(WIKIDATA_DIR, "step_1"),
+    overwrite: bool = False,
+):
     if os.path.exists(outdir):
+        if not overwrite:
+            return
         shutil.rmtree(outdir)
     os.mkdir(outdir)
 
@@ -66,7 +70,7 @@ def prep01(
 
     with bz2.open(infile, "rb") as f:
         line = f.readline()[:-1]
-        assert line == b'['
+        assert line == b"["
 
         for i, line in tqdm(enumerate(f), total=85883865):
             queues[i % n_writers].put(line)

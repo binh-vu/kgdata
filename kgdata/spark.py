@@ -1,13 +1,17 @@
-import os, orjson, glob, codecs, gzip
-import pickle
+import glob
+import gzip
+import orjson
+import os
 import shutil
+from operator import add, itemgetter
 from pathlib import Path
-from pyspark import SparkContext, SparkConf
-from operator import add, itemgetter, attrgetter
 from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
-from tqdm.auto import tqdm
-from kgdata.misc.deser import deserialize_byte_lines, deserialize_key_val_lines
 
+import rocksdb
+from pyspark import SparkContext, SparkConf
+from tqdm.auto import tqdm
+
+from sm.misc.deser import deserialize_byte_lines, deserialize_key_val_lines
 
 # SparkContext singleton
 _sc = None
@@ -312,8 +316,6 @@ def rdd2db(
     verbose: bool = False,
 ):
     if db_type == "rocksdb":
-        import rocksdb
-
         db = rocksdb.DB(outfile, rocksdb.Options(create_if_missing=True))
     else:
         raise NotImplementedError(db_type)

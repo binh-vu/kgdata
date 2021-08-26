@@ -31,7 +31,7 @@ from kgdata.spark import (
 )
 from kgdata.wikidata.rdd_datasets import wikidata_wikipedia_links
 from kgdata.wikipedia.prelude import get_title_from_url, title2groups
-from kgdata.misc.deser import get_open_fn
+from sm.misc.deser import get_open_fn
 
 """This module provides functions to extract tables from DBPedia raw table dumps.
 
