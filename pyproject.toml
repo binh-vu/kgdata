@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kgdata"
-version = "1.2.2"
+version = "1.2.3"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -27,7 +27,7 @@ networkx = "^2.5.1"
 numpy = "^1.20.3"
 fastnumbers = "^3.1.0"
 requests = "^2.25.1"
-sem-desc = "^0.1.13"
+sem-desc = "^0.1.14"
 
 [tool.poetry.dev-dependencies]
 python-dotenv = "^0.17.1"

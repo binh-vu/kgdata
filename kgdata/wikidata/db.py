@@ -66,9 +66,6 @@ class WDProxyDB(RocksDBStore[str, V]):
                     value = gzip.compress(value)
                 self.db.put(key.encode(), value)
             return ent
-        
-        if self.compression:
-            item = gzip.decompress(item)
         return self.deserialize(item)
 
     def __setitem__(self, key, value):
@@ -112,8 +109,6 @@ class WDProxyDB(RocksDBStore[str, V]):
                     value = gzip.compress(value)
                 self.db.put(key.encode(), value)
             return ent
-        if self.compression:
-            item = gzip.decompress(item)
         return self.deserialize(item)
 
 
