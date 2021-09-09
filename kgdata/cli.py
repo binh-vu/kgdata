@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 import click
 from loguru import logger
@@ -19,15 +20,15 @@ class WDBuildOption(str, Enum):
 @click.option(
     "-c", "--compression", default=False, help="Whether to compress the results"
 )
-def wikidata(build: str, directory: str, output_dir: str, compression: bool):
+def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, output: str, compression: bool):
     try:
-        build = WDBuildOption(build)
+        assert build in ["qnodes", "wdclasses", "wdprops"]
     except ValueError:
         logger.error("Invalid build value: {}. Exiting!", build)
         return
 
     directory = directory.strip()
-    output_dir = Path(output_dir.strip())
+    output_dir = Path(output.strip())
     output_dir.mkdir(exist_ok=True, parents=True)
 
     if directory != "":
@@ -54,7 +55,7 @@ def wikidata(build: str, directory: str, output_dir: str, compression: bool):
     qnode_files = os.path.join(WIKIDATA_DIR, "step_2/qnodes_en")
     qnodes_en(outfile=qnode_files)
 
-    if build == WDBuildOption.Qnodes:
+    if build == "qnodes":
         rdd2db(
             os.path.join(qnode_files, "*.gz"),
             os.path.join(output_dir, "qnodes.db"),
@@ -63,7 +64,7 @@ def wikidata(build: str, directory: str, output_dir: str, compression: bool):
             verbose=True,
         )
 
-    if build in [WDBuildOption.WDProps, WDBuildOption.WDClasses]:
+    if build in ["wdclasses", "wdprops"]:
         make_ontology()
         make_superclass_closure()
         # TODO: uncomment to verify if the data is correct
