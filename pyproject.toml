@@ -29,6 +29,7 @@ fastnumbers = "^3.1.0"
 requests = "^2.25.1"
 sem-desc = "^0.1.14"
 click = "^8.0.1"
+parsimonious = "^0.8.1"
 
 [tool.poetry.dev-dependencies]
 python-dotenv = "^0.17.1"
