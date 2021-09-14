@@ -18,7 +18,7 @@ class WDBuildOption(str, Enum):
 @click.option("-d", "--directory", default="", help="Wikidata directory")
 @click.option("-o", "--output", help="Output directory")
 @click.option(
-    "-c", "--compression", default=False, help="Whether to compress the results"
+    "-c", "--compression", is_flag=True, help="Whether to compress the results"
 )
 def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, output: str, compression: bool):
     try:
