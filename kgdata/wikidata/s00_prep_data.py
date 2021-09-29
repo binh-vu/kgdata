@@ -2,6 +2,7 @@ import bz2
 import gzip
 import os
 import shutil
+import glob
 from multiprocessing import Process, Queue
 
 from tqdm.auto import tqdm
@@ -47,7 +48,7 @@ def save2file(outfile, q):
 
 
 def prep01(
-    infile: str = os.path.join(WIKIDATA_DIR, "step_0/wikidata-20200831-all.json.bz2"),
+    indir: str = os.path.join(WIKIDATA_DIR, "step_0"),
     outdir: str = os.path.join(WIKIDATA_DIR, "step_1"),
     overwrite: bool = False,
 ):
@@ -56,6 +57,11 @@ def prep01(
             return
         shutil.rmtree(outdir)
     os.mkdir(outdir)
+
+    match_files = glob.glob(os.path.join(indir, "*.bz2"))
+    if len(match_files) != 1:
+        raise Exception(f"Invalid input directory. Expect to have only one .bz2 file but got {len(matched_files)} files")
+    infile = match_files[0]
 
     n_writers = 8
 

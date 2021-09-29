@@ -1,6 +1,7 @@
 import os
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 import click
 from loguru import logger
@@ -17,17 +18,17 @@ class WDBuildOption(str, Enum):
 @click.option("-d", "--directory", default="", help="Wikidata directory")
 @click.option("-o", "--output", help="Output directory")
 @click.option(
-    "-c", "--compression", default=False, help="Whether to compress the results"
+    "-c", "--compression", is_flag=True, help="Whether to compress the results"
 )
-def wikidata(build: str, directory: str, output_dir: str, compression: bool):
+def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, output: str, compression: bool):
     try:
-        build = WDBuildOption(build)
+        assert build in ["qnodes", "wdclasses", "wdprops"]
     except ValueError:
         logger.error("Invalid build value: {}. Exiting!", build)
         return
 
     directory = directory.strip()
-    output_dir = Path(output_dir.strip())
+    output_dir = Path(output.strip())
     output_dir.mkdir(exist_ok=True, parents=True)
 
     if directory != "":
@@ -43,7 +44,7 @@ def wikidata(build: str, directory: str, output_dir: str, compression: bool):
         make_superclass_closure,
         examine_ontology_property,
     )
-    from kgdata.spark import rdd2db
+    from kgdata.spark import rdd2db, does_result_dir_exist
 
     logger.info("Wikidata directory: {}", WIKIDATA_DIR)
     logger.info("Build: {}", build)
@@ -52,9 +53,10 @@ def wikidata(build: str, directory: str, output_dir: str, compression: bool):
     prep01(overwrite=False)
     # extract qnodes from wikidata english
     qnode_files = os.path.join(WIKIDATA_DIR, "step_2/qnodes_en")
-    qnodes_en(outfile=qnode_files)
+    if not does_result_dir_exist(qnode_files):
+        qnodes_en(outfile=qnode_files)
 
-    if build == WDBuildOption.Qnodes:
+    if build == "qnodes":
         rdd2db(
             os.path.join(qnode_files, "*.gz"),
             os.path.join(output_dir, "qnodes.db"),
@@ -63,17 +65,24 @@ def wikidata(build: str, directory: str, output_dir: str, compression: bool):
             verbose=True,
         )
 
-    if build in [WDBuildOption.WDProps, WDBuildOption.WDClasses]:
+    if build in ["wdclasses", "wdprops"]:
         make_ontology()
         make_superclass_closure()
         # TODO: uncomment to verify if the data is correct
         # examine_ontology_property()
 
         if build == WDBuildOption.WDProps:
-            save_wdprops(output_dir)
+            save_wdprops(
+                indir=os.path.join(WIKIDATA_DIR, "ontology"), 
+                outdir=output_dir
+            )
 
         if build == WDBuildOption.WDClasses:
-            save_wdclasses(output_dir)
+            save_wdclasses(
+                indir=os.path.join(WIKIDATA_DIR, "ontology"), 
+                outdir=output_dir
+            )
+            logger.info("Finish saving wdclasses to DB")
 
 
 @click.group()

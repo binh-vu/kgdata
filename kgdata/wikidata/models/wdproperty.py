@@ -41,15 +41,16 @@ class WDProperty:
     ) -> Dict[str, "WDProperty"]:
         records = deserialize_jl(os.path.join(indir, "properties.jl"))
         records = [WDProperty.from_dict(c) for c in records]
+        records = {r.id: r for r in records}
 
         if load_parent_closure:
-            parents_closure = deserialize_json(
-                os.path.join(indir, "superproperties_closure.json")
+            parents_closure = deserialize_jl(
+                os.path.join(indir, "superproperties_closure.jl")
             )
-            for r in records:
-                r.parents_closure = set(parents_closure[r.id])
+            for rid, parents in parents_closure:
+                records[rid].parents_closure = set(parents)
 
-        return {r.id: r for r in records}
+        return records
 
     @staticmethod
     def deserialize(s):
