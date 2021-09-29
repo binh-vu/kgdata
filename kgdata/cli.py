@@ -44,7 +44,7 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, o
         make_superclass_closure,
         examine_ontology_property,
     )
-    from kgdata.spark import rdd2db
+    from kgdata.spark import rdd2db, does_result_dir_exist
 
     logger.info("Wikidata directory: {}", WIKIDATA_DIR)
     logger.info("Build: {}", build)
@@ -53,7 +53,8 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, o
     prep01(overwrite=False)
     # extract qnodes from wikidata english
     qnode_files = os.path.join(WIKIDATA_DIR, "step_2/qnodes_en")
-    qnodes_en(outfile=qnode_files)
+    if not does_result_dir_exist(qnode_files):
+        qnodes_en(outfile=qnode_files)
 
     if build == "qnodes":
         rdd2db(
@@ -71,10 +72,17 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, o
         # examine_ontology_property()
 
         if build == WDBuildOption.WDProps:
-            save_wdprops(output_dir)
+            save_wdprops(
+                indir=os.path.join(WIKIDATA_DIR, "ontology"), 
+                outdir=output_dir
+            )
 
         if build == WDBuildOption.WDClasses:
-            save_wdclasses(output_dir)
+            save_wdclasses(
+                indir=os.path.join(WIKIDATA_DIR, "ontology"), 
+                outdir=output_dir
+            )
+            logger.info("Finish saving wdclasses to DB")
 
 
 @click.group()
