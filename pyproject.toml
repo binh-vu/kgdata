@@ -27,7 +27,7 @@ networkx = "^2.5.1"
 numpy = "^1.20.3"
 fastnumbers = "^3.1.0"
 requests = "^2.25.1"
-sem-desc = "^0.1.14"
+sem-desc = "^1.2.0"
 click = "^8.0.1"
 parsimonious = "^0.8.1"
 
