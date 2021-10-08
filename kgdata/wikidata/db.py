@@ -92,6 +92,10 @@ class WDProxyDB(RocksDBStore[str, V]):
             self.db.put(key.encode(), value)
         return True
 
+    def does_not_exist(self, key):
+        item = self.db.get(key.encode())
+        return item == b'\x00'
+
     def get(self, key: str, default=None):
         item = self.db.get(key.encode())
         if item == b'\x00':
@@ -176,5 +180,11 @@ def query_wikidata_entities(qnode_ids: Union[Set[str], List[str]]) -> Dict[str, 
     for qnode_id in qnode_ids:
         if 'missing' in data['entities'][qnode_id]:
             continue
-        qnodes[qnode_id] = QNode.from_wikidump(data['entities'][qnode_id])
+        qnode = QNode.from_wikidump(data['entities'][qnode_id])
+        qnodes[qnode.id] = qnode
+        if qnode.id != qnode_id:
+            # redirection -- the best way is to update the redirection map
+            origin_qnode = qnode.shallow_clone()
+            origin_qnode.id = qnode_id
+            qnodes[qnode_id] = origin_qnode
     return qnodes

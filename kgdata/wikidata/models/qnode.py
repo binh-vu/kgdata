@@ -13,7 +13,7 @@ class DataValue:
     value: Union[str, dict]
 
     def is_qnode(self):
-        return self.type == 'wikibase-entityid'
+        return self.type == 'wikibase-entityid' and (self.value['id'].startswith("Q") or self.value['id'].startswith("q"))
 
     def is_string(self):
         return self.type == 'string'
@@ -138,6 +138,17 @@ class QNode:
         return orjson.dumps(odict,
                             option=orjson.OPT_SERIALIZE_DATACLASS,
                             default=list)
+
+    def shallow_clone(self):
+        return QNode(
+            id=self.id, 
+            type=self.type, 
+            label=self.label, 
+            datatype=self.datatype,
+            description=self.description,
+            aliases=self.aliases,
+            props=self.props,
+            sitelinks=self.sitelinks)
 
     @staticmethod
     def deserialize(s):
