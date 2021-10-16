@@ -86,7 +86,7 @@ class WDClass:
             datatype=qnode.datatype,
             aliases=qnode.aliases,
             parents=sorted({stmt.value.as_qnode_id() for stmt in qnode.props.get("P279", [])}),
-            properties=sorted({stmt.value.as_qnode_id() for stmt in qnode.props.get("P1963", [])}),
+            properties=sorted({stmt.value.as_entity_id() for stmt in qnode.props.get("P1963", [])}),
             different_froms=sorted({stmt.value.as_qnode_id() for stmt in qnode.props.get("P1889", [])}),
             equivalent_classes=sorted({stmt.value.as_string() for stmt in qnode.props.get("P1709", [])}),
             parents_closure=set()

@@ -34,6 +34,9 @@ class DataValue:
         assert self.is_qnode()
         return self.value['id'].upper()
 
+    def as_entity_id(self):
+        return self.value['id']
+
     def as_string(self):
         assert self.type == 'string'
         return self.value
