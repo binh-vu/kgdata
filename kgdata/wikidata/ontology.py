@@ -38,7 +38,7 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
         def p_0_get_property_and_class(qnode: QNode):
             if qnode.type == "property":
                 qnode_ids = [
-                    stmt.value.as_qnode_id() for stmt in qnode.props.get("P1647", [])
+                    stmt.value.as_entity_id() for stmt in qnode.props.get("P1647", [])
                 ]
                 qnode_ids.append(qnode.id)
                 return qnode_ids
@@ -46,12 +46,12 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
             if "P279" in qnode.props:
                 # this qnode is a class, but we want to get the parent classes as well.
                 qnode_ids = [
-                    stmt.value.as_qnode_id() for stmt in qnode.props.get("P279", [])
+                    stmt.value.as_entity_id() for stmt in qnode.props.get("P279", [])
                 ]
                 qnode_ids.append(qnode.id)
                 return qnode_ids
 
-            return [stmt.value.as_qnode_id() for stmt in qnode.props.get("P31", [])]
+            return [stmt.value.as_entity_id() for stmt in qnode.props.get("P31", [])]
 
         qnodes_en().flatMap(p_0_get_property_and_class).distinct().coalesce(
             256
@@ -68,7 +68,7 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
         ).saveAsTextFile(
             step1_file, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
         )
-    
+
     item_rdd = lambda: get_spark_context().textFile(step1_file).map(QNode.deserialize)
 
     if not os.path.exists(class_qnode_file):
@@ -84,22 +84,23 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
                 datatype=qnode.datatype,
                 aliases=qnode.aliases,
                 parents=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P279", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P279", [])}
                 ),
                 properties=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1963", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1963", [])}
                 ),
                 different_froms=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1889", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1889", [])}
                 ),
                 equivalent_classes=sorted(
                     {stmt.value.as_string() for stmt in qnode.props.get("P1709", [])}
                 ),
-                parents_closure=set()
+                parents_closure=set(),
             )
 
         class_rdd = (
-            item_rdd().map(p_1_extract_class)
+            item_rdd()
+            .map(p_1_extract_class)
             .filter(lambda x: x is not None)
             .map(WDClass.serialize)
         )
@@ -117,27 +118,28 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
                 datatype=qnode.datatype,
                 aliases=qnode.aliases,
                 parents=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1647", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1647", [])}
                 ),
                 see_also=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1659", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1659", [])}
                 ),
                 equivalent_properties=sorted(
                     {stmt.value.as_string() for stmt in qnode.props.get("P1628", [])}
                 ),
                 subjects=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1629", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1629", [])}
                 ),
                 inverse_properties=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1696", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1696", [])}
                 ),
                 instanceof=sorted(
-                    {stmt.value.as_qnode_id() for stmt in qnode.props.get("P31", [])}
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P31", [])}
                 ),
             )
 
         prop_rdd = (
-            item_rdd().map(p_2_extract_property)
+            item_rdd()
+            .map(p_2_extract_property)
             .filter(lambda x: x is not None)
             .map(WDProperty.serialize)
         )
@@ -150,7 +152,7 @@ def make_ontology(outfile: str = os.path.join(WIKIDATA_DIR, "ontology")):
                 return []
             class_ids = []
             for stmt in qnode.props.get("P31", []):
-                class_ids.append(stmt.value.as_qnode_id())
+                class_ids.append(stmt.value.as_entity_id())
 
             triples = []
             for p in qnode.props:
@@ -191,7 +193,7 @@ def make_superclass_closure(outdir: str = os.path.join(WIKIDATA_DIR, "ontology")
         logger.info("Make superclass closure...")
         # need to make sure that they are in the same order
         classes = deserialize_jl(os.path.join(outdir, "classes.jl"))
-        classes_order = [c['id'] for c in classes]
+        classes_order = [c["id"] for c in classes]
         classes = {c["id"]: c for c in classes}
 
         class_closure = {}
@@ -204,11 +206,11 @@ def make_superclass_closure(outdir: str = os.path.join(WIKIDATA_DIR, "ontology")
         serialize_jl(class_closure, superclasses_closure_file)
     else:
         logger.info("Skip superclass closure...")
-    
+
     if not os.path.exists(superproperties_closure_file):
         logger.info("Make superproperties closure...")
         predicates = deserialize_jl(os.path.join(outdir, "properties.jl"))
-        predicates_order = [p['id'] for p in predicates]
+        predicates_order = [p["id"] for p in predicates]
         predicates = {p["id"]: p for p in predicates}
 
         predicate_closure = {}
@@ -273,7 +275,10 @@ def save_wdclasses(indir: Union[str, Path], outdir: Union[str, Path]):
         rocksdb.Options(create_if_missing=True),
     )
     wb = rocksdb.WriteBatch()
-    for idx, item in tqdm(enumerate(WDClass.iter_file(indir, load_parent_closure=True)), desc="Write WDClass"):
+    for idx, item in tqdm(
+        enumerate(WDClass.iter_file(indir, load_parent_closure=True)),
+        desc="Write WDClass",
+    ):
         wb.put(item.id.encode(), item.serialize())
         if idx % 1000 == 0:
             db.write(wb)

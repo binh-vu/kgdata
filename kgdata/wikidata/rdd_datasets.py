@@ -11,7 +11,7 @@ from kgdata.spark import (
     ensure_unique_records,
     left_outer_join,
     does_result_dir_exist,
-    cache_rdd
+    cache_rdd,
 )
 from kgdata.wikipedia.prelude import get_title_from_url, title2groups
 from kgdata.wikidata.models import QNode, WDProperty, WDClass
@@ -28,8 +28,7 @@ def qnodes(indir: str = os.path.join(WIKIDATA_DIR, "step_1")):
 def qnodes_en(
     qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/qnodes_en")
 ):
-    """Get all QNodes in Wikidata (only english)
-    """
+    """Get all QNodes in Wikidata (only english)"""
     sc = get_spark_context()
     if not does_result_dir_exist(outfile):
         qnodes_rdd = qnodes_rdd or qnodes()
@@ -46,7 +45,9 @@ def qnodes_en(
     return sc.textFile(outfile).map(QNode.deserialize)
 
 
-def qnodes_identifier(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/identifiers.txt")):
+def qnodes_identifier(
+    qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/identifiers.txt")
+):
     """Make a list of identifiers so that we can quickly identify if a node is missing or not"""
     if not os.path.exists(outfile):
         sc = get_spark_context()
@@ -55,7 +56,7 @@ def qnodes_identifier(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR,
         with open(outfile, "w") as f:
             for id in ids:
                 f.write(id)
-                f.write('\n')
+                f.write("\n")
 
 
 def wikidata_wikipedia_links(
@@ -97,42 +98,38 @@ def wikidata_wikipedia_links(
 
 
 def wiki_article_to_qnode(
-    qnodes_rdd=None, outdir=os.path.join(WIKIDATA_DIR, "step_2/"),
-    lang="en"
+    qnodes_rdd=None, outdir=os.path.join(WIKIDATA_DIR, "step_2/"), lang="en"
 ):
     site = f"{lang}wiki"
     outfile = os.path.join(outdir, f"{site}_links")
-    
+
     if not does_result_dir_exist(outfile):
+
         def extract_links(qnode: QNode):
             if site not in qnode.sitelinks:
                 return None
             title = qnode.sitelinks[site].title
             assert title is not None and isinstance(title, str) and len(title) > 0
             return title, qnode.id
-        
+
         qnodes_rdd = qnodes_rdd or qnodes_en()
         # records = qnodes_rdd.filter(lambda x: 'enwiki' in x.sitelinks).take(5)
         # size = qnodes_rdd.map(extract_links).filter(lambda x: x is not None).count()
         # print(size)
         # return
-        qnodes_rdd.map(extract_links).filter(lambda x: x is not None) \
-            .map(orjson.dumps) \
-            .saveAsTextFile(
-                outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
-            )
+        qnodes_rdd.map(extract_links).filter(lambda x: x is not None).map(
+            orjson.dumps
+        ).saveAsTextFile(
+            outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
+        )
 
 
 def wiki_reltables_instances(
     qnodes_rdd=None,
     outfile: str = os.path.join(WIKIDATA_DIR, "step_2/wiki_reltables_instances"),
 ):
-    """Get a subset of qnodes that have links with the wikipedia relational tables
-    """
-    warnings.warn(
-        "wiki_reltables_instances is deprecated",
-        DeprecationWarning
-    )
+    """Get a subset of qnodes that have links with the wikipedia relational tables"""
+    warnings.warn("wiki_reltables_instances is deprecated", DeprecationWarning)
 
     step0_file = os.path.join(outfile, "step_0")
     step1_file = os.path.join(outfile, "step_1")
@@ -142,7 +139,9 @@ def wiki_reltables_instances(
 
     if not does_result_dir_exist(step0_file):
         # get qnode ids that connects with links in rel tables
-        from kgdata.dbpedia.table_extraction import wikipedia_links_in_relational_tables_en
+        from kgdata.dbpedia.table_extraction import (
+            wikipedia_links_in_relational_tables_en,
+        )
 
         links_rdd = wikipedia_links_in_relational_tables_en()
 
@@ -173,10 +172,10 @@ def wiki_reltables_instances(
         def p_4_extract_link_qid(qnode):
             qnode = QNode.from_wikidump(qnode, lang="en")
             targets = [qnode.id]
-            for vals in qnode.props.values():
-                for val in vals:
-                    if val.is_qnode():
-                        targets.append(val.as_qnode_id())
+            for stmts in qnode.props.values():
+                for stmt in stmts:
+                    if stmt.value.is_qnode():
+                        targets.append(stmt.value.as_entity_id())
 
             return targets
 
@@ -226,24 +225,24 @@ def wiki_reltables_instances(
             def p_7_extract_essential_info(qnode):
                 return {"id": qnode.id, "label": qnode.label}
 
-            def rdd1_fk_fn(qnode):
+            def rdd1_fk_fn(qnode: QNode):
                 targets = set()
-                for vals in qnode.props.values():
-                    for val in vals:
-                        if val.is_qnode():
-                            targets.add(val.as_qnode_id())
+                for stmts in qnode.props.values():
+                    for stmt in stmts:
+                        if stmt.value.is_qnode():
+                            targets.add(stmt.value.as_entity_id())
                 return list(targets)
 
-            def rdd1_join_fn(qnode, targets):
+            def rdd1_join_fn(qnode: QNode, targets):
                 targets = dict(targets)
-                for vals in qnode.props.values():
-                    for val in vals:
-                        if val.is_qnode():
-                            qnode_id = val.as_qnode_id()
+                for stmts in qnode.props.values():
+                    for stmt in stmts:
+                        if stmt.value.is_qnode():
+                            qnode_id = stmt.value.as_entity_id()
                             if targets[qnode_id] is not None:
-                                val.set_qnode_label(targets[qnode_id]["label"])
+                                stmt.value.set_qnode_label(targets[qnode_id]["label"])
                             else:
-                                val.set_qnode_label(None)
+                                stmt.value.set_qnode_label(None)
                 return targets
 
             rdd1 = sc.textFile(step21_file).map(QNode.deserialize)
@@ -274,8 +273,7 @@ def wiki_reltables_instances(
 
 
 def wikidata_graph_structure(
-    qnodes_rdd=None,
-    outfile: str = os.path.join(WIKIDATA_DIR, "step_2/graph_structure")
+    qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/graph_structure")
 ):
     """Get the RDD data that contains incoming links between nodes and outgoing links between nodes.
     The graph ignores the instance of class to prevent one node has so many links
@@ -287,39 +285,37 @@ def wikidata_graph_structure(
 
     if not does_result_dir_exist(step0_file):
         logger.info("Extract outgoing links...")
+
         def extract_outedges(qnode: QNode):
             outedges = {}
             for p, stmts in qnode.props.items():
-                if p == 'P31':
+                if p == "P31":
                     continue
-                
+
                 for stmt in stmts:
                     if stmt.value.is_qnode():
                         if p not in outedges:
                             outedges[p] = set()
-                        outedges[p].add(stmt.value.as_qnode_id())
-                        
+                        outedges[p].add(stmt.value.as_entity_id())
+
                     for q, qvals in stmt.qualifiers.items():
                         edge = f"{p}-{q}"
                         for qval in qvals:
                             if qval.is_qnode():
                                 if edge not in outedges:
                                     outedges[edge] = set()
-                                outedges[edge].add(qval.as_qnode_id())
-            
+                                outedges[edge].add(qval.as_entity_id())
+
             for edge in outedges:
                 outedges[edge] = list(outedges[edge])
 
-            return {
-                "id": qnode.id,
-                "outedges": outedges
-            }
+            return {"id": qnode.id, "outedges": outedges}
 
         qnodes_rdd.map(extract_outedges).map(orjson.dumps).saveAsTextFile(
             step0_file,
             compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
         )
-    
+
     if not does_result_dir_exist(step1_file):
         logger.info("Extract incoming links...")
         sc = get_spark_context()
@@ -327,59 +323,58 @@ def wikidata_graph_structure(
 
         def inverse(odict):
             inverse_qnodes = {}
-            for p, qnodes in odict['outedges'].items():
+            for p, qnodes in odict["outedges"].items():
                 for qnode in qnodes:
                     if qnode not in inverse_qnodes:
-                        inverse_qnodes[qnode] = {
-                            "id": qnode,
-                            "inedges": {}
-                        }
-                    if p not in inverse_qnodes[qnode]['inedges']:
-                        inverse_qnodes[qnode]['inedges'][p] = set()
-                    inverse_qnodes[qnode]['inedges'][p].add(odict['id'])
-            return [
-                (n['id'], n)
-                for n in inverse_qnodes.values()
-            ]
+                        inverse_qnodes[qnode] = {"id": qnode, "inedges": {}}
+                    if p not in inverse_qnodes[qnode]["inedges"]:
+                        inverse_qnodes[qnode]["inedges"][p] = set()
+                    inverse_qnodes[qnode]["inedges"][p].add(odict["id"])
+            return [(n["id"], n) for n in inverse_qnodes.values()]
 
         def combine(a, b):
-            for p, pvals in b['inedges'].items():
-                if p in a['inedges']:
-                    a['inedges'][p].update(pvals)
+            for p, pvals in b["inedges"].items():
+                if p in a["inedges"]:
+                    a["inedges"][p].update(pvals)
                 else:
-                    a['inedges'][p] = pvals
+                    a["inedges"][p] = pvals
             return a
 
-        rdd.flatMap(inverse).reduceByKey(combine).map(itemgetter(1)) \
-            .map(lambda x: orjson.dumps(x, option=orjson.OPT_SERIALIZE_DATACLASS, default=list)) \
-            .saveAsTextFile(
-                step1_file,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        rdd.flatMap(inverse).reduceByKey(combine).map(itemgetter(1)).map(
+            lambda x: orjson.dumps(
+                x, option=orjson.OPT_SERIALIZE_DATACLASS, default=list
             )
-    
+        ).saveAsTextFile(
+            step1_file,
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        )
+
     if not does_result_dir_exist(step2_file):
         sc = get_spark_context()
-        outedges = sc.textFile(step0_file).map(orjson.loads).map(lambda x: (x['id'], x))
-        inedges = sc.textFile(step1_file).map(orjson.loads).map(lambda x: (x['id'], x))
+        outedges = sc.textFile(step0_file).map(orjson.loads).map(lambda x: (x["id"], x))
+        inedges = sc.textFile(step1_file).map(orjson.loads).map(lambda x: (x["id"], x))
 
         def merge_nodes(args):
             key, (inedge, outedge) = args
             return {
                 "id": key,
-                "inedges": inedge['inedges'] if inedge is not None else {},
-                "outedges": outedge['outedges'] if outedge is not None else {},
+                "inedges": inedge["inedges"] if inedge is not None else {},
+                "outedges": outedge["outedges"] if outedge is not None else {},
             }
 
-        inedges.fullOuterJoin(outedges).map(merge_nodes).map(orjson.dumps) \
-            .saveAsTextFile(
-                step2_file,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
-    
+        inedges.fullOuterJoin(outedges).map(merge_nodes).map(
+            orjson.dumps
+        ).saveAsTextFile(
+            step2_file,
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        )
+
     return get_spark_context().textFile(step2_file).map(orjson.loads)
 
 
-def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/schema")):
+def wikidata_schema(
+    qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/schema")
+):
     """Create a schema of Wikidata.
 
     1. `node_classes` contains a list of qnodes, each with its classes, its outgoing qnodes (not props) and their classes.
@@ -399,58 +394,68 @@ def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "
         for p, stmts in qnode.props.items():
             for stmt in stmts:
                 if stmt.value.is_qnode():
-                    out_qnodes.add(stmt.value.as_qnode_id())
-                    
+                    out_qnodes.add(stmt.value.as_entity_id())
+
                 for q, qvals in stmt.qualifiers.items():
                     for qval in qvals:
                         if qval.is_qnode():
-                            out_qnodes.add(qval.as_qnode_id())
-        
+                            out_qnodes.add(qval.as_entity_id())
+
         return {
             "id": qnode.id,
-            "classes": list({stmt.value.as_qnode_id() for stmt in qnode.props.get("P31", [])}),
-            "out_qnodes": list(out_qnodes)
+            "classes": list(
+                {stmt.value.as_entity_id() for stmt in qnode.props.get("P31", [])}
+            ),
+            "out_qnodes": list(out_qnodes),
         }
-    
+
     if not does_result_dir_exist(node_class_file):
+
         def join(x, ys):
             ys = dict(ys)
             return {
-                "id": x['id'],
-                "classes": list(x['classes']),
-                'out_qnodes': {
-                    k2: list(ys[k2]['classes'])
-                    for k2 in x['out_qnodes']
+                "id": x["id"],
+                "classes": list(x["classes"]),
+                "out_qnodes": {
+                    k2: list(ys[k2]["classes"])
+                    for k2 in x["out_qnodes"]
                     if ys[k2] is not None
-                }
+                },
             }
 
         node_class_rdd = qnodes_rdd.map(extract_classes).persist()
         left_outer_join(
-            rdd1=node_class_rdd, rdd2=node_class_rdd.map(lambda x: {'id': x['id'], 'classes': x['classes']}), 
-            rdd1_keyfn=itemgetter('id'), rdd1_fk_fn=itemgetter('out_qnodes'), 
-            rdd2_keyfn=itemgetter('id'), join_fn=join,
+            rdd1=node_class_rdd,
+            rdd2=node_class_rdd.map(lambda x: {"id": x["id"], "classes": x["classes"]}),
+            rdd1_keyfn=itemgetter("id"),
+            rdd1_fk_fn=itemgetter("out_qnodes"),
+            rdd2_keyfn=itemgetter("id"),
+            join_fn=join,
             ser_fn=orjson.dumps,
-            outfile=node_class_file
+            outfile=node_class_file,
         )
 
     if not does_result_dir_exist(node_degree_file):
+
         def extract_freq(x):
-            count = [(x['id'], len(x['out_qnodes']))]
-            for xi in x['out_qnodes']:
+            count = [(x["id"], len(x["out_qnodes"]))]
+            for xi in x["out_qnodes"]:
                 count.append((xi, 1))
             return count
 
-        qnodes_rdd \
-            .map(extract_classes).flatMap(extract_freq).foldByKey(0, add) \
-            .map(orjson.dumps) \
-            .saveAsTextFile(node_degree_file, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+        qnodes_rdd.map(extract_classes).flatMap(extract_freq).foldByKey(0, add).map(
+            orjson.dumps
+        ).saveAsTextFile(
+            node_degree_file,
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        )
 
     if not does_result_dir_exist(node_schema_file):
+
         def extract_qnode_schema(qnode: QNode):
             schema = {}
             for prop, stmts in qnode.props.items():
-                if prop == 'P31':
+                if prop == "P31":
                     continue
                 # storing the values of objects & literals for calculating the probability of class & datatype
                 prop_qnodes = defaultdict(int)
@@ -459,20 +464,20 @@ def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "
                 qualifier_qnodes = defaultdict(lambda: defaultdict(int))
                 qualifier_dtypes = defaultdict(lambda: defaultdict(int))
                 n_qualifiers = defaultdict(int)
-                for stmt in stmts:                    
+                for stmt in stmts:
                     if stmt.value.is_qnode():
-                        prop_qnodes[stmt.value.as_qnode_id()] += 1
+                        prop_qnodes[stmt.value.as_entity_id()] += 1
                     else:
                         prop_literal_dtypes[stmt.value.type] += 1
-                    
+
                     for qual, qual_values in stmt.qualifiers.items():
                         for qual_val in qual_values:
                             if qual_val.is_qnode():
-                                qualifier_qnodes[qual][qual_val.as_qnode_id()] += 1
+                                qualifier_qnodes[qual][qual_val.as_entity_id()] += 1
                             else:
                                 qualifier_dtypes[qual][qual_val.type] += 1
                         n_qualifiers[qual] += 1
-                
+
                 schema[prop] = {
                     "n_stmts": len(stmts),
                     "qnodes": dict(prop_qnodes),
@@ -484,20 +489,24 @@ def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "
                             "n_qualifiers": n_qualifiers[qual],
                         }
                         for qual in qualifier_qnodes
-                    }
+                    },
                 }
-            
+
             return qnode.id, schema
 
         sc = get_spark_context()
 
         # building an rdd that contain class information of outgoing qnodes and a weight that try to represent the centrality of a node
-        node_class_rdd = sc.textFile(node_class_file).map(orjson.loads).map(lambda x: (x['id'], x))
+        node_class_rdd = (
+            sc.textFile(node_class_file).map(orjson.loads).map(lambda x: (x["id"], x))
+        )
         node_degree_rdd = sc.textFile(node_degree_file).map(orjson.loads)
+
         def merge(args):
             k, (gclass, gcen) = args
-            gclass['degree'] = gcen
-            return gclass['id'], gclass
+            gclass["degree"] = gcen
+            return gclass["id"], gclass
+
         vertice_rdd = node_class_rdd.leftOuterJoin(node_degree_rdd).map(merge)
 
         # merge the qnode schema with the rdd above to complete the schema with qnode classes
@@ -505,131 +514,177 @@ def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "
             qnode_id, (qnode_schema, qnode_linked_info) = args
             for prop, prop_schema in qnode_schema.items():
                 class_freqs = defaultdict(int)
-                for qid, qnode_count in prop_schema.pop('qnodes').items():
-                    for clsid in qnode_linked_info['out_qnodes'].get(qid, []):
+                for qid, qnode_count in prop_schema.pop("qnodes").items():
+                    for clsid in qnode_linked_info["out_qnodes"].get(qid, []):
                         class_freqs[clsid] += qnode_count
-                prop_schema['classes'] = dict(class_freqs)
+                prop_schema["classes"] = dict(class_freqs)
 
-                for qual, qual_schema in prop_schema['qualifiers'].items():
+                for qual, qual_schema in prop_schema["qualifiers"].items():
                     class_freqs = defaultdict(int)
-                    for qid, qnode_count in qual_schema.pop('qnodes').items():
-                        for clsid in qnode_linked_info['out_qnodes'].get(qid, []):
+                    for qid, qnode_count in qual_schema.pop("qnodes").items():
+                        for clsid in qnode_linked_info["out_qnodes"].get(qid, []):
                             class_freqs[clsid] += qnode_count
-                    qual_schema['classes'] = dict(class_freqs)
-            
+                    qual_schema["classes"] = dict(class_freqs)
+
             return {
-                "id": qnode_id, 
-                "classes": qnode_linked_info['classes'], 
-                "schema": qnode_schema, 
-                "degree": qnode_linked_info['degree']
+                "id": qnode_id,
+                "classes": qnode_linked_info["classes"],
+                "schema": qnode_schema,
+                "degree": qnode_linked_info["degree"],
             }
-        
-        qnodes_rdd \
-            .map(extract_qnode_schema) \
-            .leftOuterJoin(vertice_rdd) \
-            .map(merge_class_info) \
-            .map(orjson.dumps) \
-            .coalesce(2048) \
-            .saveAsTextFile(node_schema_file, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+
+        qnodes_rdd.map(extract_qnode_schema).leftOuterJoin(vertice_rdd).map(
+            merge_class_info
+        ).map(orjson.dumps).coalesce(2048).saveAsTextFile(
+            node_schema_file,
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        )
 
     if not does_result_dir_exist(class_schema_file):
+
         def cls2instance(x):
             instances = []
-            for clsid in x['classes']:
-                cschema = {
-                    "id": clsid,
-                    "n_instances": 1,
-                    "props": {}
-                }
-                for prop, prop_schema in x['schema'].items():
+            for clsid in x["classes"]:
+                cschema = {"id": clsid, "n_instances": 1, "props": {}}
+                for prop, prop_schema in x["schema"].items():
                     prop_schema = copy.deepcopy(prop_schema)
-                    prop_schema['n_instances'] = 1
+                    prop_schema["n_instances"] = 1
                     example = {"objects": {}, "literals": {}, "qualifiers": {}}
-                    for c in prop_schema['classes']:
-                        example['objects'][c] = [(x['id'], x['degree'])]
-                    for c in prop_schema['literal_types']:
-                        example['literals'][c] = [(x['id'], x['degree'])]
-                    for qual, qual_schema in prop_schema['qualifiers'].items():
+                    for c in prop_schema["classes"]:
+                        example["objects"][c] = [(x["id"], x["degree"])]
+                    for c in prop_schema["literal_types"]:
+                        example["literals"][c] = [(x["id"], x["degree"])]
+                    for qual, qual_schema in prop_schema["qualifiers"].items():
                         example["qualifiers"][qual] = {"objects": {}, "literals": {}}
-                        for c in qual_schema['classes']:
-                            example["qualifiers"][qual]["objects"][c] = [(x['id'], x['degree'])]
-                        for c in qual_schema['literal_types']:
-                            example["qualifiers"][qual]["literals"][c] = [(x['id'], x['degree'])]
-                    prop_schema['examples'] = example
-                    assert len(example['objects']) == len(prop_schema['classes'])
+                        for c in qual_schema["classes"]:
+                            example["qualifiers"][qual]["objects"][c] = [
+                                (x["id"], x["degree"])
+                            ]
+                        for c in qual_schema["literal_types"]:
+                            example["qualifiers"][qual]["literals"][c] = [
+                                (x["id"], x["degree"])
+                            ]
+                    prop_schema["examples"] = example
+                    assert len(example["objects"]) == len(prop_schema["classes"])
                     cschema["props"][prop] = prop_schema
 
                 instances.append((clsid, cschema))
             return instances
-        
+
         def merge_schema(schema1, schema2):
             if isinstance(schema1, tuple):
                 return schema1
             if isinstance(schema2, tuple):
                 return schema2
 
-            assert schema1['id'] == schema2['id']
+            assert schema1["id"] == schema2["id"]
             top_k_examples = 5
 
-            schema1['n_instances'] += schema2['n_instances']
-            for prop, prop_schema2 in schema2['props'].items():
-                if prop not in schema1['props']:
-                    schema1['props'][prop] = prop_schema2
+            schema1["n_instances"] += schema2["n_instances"]
+            for prop, prop_schema2 in schema2["props"].items():
+                if prop not in schema1["props"]:
+                    schema1["props"][prop] = prop_schema2
                     continue
-                
-                # merge exist prop schema
-                prop_schema1 = schema1['props'][prop]
-                prop_schema1['n_instances'] += prop_schema2['n_instances']
-                prop_schema1['n_stmts'] += prop_schema2['n_stmts']
-                for k, v in prop_schema2['classes'].items():
-                    if k not in prop_schema1['classes']:
-                        prop_schema1['classes'][k] = v
-                        prop_schema1['examples']['objects'][k] = prop_schema2['examples']['objects'][k]
-                    else:
-                        prop_schema1['classes'][k] += v
-                        prop_schema1['examples']['objects'][k] = sorted(
-                            prop_schema1['examples']['objects'][k] + prop_schema2['examples']['objects'][k], 
-                            key=itemgetter(1), reverse=True)[:top_k_examples]
-                for k, v in prop_schema2['literal_types'].items():
-                    if k not in prop_schema1['literal_types']:
-                        prop_schema1['literal_types'][k] = v
-                        prop_schema1['examples']['literals'][k] = prop_schema2['examples']['literals'][k]
-                    else:
-                        prop_schema1['literal_types'][k] += v
-                        prop_schema1['examples']['literals'][k] = sorted(
-                            prop_schema1['examples']['literals'][k] + prop_schema2['examples']['literals'][k], 
-                            key=itemgetter(1), reverse=True)[:top_k_examples]
 
-                for qual, qual_schema2 in prop_schema2['qualifiers'].items():
-                    if qual not in prop_schema1['qualifiers']:
-                        prop_schema1['qualifiers'][qual] = prop_schema2['qualifiers'][qual]
-                        prop_schema1['examples']['qualifiers'][qual] = prop_schema2['examples']['qualifiers'][qual]
+                # merge exist prop schema
+                prop_schema1 = schema1["props"][prop]
+                prop_schema1["n_instances"] += prop_schema2["n_instances"]
+                prop_schema1["n_stmts"] += prop_schema2["n_stmts"]
+                for k, v in prop_schema2["classes"].items():
+                    if k not in prop_schema1["classes"]:
+                        prop_schema1["classes"][k] = v
+                        prop_schema1["examples"]["objects"][k] = prop_schema2[
+                            "examples"
+                        ]["objects"][k]
                     else:
-                        qual_schema1 = prop_schema1['qualifiers'][qual]
-                        qual_schema1['n_qualifiers'] += qual_schema2['n_qualifiers']
-                        for k, v in qual_schema2['classes'].items():
-                            if k not in qual_schema1['classes']:
-                                qual_schema1['classes'][k] = v
-                                prop_schema1['examples']['qualifiers'][qual]['objects'][k] = prop_schema2['examples']['qualifiers'][qual]['objects'][k]
+                        prop_schema1["classes"][k] += v
+                        prop_schema1["examples"]["objects"][k] = sorted(
+                            prop_schema1["examples"]["objects"][k]
+                            + prop_schema2["examples"]["objects"][k],
+                            key=itemgetter(1),
+                            reverse=True,
+                        )[:top_k_examples]
+                for k, v in prop_schema2["literal_types"].items():
+                    if k not in prop_schema1["literal_types"]:
+                        prop_schema1["literal_types"][k] = v
+                        prop_schema1["examples"]["literals"][k] = prop_schema2[
+                            "examples"
+                        ]["literals"][k]
+                    else:
+                        prop_schema1["literal_types"][k] += v
+                        prop_schema1["examples"]["literals"][k] = sorted(
+                            prop_schema1["examples"]["literals"][k]
+                            + prop_schema2["examples"]["literals"][k],
+                            key=itemgetter(1),
+                            reverse=True,
+                        )[:top_k_examples]
+
+                for qual, qual_schema2 in prop_schema2["qualifiers"].items():
+                    if qual not in prop_schema1["qualifiers"]:
+                        prop_schema1["qualifiers"][qual] = prop_schema2["qualifiers"][
+                            qual
+                        ]
+                        prop_schema1["examples"]["qualifiers"][qual] = prop_schema2[
+                            "examples"
+                        ]["qualifiers"][qual]
+                    else:
+                        qual_schema1 = prop_schema1["qualifiers"][qual]
+                        qual_schema1["n_qualifiers"] += qual_schema2["n_qualifiers"]
+                        for k, v in qual_schema2["classes"].items():
+                            if k not in qual_schema1["classes"]:
+                                qual_schema1["classes"][k] = v
+                                prop_schema1["examples"]["qualifiers"][qual]["objects"][
+                                    k
+                                ] = prop_schema2["examples"]["qualifiers"][qual][
+                                    "objects"
+                                ][
+                                    k
+                                ]
                             else:
-                                qual_schema1['classes'][k] += v
-                                prop_schema1['examples']['qualifiers'][qual]['objects'][k] = sorted(
-                                    prop_schema1['examples']['qualifiers'][qual]['objects'][k] + prop_schema2['examples']['qualifiers'][qual]['objects'][k],
-                                    key=itemgetter(1), reverse=True
-                                )[:top_k_examples]
-                        for k, v in qual_schema2['literal_types'].items():
-                            if k not in qual_schema1['literal_types']:
-                                qual_schema1['literal_types'][k] = v
-                                prop_schema1['examples']['qualifiers'][qual]['literals'][k] = prop_schema2['examples']['qualifiers'][qual]['literals'][k]
+                                qual_schema1["classes"][k] += v
+                                prop_schema1["examples"]["qualifiers"][qual]["objects"][
+                                    k
+                                ] = sorted(
+                                    prop_schema1["examples"]["qualifiers"][qual][
+                                        "objects"
+                                    ][k]
+                                    + prop_schema2["examples"]["qualifiers"][qual][
+                                        "objects"
+                                    ][k],
+                                    key=itemgetter(1),
+                                    reverse=True,
+                                )[
+                                    :top_k_examples
+                                ]
+                        for k, v in qual_schema2["literal_types"].items():
+                            if k not in qual_schema1["literal_types"]:
+                                qual_schema1["literal_types"][k] = v
+                                prop_schema1["examples"]["qualifiers"][qual][
+                                    "literals"
+                                ][k] = prop_schema2["examples"]["qualifiers"][qual][
+                                    "literals"
+                                ][
+                                    k
+                                ]
                             else:
-                                qual_schema1['literal_types'][k] += v
-                                prop_schema1['examples']['qualifiers'][qual]['literals'][k] = sorted(
-                                    prop_schema1['examples']['qualifiers'][qual]['literals'][k] + prop_schema2['examples']['qualifiers'][qual]['literals'][k],
-                                    key=itemgetter(1), reverse=True
-                                )[:top_k_examples]
+                                qual_schema1["literal_types"][k] += v
+                                prop_schema1["examples"]["qualifiers"][qual][
+                                    "literals"
+                                ][k] = sorted(
+                                    prop_schema1["examples"]["qualifiers"][qual][
+                                        "literals"
+                                    ][k]
+                                    + prop_schema2["examples"]["qualifiers"][qual][
+                                        "literals"
+                                    ][k],
+                                    key=itemgetter(1),
+                                    reverse=True,
+                                )[
+                                    :top_k_examples
+                                ]
 
             return schema1
-        
+
         # get_spark_context().textFile(node_schema_file) \
         #     .map(orjson.loads).flatMap(cls2instance) \
         #     .filter(lambda x: x[0] == 'Q2367225') \
@@ -637,7 +692,7 @@ def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "
         #     .saveAsTextFile(node_schema_file + "_tmp", compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
         # lst = get_spark_context().textFile(node_schema_file).map(orjson.loads).filter(lambda x: x['id'] == 'Q30').count()
         # print(lst)
-        # return 
+        # return
 
         # def test_irregular(schema):
         #     for p in schema['props'].values():
@@ -646,13 +701,13 @@ def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "
         #                 return True
         #     return False
         # result = get_spark_context().textFile(node_schema_file + "_tmp").map(orjson.loads).map(itemgetter(1)).filter(test_irregular).collect()
-        
+
         # print(len(result))
         # x = get_spark_context().textFile(class_schema_file).map(lambda x: x.split("\t", 1)[1]).map(orjson.loads).filter(lambda x: x['id'] == 'Q2367225').collect()
         # print(x[0]['props']['P118'])
         # result2 = get_spark_context().textFile(class_schema_file).map(lambda x: x.split("\t", 1)[1]).map(orjson.loads).filter(lambda x: x['id'] == 'Q2367225').filter(test_irregular).collect()
         # print(len(result2))
-        
+
         # print("here")
         # return
         #     .reduceByKey(merge_schema) \
@@ -663,20 +718,31 @@ def wikidata_schema(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "
         # import IPython
         # IPython.embed()
 
-        rdd = get_spark_context().textFile(node_schema_file) \
-            .map(orjson.loads).flatMap(cls2instance) \
-            .reduceByKey(merge_schema) \
-            .map(lambda x: x[0] + "\t" + orjson.dumps(x[1]).decode()) \
-            .coalesce(512) \
-            .saveAsTextFile(class_schema_file, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+        rdd = (
+            get_spark_context()
+            .textFile(node_schema_file)
+            .map(orjson.loads)
+            .flatMap(cls2instance)
+            .reduceByKey(merge_schema)
+            .map(lambda x: x[0] + "\t" + orjson.dumps(x[1]).decode())
+            .coalesce(512)
+            .saveAsTextFile(
+                class_schema_file,
+                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            )
+        )
 
     def extract(line: str):
         id, data = line.split("\t")
         return id, orjson.loads(data)
+
     return get_spark_context().textFile(class_schema_file).map(extract)
 
 
-def wikidata_quantity_prop_stats(qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/quantity_prop_stats")):
+def wikidata_quantity_prop_stats(
+    qnodes_rdd=None,
+    outfile: str = os.path.join(WIKIDATA_DIR, "step_2/quantity_prop_stats"),
+):
     qnodes_rdd = qnodes_rdd or qnodes_en()
 
     raw_quantity_values_file = os.path.join(outfile, "raw_quantity_values")
@@ -684,16 +750,18 @@ def wikidata_quantity_prop_stats(qnodes_rdd=None, outfile: str = os.path.join(WI
 
     if not does_result_dir_exist(raw_quantity_values_file):
         wd_props = WDProperty.from_file()
-        identifiers = {
-            p.id for p in wd_props.values()
-            if p.datatype == 'external-id'
-        }
+        identifiers = {p.id for p in wd_props.values() if p.datatype == "external-id"}
         identifiers = get_spark_context().broadcast(identifiers)
 
         def extract_quantity(val: dict):
             assert len(val) <= 4, f"So that they only have 4 props: {val.keys()}"
-            return (val['amount'], val.get('unit', None), val.get('upperBound', None), val.get('lowerBound', None))
-        
+            return (
+                val["amount"],
+                val.get("unit", None),
+                val.get("upperBound", None),
+                val.get("lowerBound", None),
+            )
+
         def extract_data_prop(qnode: QNode):
             raw_dprop_values = []
             for p, stmts in qnode.props.items():
@@ -714,16 +782,15 @@ def wikidata_quantity_prop_stats(qnodes_rdd=None, outfile: str = os.path.join(WI
                         if len(new_qvals) > 0:
                             p_qual_values[q] = new_qvals
                 if len(p_vals) > 0 or len(p_qual_values) > 0:
-                    raw_dprop_values.append((p, {
-                        "id": p,
-                        "value": p_vals,
-                        "qualifiers": p_qual_values
-                    }))
+                    raw_dprop_values.append(
+                        (p, {"id": p, "value": p_vals, "qualifiers": p_qual_values})
+                    )
             return raw_dprop_values
-        
-        qnodes_rdd.flatMap(extract_data_prop) \
-            .map(orjson.dumps) \
-            .saveAsTextFile(raw_quantity_values_file, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+
+        qnodes_rdd.flatMap(extract_data_prop).map(orjson.dumps).saveAsTextFile(
+            raw_quantity_values_file,
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        )
 
     if not does_result_dir_exist(quantity_stats_file):
         # max_f32 = np.finfo(np.float32).max
@@ -734,18 +801,18 @@ def wikidata_quantity_prop_stats(qnodes_rdd=None, outfile: str = os.path.join(WI
                 "units": set(),
                 "size": 0,
                 "int_size": 0,
-                "min": float('inf'),
-                "max": -float('inf'),
+                "min": float("inf"),
+                "max": -float("inf"),
                 "sum": 0,
                 "sum_square": 0,
                 "n_overi36": 0,
             }
-            value = add_stats(copy.copy(defaultstats), pinfo['value'])
+            value = add_stats(copy.copy(defaultstats), pinfo["value"])
             qualifiers = {
                 q: add_stats(copy.copy(defaultstats), qvals)
-                for q, qvals in pinfo['qualifiers'].items()
+                for q, qvals in pinfo["qualifiers"].items()
             }
-            return {"id": pinfo['id'], 'value': value, 'qualifiers': qualifiers}
+            return {"id": pinfo["id"], "value": value, "qualifiers": qualifiers}
 
         def add_stats(statdict, quan_lst):
             if len(quan_lst) == 0:
@@ -755,69 +822,81 @@ def wikidata_quantity_prop_stats(qnodes_rdd=None, outfile: str = os.path.join(WI
             assert all(isinstance(x, (int, float)) and not math.isinf(x) for x in olst)
 
             lst = [x for x in olst if x <= max_i36]
-            
+
             statdict = copy.copy(statdict)
-            statdict['units'] = statdict['units'].union(units)
-            statdict['size'] += len(olst)
-            statdict['int_size'] += sum([isinstance(x, int) for x in olst])
+            statdict["units"] = statdict["units"].union(units)
+            statdict["size"] += len(olst)
+            statdict["int_size"] += sum([isinstance(x, int) for x in olst])
             if len(lst) > 0:
-                statdict['min'] = min(statdict['min'], min(lst))
-                statdict['max'] = max(statdict['max'], max(lst))
-            statdict['sum'] += sum(lst)
-            statdict['sum_square'] += sum([x ** 2 for x in lst])
-            statdict['n_overi36'] += len(olst) - len(lst)
+                statdict["min"] = min(statdict["min"], min(lst))
+                statdict["max"] = max(statdict["max"], max(lst))
+            statdict["sum"] += sum(lst)
+            statdict["sum_square"] += sum([x ** 2 for x in lst])
+            statdict["n_overi36"] += len(olst) - len(lst)
             return statdict
-        
+
         def merge_stats(odict1, odict2):
             statdict = copy.copy(odict1)
-            statdict['units'] = statdict['units'].union(odict2['units'])
-            statdict['size'] += odict2['size']
-            statdict['int_size'] += odict2['int_size']
-            statdict['min'] = min(statdict['min'], odict2['min'])
-            statdict['max'] = max(statdict['max'], odict2['max'])
-            statdict['sum'] += odict2['sum']
-            statdict['sum_square'] += odict2['sum_square']
-            statdict['n_overi36'] += odict2['n_overi36']
+            statdict["units"] = statdict["units"].union(odict2["units"])
+            statdict["size"] += odict2["size"]
+            statdict["int_size"] += odict2["int_size"]
+            statdict["min"] = min(statdict["min"], odict2["min"])
+            statdict["max"] = max(statdict["max"], odict2["max"])
+            statdict["sum"] += odict2["sum"]
+            statdict["sum_square"] += odict2["sum_square"]
+            statdict["n_overi36"] += odict2["n_overi36"]
             return statdict
 
         def compute_statistic(p1info, p2info):
-            assert p1info['id'] == p2info['id']
-            pinfo = {"id": p1info['id']}
-            pinfo['value'] = merge_stats(p1info['value'], p2info['value'])
-            pinfo['qualifiers'] = copy.copy(p1info['qualifiers'])
-            for q, qinfo in p2info['qualifiers'].items():
-                if q not in pinfo['qualifiers']:
-                    pinfo['qualifiers'][q] = copy.copy(qinfo)
+            assert p1info["id"] == p2info["id"]
+            pinfo = {"id": p1info["id"]}
+            pinfo["value"] = merge_stats(p1info["value"], p2info["value"])
+            pinfo["qualifiers"] = copy.copy(p1info["qualifiers"])
+            for q, qinfo in p2info["qualifiers"].items():
+                if q not in pinfo["qualifiers"]:
+                    pinfo["qualifiers"][q] = copy.copy(qinfo)
                 else:
-                    pinfo['qualifiers'][q] = merge_stats(pinfo['qualifiers'][q], qinfo)
+                    pinfo["qualifiers"][q] = merge_stats(pinfo["qualifiers"][q], qinfo)
             return pinfo
-        
+
         def compute_statistic_postprocess(pinfo):
-            lst = [pinfo['value']] + list(pinfo['qualifiers'].values())
+            lst = [pinfo["value"]] + list(pinfo["qualifiers"].values())
             for item in lst:
-                if item['size'] == 0:
-                    item['units'] = set()
-                    item['min'] = None
-                    item['max'] = None
-                    item['mean'] = 0
-                    item['std'] = 0
-                    item.pop('sum')
-                    item.pop('sum_square')
+                if item["size"] == 0:
+                    item["units"] = set()
+                    item["min"] = None
+                    item["max"] = None
+                    item["mean"] = 0
+                    item["std"] = 0
+                    item.pop("sum")
+                    item.pop("sum_square")
                 else:
-                    item['mean'] = (item['n_overi36'] * max_i36 + item['sum']) / item['size']
-                    nsum_square = item['n_overi36'] * (max_i36 ** 2) + item.pop('sum_square')
-                    nsum = item['n_overi36'] * max_i36 + item.pop('sum')
-                    item['std'] = math.sqrt(nsum_square / item['size'] - (nsum / item['size']) ** 2)
+                    item["mean"] = (item["n_overi36"] * max_i36 + item["sum"]) / item[
+                        "size"
+                    ]
+                    nsum_square = item["n_overi36"] * (max_i36 ** 2) + item.pop(
+                        "sum_square"
+                    )
+                    nsum = item["n_overi36"] * max_i36 + item.pop("sum")
+                    item["std"] = math.sqrt(
+                        nsum_square / item["size"] - (nsum / item["size"]) ** 2
+                    )
             return pinfo
-        
-        get_spark_context().textFile(raw_quantity_values_file).map(orjson.loads) \
-            .map(lambda x: (x[0], create_stats(x[1]))) \
-            .reduceByKey(compute_statistic) \
-            .map(itemgetter(1)) \
-            .map(compute_statistic_postprocess) \
-            .map(lambda x: orjson.dumps(x, option=orjson.OPT_SERIALIZE_DATACLASS, default=list)) \
-            .coalesce(8) \
-            .saveAsTextFile(quantity_stats_file, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec")
+
+        get_spark_context().textFile(raw_quantity_values_file).map(orjson.loads).map(
+            lambda x: (x[0], create_stats(x[1]))
+        ).reduceByKey(compute_statistic).map(itemgetter(1)).map(
+            compute_statistic_postprocess
+        ).map(
+            lambda x: orjson.dumps(
+                x, option=orjson.OPT_SERIALIZE_DATACLASS, default=list
+            )
+        ).coalesce(
+            8
+        ).saveAsTextFile(
+            quantity_stats_file,
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+        )
 
 
 if __name__ == "__main__":
@@ -828,7 +907,7 @@ if __name__ == "__main__":
     # rdd = qnodes()
     # values = rdd.filter(lambda x: x['id'] == "L252247-F2").take(1)
     # print(orjson.dumps(values[0]).decode())
-    wiki_article_to_qnode(lang='en')
+    wiki_article_to_qnode(lang="en")
     # rdd = qnodes_en()
     # # print(rdd.count())
     # # values = rdd.take(1)
@@ -841,6 +920,7 @@ if __name__ == "__main__":
     # print(values)
 
     import json
+
     # wdclasses = WDClass.from_file()
     # wdprops = WDProperty.from_file()
     #
@@ -881,7 +961,7 @@ if __name__ == "__main__":
     #             'qualifiers': {},
     #             'examples': prop_schema['examples']
     #         }
-            
+
     #         for k, v in prop_schema['f_s_ipc'].items():
     #             norm['prob_class_value'][k] = v / prop_schema['f_so_ip']
     #         for k, v in prop_schema['f_s_ipd'].items():
@@ -906,20 +986,19 @@ if __name__ == "__main__":
 
     # resp1 = rdd2.map(itemgetter(1)).filter(lambda x: x['id'] == 'Q15991303').take(1)[0]
     # resp2 = rdd.filter(lambda x: x['id'] == 'Q15991303').take(1)[0]
-    
+
     # M.serialize_json(resp1, WIKIDATA_DIR + "/test.json", indent=4)
     # M.serialize_json(norm((1, resp1)), WIKIDATA_DIR + "/test1.json", indent=4)
     # M.serialize_json(resp2, WIKIDATA_DIR + "/test2.json", indent=4)
-    
+
     # print(rdd.take(1))
-    
 
     # def test(qnode):
     #     for p, vals in qnode.props.items():
     #         if p in {'P3036'}:
     #             return True
     #     return False
-    
+
     # result = rdd.filter(test).map(lambda x: x.id).distinct().take(1000)
     # print(result)
 
@@ -932,5 +1011,3 @@ if __name__ == "__main__":
     # rdd = wikidata_en_ontology()
     # print(rdd.count())
     # input(">>> Press any key to finish")
-
-

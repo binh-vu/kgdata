@@ -9,9 +9,9 @@ import orjson
 
 from kgdata.config import WIKIDATA_DIR
 from kgdata.wikidata.models.qnode import (
+    QNode,
     MultiLingualString,
     MultiLingualStringList,
-    QNode,
 )
 from sm.misc.deser import deserialize_jl, deserialize_json
 
@@ -67,31 +67,35 @@ class WDProperty:
 
     @staticmethod
     def from_qnode(qnode: QNode):
-        return WDProperty(
-            id=qnode.id,
-            label=qnode.label,
-            description=qnode.description,
-            datatype=qnode.datatype,
-            aliases=qnode.aliases,
-            parents=sorted(
-                {stmt.value.as_qnode_id() for stmt in qnode.props.get("P279", [])}
-            ),
-            see_also=sorted(
-                {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1659", [])}
-            ),
-            equivalent_properties=sorted(
-                {stmt.value.as_string() for stmt in qnode.props.get("P1628", [])}
-            ),
-            subjects=sorted(
-                {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1629", [])}
-            ),
-            inverse_properties=sorted(
-                {stmt.value.as_qnode_id() for stmt in qnode.props.get("P1696", [])}
-            ),
-            instanceof=sorted(
-                {stmt.value.as_qnode_id() for stmt in qnode.props.get("P31", [])}
-            ),
-        )
+        try:
+            return WDProperty(
+                id=qnode.id,
+                label=qnode.label,
+                description=qnode.description,
+                datatype=qnode.datatype,  # type: ignore
+                aliases=qnode.aliases,
+                parents=sorted(
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P279", [])}
+                ),
+                see_also=sorted(
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1659", [])}
+                ),
+                equivalent_properties=sorted(
+                    {stmt.value.as_string() for stmt in qnode.props.get("P1628", [])}
+                ),
+                subjects=sorted(
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1629", [])}
+                ),
+                inverse_properties=sorted(
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P1696", [])}
+                ),
+                instanceof=sorted(
+                    {stmt.value.as_entity_id() for stmt in qnode.props.get("P31", [])}
+                ),
+            )
+        except:
+            print(qnode)
+            raise
 
     def serialize(self):
         odict = {
