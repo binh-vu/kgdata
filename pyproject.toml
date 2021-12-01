@@ -10,7 +10,7 @@ kgdata = 'kgdata.cli:cli'
 
 [tool.poetry.dependencies]
 python = "^3.8"
-orjson = "^3.5.2"
+orjson = "^3.6.4"
 tqdm = "^4.60.0"
 beautifulsoup4 = "^4.9.3"
 cityhash = "^0.2.3"
@@ -19,20 +19,20 @@ lbry-rocksdb-optimized = "^0.8.1"
 loguru = "^0.5.3"
 rdflib = "^5.0.0"
 six = "^1.16.0"
-"ruamel.yaml" = "^0.17.4"
+"ruamel.yaml" = "^0.17.9"
 chardet = "^4.0.0"
 ujson = "^4.0.2"
 redis = "^3.5.3"
-networkx = "^2.5.1"
+networkx = "^2.6.3"
 numpy = "^1.20.3"
 fastnumbers = "^3.1.0"
 requests = "^2.25.1"
-sem-desc = "^1.2.3"
-click = "^8.0.1"
+sem-desc = "~1.2.3"
+click = "^8.0.3"
 parsimonious = "^0.8.1"
 
 [tool.poetry.dev-dependencies]
-python-dotenv = "^0.17.1"
+python-dotenv = ">=0.19.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
