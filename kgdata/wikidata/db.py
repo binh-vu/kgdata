@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import *
 
 import gzip
@@ -22,7 +23,7 @@ class WDLocalDB(RocksDBStore[str, V]):
     def __init__(
         self,
         EntClass,
-        dbfile: str,
+        dbfile: Union[Path, str],
         compression: bool,
         create_if_missing=True,
         read_only=False,
@@ -48,7 +49,7 @@ class WDProxyDB(RocksDBStore[str, V]):
     def __init__(
         self,
         EntClass,
-        dbfile: str,
+        dbfile: Union[Path, str],
         compression: bool,
         create_if_missing=True,
         read_only=False,
@@ -138,7 +139,7 @@ class WDProxyDB(RocksDBStore[str, V]):
 
 
 def get_qnode_db(
-    dbfile: str,
+    dbfile: Union[Path, str],
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,

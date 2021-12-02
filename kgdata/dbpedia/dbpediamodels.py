@@ -13,8 +13,8 @@ from kgdata.wikidata.models import QNode
 @dataclass
 class Link:
     href: str
-    start: str
-    end: str
+    start: int
+    end: int
     is_selflink: bool = False
 
     @property
