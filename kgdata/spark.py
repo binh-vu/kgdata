@@ -11,7 +11,7 @@ import rocksdb
 from pyspark import SparkContext, SparkConf
 from tqdm.auto import tqdm
 
-from sm.misc.deser import deserialize_byte_lines, deserialize_key_val_lines
+from sm.misc.deser import deserialize_byte_lines, deserialize_key_val_lines, deserialize_jl
 
 # SparkContext singleton
 _sc = None
@@ -337,6 +337,10 @@ def rdd2db(
         elif format == "tab_key_value":
             it = (
                 (k.encode(), v.encode()) for k, v in deserialize_key_val_lines(infile)
+            )
+        elif format == "tuple2":
+            it = (
+                (k.encode(), v.encode()) for k, v in deserialize_jl(infile)
             )
         else:
             raise NotImplementedError(format)

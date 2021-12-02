@@ -7,12 +7,6 @@ import click
 from loguru import logger
 
 
-class WDBuildOption(str, Enum):
-    Qnodes = "qnodes"
-    WDClasses = "wdclasses"
-    WDProps = "wdprops"
-
-
 @click.command()
 @click.option("-b", "--build", help="Build database")
 @click.option("-d", "--directory", default="", help="Wikidata directory")
@@ -20,9 +14,9 @@ class WDBuildOption(str, Enum):
 @click.option(
     "-c", "--compression", is_flag=True, help="Whether to compress the results"
 )
-def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, output: str, compression: bool):
+def wikidata(build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links"], directory: str, output: str, compression: bool):
     try:
-        assert build in ["qnodes", "wdclasses", "wdprops"]
+        assert build in ["qnodes", "wdclasses", "wdprops", "enwiki_links"]
     except ValueError:
         logger.error("Invalid build value: {}. Exiting!", build)
         return
@@ -36,7 +30,7 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, o
 
     from kgdata.config import WIKIDATA_DIR
     from kgdata.wikidata.s00_prep_data import prep01
-    from kgdata.wikidata.rdd_datasets import qnodes_en
+    from kgdata.wikidata.rdd_datasets import qnodes_en, wiki_article_to_qnode
     from kgdata.wikidata.ontology import (
         save_wdprops,
         save_wdclasses,
@@ -64,6 +58,16 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, o
             compression=compression,
             verbose=True,
         )
+    
+    if build == "enwiki_links":
+        wiki_article_to_qnode()
+        rdd2db(
+            os.path.join(WIKIDATA_DIR, "step_2/enwiki_links/*.gz"),
+            os.path.join(output_dir, "enwiki_links.db"),
+            format="tuple2",
+            compression=compression,
+            verbose=True,
+        )
 
     if build in ["wdclasses", "wdprops"]:
         make_ontology()
@@ -71,13 +75,13 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops"], directory: str, o
         # TODO: uncomment to verify if the data is correct
         # examine_ontology_property()
 
-        if build == WDBuildOption.WDProps:
+        if build == "wdprops":
             save_wdprops(
                 indir=os.path.join(WIKIDATA_DIR, "ontology"), 
                 outdir=output_dir
             )
 
-        if build == WDBuildOption.WDClasses:
+        if build == "wdclasses":
             save_wdclasses(
                 indir=os.path.join(WIKIDATA_DIR, "ontology"), 
                 outdir=output_dir
