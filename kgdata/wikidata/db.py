@@ -202,10 +202,10 @@ def get_wdprop_db(
     return cache_dict[dbfile]
 
 
-def query_wikidata_entities(qnode_ids: Union[Set[str], List[str]]) -> Dict[str, QNode]:
+def query_wikidata_entities(qnode_ids: Union[Set[str], List[str]], endpoint: str = "https://www.wikidata.org/w/api.php") -> Dict[str, QNode]:
     assert len(qnode_ids) > 0, qnode_ids
     resp = requests.get(
-        "https://www.wikidata.org/w/api.php",
+        endpoint,
         params={
             "action": "wbgetentities",
             "ids": "|".join(qnode_ids),
