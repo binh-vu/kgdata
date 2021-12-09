@@ -51,6 +51,13 @@ DataValueTime = TypedDict(
         "calendarmodel": str,
     },
 )
+DataValueMonolingualText = TypedDict(
+    "DataValueMonolingualText",
+    {
+        "text": str,
+        "language": str,
+    },
+)
 
 
 @dataclass
@@ -74,6 +81,7 @@ class DataValue:
         DataValueGlobeCoordinate,
         DataValueQuantity,
         DataValueTime,
+        DataValueMonolingualText,
     ]
 
     def is_string(self):
@@ -162,6 +170,7 @@ class Statement:
 
 
 class MultiLingualString(str):
+    # two characters language code: en, th, de, fr, etc.
     lang: str
     lang2value: Dict[str, str]
 
