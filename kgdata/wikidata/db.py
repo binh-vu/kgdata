@@ -2,9 +2,10 @@ from pathlib import Path
 from typing import *
 
 import gzip
+from hugedict.misc import compress_custom, decompress_custom, identity
 import requests
 
-from sm.misc.big_dict import RocksDBStore
+from hugedict.rocksdb import RocksDBDict
 from kgdata.wikidata.models.qnode import QNode
 from kgdata.wikidata.models.wdclass import WDClass
 from kgdata.wikidata.models.wdproperty import WDProperty
@@ -12,14 +13,7 @@ from kgdata.wikidata.models.wdproperty import WDProperty
 V = TypeVar("V", bound=Union[QNode, WDClass, WDProperty])
 
 
-def ent_gzip_deserialize(EntClass):
-    def deserialize(value):
-        return EntClass.deserialize(gzip.decompress(value))
-
-    return deserialize
-
-
-class WDLocalDB(RocksDBStore[str, V]):
+class WDLocalDB(RocksDBDict[str, V]):
     def __init__(
         self,
         EntClass,
@@ -29,23 +23,21 @@ class WDLocalDB(RocksDBStore[str, V]):
         read_only=False,
     ):
         super().__init__(
-            dbfile,
-            deserialize=ent_gzip_deserialize(EntClass)
-            if compression
-            else EntClass.deserialize,
+            dbpath=dbfile,
             create_if_missing=create_if_missing,
             read_only=read_only,
+            deser_key=bytes.decode,
+            ser_key=str.encode,
+            deser_value=decompress_custom(EntClass.deserialize)
+            if compression
+            else EntClass.deserialize,
+            ser_value=compress_custom(EntClass.serialize)
+            if compression
+            else EntClass.serialize,
         )
-        self.EntClass = EntClass
-
-    def __setitem__(self, key, value):
-        self.db.put(key.encode(), value.serialize())
-
-    def deserialize(self, value):
-        return self.EntClass.deserialize(value)
 
 
-class WDProxyDB(RocksDBStore[str, V]):
+class WDProxyDB(RocksDBDict[str, V]):
     def __init__(
         self,
         EntClass,
@@ -55,23 +47,25 @@ class WDProxyDB(RocksDBStore[str, V]):
         read_only=False,
     ):
         super().__init__(
-            dbfile,
-            deserialize=ent_gzip_deserialize(EntClass)
-            if compression
-            else EntClass.deserialize,
+            dbpath=dbfile,
             create_if_missing=create_if_missing,
             read_only=read_only,
+            deser_key=bytes.decode,
+            ser_key=str.encode,
+            deser_value=decompress_custom(EntClass.deserialize)
+            if compression
+            else EntClass.deserialize,
+            ser_value=compress_custom(EntClass.serialize)
+            if compression
+            else EntClass.serialize,
         )
 
-        self.compression = compression
-        self.EntClass = EntClass
-
-        if not hasattr(self.EntClass, "from_qnode"):
-            self.extract_ent_from_qnode = lambda x: x
+        if not hasattr(EntClass, "from_qnode"):
+            self.extract_ent_from_qnode = identity
         else:
-            self.extract_ent_from_qnode = getattr(self.EntClass, "from_qnode")
+            self.extract_ent_from_qnode = getattr(EntClass, "from_qnode")
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str):
         item = self.db.get(key.encode())
         if item == b"\x00":
             raise KeyError(key)
@@ -83,18 +77,15 @@ class WDProxyDB(RocksDBStore[str, V]):
                 raise KeyError(key)
             else:
                 ent = self.extract_ent_from_qnode(qnodes[key])
-                value = ent.serialize()
-                if self.compression:
-                    value = gzip.compress(value)
-                self.db.put(key.encode(), value)
+                self.db.put(key.encode(), self.ser_value(ent))
             return ent
-        return self.deserialize(item)
+        return self.deser_value(item)
 
-    def __setitem__(self, key, value):
-        value = value.serialize()
-        if self.compression:
-            value = gzip.compress(value)
-        self.db.put(key.encode(), value)
+    def get(self, key: str, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def __contains__(self, key):
         item = self.db.get(key.encode())
@@ -108,34 +99,12 @@ class WDProxyDB(RocksDBStore[str, V]):
                 return False
 
             ent = self.extract_ent_from_qnode(qnodes[key])
-            value = ent.serialize()
-            if self.compression:
-                value = gzip.compress(value)
-            self.db.put(key.encode(), value)
+            self.db.put(key.encode(), self.ser_value(ent))
         return True
 
-    def does_not_exist(self, key):
+    def does_not_exist_locally(self, key):
         item = self.db.get(key.encode())
         return item == b"\x00"
-
-    def get(self, key: str, default=None):
-        item = self.db.get(key.encode())
-        if item == b"\x00":
-            return default
-        elif item is None:
-            qnodes = query_wikidata_entities([key])
-            if len(qnodes) == 0:
-                # no entity
-                self.db.put(key.encode(), b"\x00")
-                return default
-            else:
-                ent = self.extract_ent_from_qnode(qnodes[key])
-                value = ent.serialize()
-                if self.compression:
-                    value = gzip.compress(value)
-                self.db.put(key.encode(), value)
-            return ent
-        return self.deserialize(item)
 
 
 def get_qnode_db(
@@ -202,7 +171,10 @@ def get_wdprop_db(
     return cache_dict[dbfile]
 
 
-def query_wikidata_entities(qnode_ids: Union[Set[str], List[str]], endpoint: str = "https://www.wikidata.org/w/api.php") -> Dict[str, QNode]:
+def query_wikidata_entities(
+    qnode_ids: Union[Set[str], List[str]],
+    endpoint: str = "https://www.wikidata.org/w/api.php",
+) -> Dict[str, QNode]:
     assert len(qnode_ids) > 0, qnode_ids
     resp = requests.get(
         endpoint,

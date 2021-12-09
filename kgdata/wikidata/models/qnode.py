@@ -1,16 +1,80 @@
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, TypedDict, Union, Optional
+from typing import List, Dict, Literal, Tuple, TypedDict, Union, Optional
 
 import orjson
+
+
+DataValueString = str
+DataValueWikibaseEntityId = TypedDict(
+    "DataValueWikibaseEntityId",
+    {
+        "entity-type": Literal["item", "property"],
+        "id": str,
+        # WARNING: not all entity IDs have a numeric ID – using the full ID is highly recommended.
+        "numeric-id": str,
+    },
+)
+DataValueGlobeCoordinate = TypedDict(
+    "DataValueGlobeCoordinate",
+    {
+        "latitude": float,
+        "longitude": float,
+        "precision": float,
+        # deprecated, No longer used. Will be dropped in the future
+        "altitude": None,
+        # The URI of a reference globe. This would typically refer to a data item on wikidata.org. This is usually just an indication of the celestial body (e.g. Q2 = earth), but could be more specific, like WGS 84 or ED50.
+        "globe": str,
+    },
+)
+DataValueQuantity = TypedDict(
+    "DataValueQuantity",
+    {
+        # The nominal value of the quantity, as an arbitrary precision decimal string. The string always starts with a character indicating the sign of the value, either “+” or “-”.
+        "amount": str,
+        # Optionally, the upper bound of the quantity's uncertainty interval, using the same notation as the amount field. If not given or null, the uncertainty (or precision) of the quantity is not known. If the upperBound field is given, the lowerBound field must also be given.
+        "upperBound": str,
+        # Optionally, the lower bound of the quantity's uncertainty interval, using the same notation as the amount field. If not given or null, the uncertainty (or precision) of the quantity is not known. If the lowerBound field is given, the upperBound field must also be given.
+        "lowerBound": str,
+        # The URI of a unit (or “1” to indicate a unit-less quantity). This would typically refer to a data item on wikidata.org, e.g. http://www.wikidata.org/entity/Q712226 for “square kilometer”.
+        "unit": str,
+    },
+)
+DataValueTime = TypedDict(
+    "DataValueTime",
+    {
+        # See more: https://doc.wikimedia.org/Wikibase/master/php/md_docs_topics_json.html
+        "time": str,
+        "timezone": int,
+        "before": int,
+        "after": int,
+        "precision": int,
+        "calendarmodel": str,
+    },
+)
 
 
 @dataclass
 class DataValue:
     __slots__ = ("type", "value")
 
-    type: str
-    # https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON#Data_Values
-    value: Union[str, dict]
+    # https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON#Data_Values is moved to https://doc.wikimedia.org/Wikibase/master/php/md_docs_topics_json.html
+    # the new document does not have all types specified in https://www.wikidata.org/wiki/Help:Data_type such as monolingualtext
+    # so keep in mind the type may not be exhausted
+    type: Literal[
+        "string",
+        "wikibase-entityid",
+        "globecoordinate",
+        "quantity",
+        "time",
+        "monolingualtext",
+    ]
+    value: Union[
+        DataValueString,
+        DataValueWikibaseEntityId,
+        DataValueGlobeCoordinate,
+        DataValueQuantity,
+        DataValueTime,
+    ]
 
     def is_string(self):
         return self.type == "string"
