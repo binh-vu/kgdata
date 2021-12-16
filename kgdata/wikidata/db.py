@@ -107,6 +107,20 @@ class WDProxyDB(RocksDBDict[str, V]):
         return item == b"\x00"
 
 
+def get_wikipedia_to_wikidata_db(
+    dbpath: Union[Path, str],
+) -> Mapping[str, str]:
+    return RocksDBDict(
+        dbpath,
+        create_if_missing=False,
+        read_only=True,
+        deser_key=bytes.decode,
+        ser_key=str.encode,
+        deser_value=bytes.decode,
+        ser_value=str.encode,
+    )
+
+
 def get_qnode_db(
     dbfile: Union[Path, str],
     create_if_missing=True,
@@ -115,7 +129,7 @@ def get_qnode_db(
     compression: bool = False,
     is_singleton: bool = False,
     cache_dict={},
-) -> Dict[str, QNode]:
+) -> Mapping[str, QNode]:
     if not is_singleton or dbfile not in cache_dict:
         if proxy:
             db = WDProxyDB(QNode, dbfile, compression, create_if_missing, read_only)
