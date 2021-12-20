@@ -158,7 +158,7 @@ class Statement:
     # mapping from qualifier id into data value
     qualifiers: Dict[str, List[DataValue]]
     # list of qualifiers id that records the order (as dict lacks of order)
-    qualifiers_order: List[int]
+    qualifiers_order: List[str]
 
     @staticmethod
     def from_dict(o):
