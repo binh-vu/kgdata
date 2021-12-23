@@ -109,7 +109,7 @@ class WDProxyDB(RocksDBDict[str, V]):
 
 def get_wikipedia_to_wikidata_db(
     dbpath: Union[Path, str],
-) -> Mapping[str, str]:
+) -> RocksDBDict[str, str]:
     return RocksDBDict(
         dbpath,
         create_if_missing=False,
@@ -129,7 +129,7 @@ def get_qnode_db(
     compression: bool = False,
     is_singleton: bool = False,
     cache_dict={},
-) -> Mapping[str, QNode]:
+) -> RocksDBDict[str, QNode]:
     if not is_singleton or dbfile not in cache_dict:
         if proxy:
             db = WDProxyDB(QNode, dbfile, compression, create_if_missing, read_only)
@@ -149,7 +149,7 @@ def get_wdclass_db(
     compression: bool = False,
     is_singleton: bool = False,
     cache_dict={},
-) -> Dict[str, WDClass]:
+) -> RocksDBDict[str, WDClass]:
     if not is_singleton or dbfile not in cache_dict:
         if proxy:
             db = WDProxyDB(WDClass, dbfile, compression, create_if_missing, read_only)
@@ -169,7 +169,7 @@ def get_wdprop_db(
     is_singleton: bool = False,
     compression: bool = False,
     cache_dict={},
-) -> Dict[str, WDProperty]:
+) -> RocksDBDict[str, WDProperty]:
     if not is_singleton or dbfile not in cache_dict:
         if proxy:
             db = WDProxyDB(

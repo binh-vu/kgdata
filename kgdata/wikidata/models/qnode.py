@@ -58,6 +58,14 @@ DataValueMonolingualText = TypedDict(
         "language": str,
     },
 )
+DataValueType = Literal[
+    "string",
+    "wikibase-entityid",
+    "globecoordinate",
+    "quantity",
+    "time",
+    "monolingualtext",
+]
 
 
 @dataclass
@@ -67,14 +75,7 @@ class DataValue:
     # https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON#Data_Values is moved to https://doc.wikimedia.org/Wikibase/master/php/md_docs_topics_json.html
     # the new document does not have all types specified in https://www.wikidata.org/wiki/Help:Data_type such as monolingualtext
     # so keep in mind the type may not be exhausted
-    type: Literal[
-        "string",
-        "wikibase-entityid",
-        "globecoordinate",
-        "quantity",
-        "time",
-        "monolingualtext",
-    ]
+    type: DataValueType
     value: Union[
         DataValueString,
         DataValueWikibaseEntityId,
