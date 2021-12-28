@@ -6,7 +6,7 @@ from hugedict.misc import compress_custom, decompress_custom, identity
 import requests
 
 from hugedict.rocksdb import RocksDBDict
-from kgdata.wikidata.models.qnode import QNode
+from kgdata.wikidata.models.qnode import QNode, QNodeLabel
 from kgdata.wikidata.models.wdclass import WDClass
 from kgdata.wikidata.models.wdproperty import WDProperty
 
@@ -118,6 +118,24 @@ def get_wikipedia_to_wikidata_db(
         ser_key=str.encode,
         deser_value=bytes.decode,
         ser_value=str.encode,
+    )
+
+
+def get_qnode_label_db(
+    dbfile: Union[Path, str],
+    compression: bool = False,
+) -> RocksDBDict[str, QNodeLabel]:
+    return RocksDBDict(
+        dbfile,
+        read_only=True,
+        deser_key=bytes.decode,
+        ser_key=str.encode,
+        deser_value=decompress_custom(QNodeLabel.deserialize)
+        if compression
+        else QNodeLabel.deserialize,
+        ser_value=compress_custom(QNodeLabel.serialize)
+        if compression
+        else QNodeLabel.serialize,
     )
 
 

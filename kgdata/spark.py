@@ -1,17 +1,25 @@
+from functools import partial
 import glob
 import gzip
+from uuid import uuid4
+from hugedict.misc import identity
+from hugedict.parallel.parallel import Parallel
 import orjson
 import os
 import shutil
 from operator import add, itemgetter
 from pathlib import Path
 from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
-
+import sm.misc as M
 import rocksdb
 from pyspark import SparkContext, SparkConf
 from tqdm.auto import tqdm
 
-from sm.misc.deser import deserialize_byte_lines, deserialize_key_val_lines, deserialize_jl
+from sm.misc.deser import (
+    deserialize_byte_lines,
+    deserialize_key_val_lines,
+    deserialize_jl,
+)
 
 # SparkContext singleton
 _sc = None
@@ -310,10 +318,12 @@ def rdd2db(
     infiles: str,
     outfile: str,
     format: str = "jsonline",
-    key_fn: Optional[Callable[[bytes], str]] = None,
+    key_fn: Optional[Callable[[Any], str]] = None,
+    value_fn: Optional[Callable[[Any], str]] = None,
     db_type: str = "rocksdb",
     compression: bool = False,
     verbose: bool = False,
+    twophases: bool = False,
 ):
     if db_type == "rocksdb":
         db = rocksdb.DB(outfile, rocksdb.Options(create_if_missing=True))
@@ -321,34 +331,78 @@ def rdd2db(
         raise NotImplementedError(db_type)
 
     if key_fn is None:
-        key_fn = itemgetter("id")
+        key_fn = identity
+    if value_fn is None:
+        value_fn = identity
 
     if compression:
-        compression = lambda x: gzip.compress(x)
+        compress_fn = partial(gzip.compress, mtime=0)
     else:
-        compression = lambda x: x
+        compress_fn = identity
+
+    if twophases:
+        # we use a temporary directory to store the intermediate files
+        tmpdir = Path(f"/tmp/rdd2db-{str(uuid4()).replace('-', '')}")
+        tmpdir.mkdir(parents=True)
+
+        pp = Parallel()
+        pp.foreach(
+            rdd2db_convert_rdd,
+            [
+                (infile, tmpdir / Path(infile).name, format, key_fn, value_fn)
+                for infile in glob.glob(infiles)
+            ],
+            show_progress=True,
+        )
+        for infile in tqdm(
+            glob.glob(infiles), desc="load rdd to database", disable=not verbose
+        ):
+            lst = M.deserialize_json(tmpdir / Path(infile).name)
+            wb = rocksdb.WriteBatch()
+            for id, item in lst:
+                wb.put(id.encode(), compress_fn(item.encode()))
+            db.write(wb)
+        shutil.rmtree(tmpdir)
+        return
 
     for infile in tqdm(
         glob.glob(infiles), desc="load rdd to database", disable=not verbose
     ):
         if format == "jsonline":
-            data = deserialize_byte_lines(infile)
-            it = ((key_fn(orjson.loads(x)).encode(), x) for x in data)
+            it = (
+                (key_fn(x).encode(), value_fn(x).encode())
+                for x in deserialize_jl(infile)
+            )
         elif format == "tab_key_value":
             it = (
-                (k.encode(), v.encode()) for k, v in deserialize_key_val_lines(infile)
+                (key_fn(k).encode(), value_fn(v).encode())
+                for k, v in deserialize_key_val_lines(infile)
             )
         elif format == "tuple2":
             it = (
-                (k.encode(), v.encode()) for k, v in deserialize_jl(infile)
+                (key_fn(k).encode(), value_fn(v).encode())
+                for k, v in deserialize_jl(infile)
             )
         else:
             raise NotImplementedError(format)
 
         wb = rocksdb.WriteBatch()
         for id, item in it:
-            wb.put(id, compression(item))
+            wb.put(id, compress_fn(item))
         db.write(wb)
+
+
+def rdd2db_convert_rdd(infile: str, outfile, format, key_fn, value_fn):
+    if format == "jsonline":
+        it = ((key_fn(x), value_fn(x)) for x in deserialize_jl(infile))
+    elif format == "tab_key_value":
+        it = ((key_fn(k), value_fn(v)) for k, v in deserialize_key_val_lines(infile))
+    elif format == "tuple2":
+        it = ((key_fn(k), value_fn(v)) for k, v in deserialize_jl(infile))
+    else:
+        raise NotImplementedError(format)
+
+    M.serialize_json(list(it), outfile)
 
 
 if __name__ == "__main__":

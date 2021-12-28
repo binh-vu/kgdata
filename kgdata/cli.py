@@ -1,10 +1,12 @@
 import os
+import orjson
 from enum import Enum
 from pathlib import Path
 from typing import Literal
 
 import click
 from loguru import logger
+from operator import itemgetter
 
 
 @click.command()
@@ -14,9 +16,20 @@ from loguru import logger
 @click.option(
     "-c", "--compression", is_flag=True, help="Whether to compress the results"
 )
-def wikidata(build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links"], directory: str, output: str, compression: bool):
+def wikidata(
+    build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links", "qnodes_label"],
+    directory: str,
+    output: str,
+    compression: bool,
+):
     try:
-        assert build in ["qnodes", "wdclasses", "wdprops", "enwiki_links"]
+        assert build in [
+            "qnodes",
+            "wdclasses",
+            "wdprops",
+            "enwiki_links",
+            "qnodes_label",
+        ]
     except ValueError:
         logger.error("Invalid build value: {}. Exiting!", build)
         return
@@ -55,10 +68,23 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links"], d
             os.path.join(qnode_files, "*.gz"),
             os.path.join(output_dir, "qnodes.db"),
             format="jsonline",
+            key_fn=itemgetter("id"),
             compression=compression,
             verbose=True,
         )
-    
+
+    if build == "qnodes_label":
+        rdd2db(
+            os.path.join(qnode_files, "*.gz"),
+            os.path.join(output_dir, "qnodes_label.db"),
+            format="jsonline",
+            key_fn=itemgetter("id"),
+            value_fn=extract_id_label,
+            compression=compression,
+            verbose=True,
+            twophases=True,
+        )
+
     if build == "enwiki_links":
         wiki_article_to_qnode()
         rdd2db(
@@ -77,14 +103,12 @@ def wikidata(build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links"], d
 
         if build == "wdprops":
             save_wdprops(
-                indir=os.path.join(WIKIDATA_DIR, "ontology"), 
-                outdir=output_dir
+                indir=os.path.join(WIKIDATA_DIR, "ontology"), outdir=output_dir
             )
 
         if build == "wdclasses":
             save_wdclasses(
-                indir=os.path.join(WIKIDATA_DIR, "ontology"), 
-                outdir=output_dir
+                indir=os.path.join(WIKIDATA_DIR, "ontology"), outdir=output_dir
             )
             logger.info("Finish saving wdclasses to DB")
 
@@ -95,6 +119,13 @@ def cli():
 
 
 cli.add_command(wikidata)
+
+
+def extract_id_label(odict):
+    label = odict["label"]
+    label = label["lang2value"][label["lang"]]
+    return orjson.dumps({"id": odict["id"], "label": label}).decode()
+
 
 if __name__ == "__main__":
     cli()

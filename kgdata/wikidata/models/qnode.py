@@ -202,6 +202,21 @@ class MultiLingualStringList(List[str]):
 
 
 @dataclass
+class QNodeLabel:
+    # contains only label & id of qnode
+    __slots__ = ("id", "label")
+    id: str
+    label: str
+
+    @staticmethod
+    def deserialize(s):
+        return QNodeLabel(**orjson.loads(s))
+
+    def serialize(self):
+        return orjson.dumps({"id": self.id, "label": self.label})
+
+
+@dataclass
 class QNode:
     __slots__ = (
         "id",
