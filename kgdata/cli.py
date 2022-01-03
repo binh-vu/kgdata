@@ -103,12 +103,15 @@ def wikidata(
 
         if build == "wdprops":
             save_wdprops(
-                indir=os.path.join(WIKIDATA_DIR, "ontology"), outdir=output_dir
+                indir=os.path.join(WIKIDATA_DIR, "ontology"),
+                outdir=output_dir,
             )
 
         if build == "wdclasses":
             save_wdclasses(
-                indir=os.path.join(WIKIDATA_DIR, "ontology"), outdir=output_dir
+                indir=os.path.join(WIKIDATA_DIR, "ontology"),
+                outdir=output_dir,
+                compression=compression,
             )
             logger.info("Finish saving wdclasses to DB")
 

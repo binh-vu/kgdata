@@ -326,7 +326,9 @@ def rdd2db(
     twophases: bool = False,
 ):
     if db_type == "rocksdb":
-        db = rocksdb.DB(outfile, rocksdb.Options(create_if_missing=True))
+        db = rocksdb.DB(
+            os.path.join(outfile, "primary"), rocksdb.Options(create_if_missing=True)
+        )
     else:
         raise NotImplementedError(db_type)
 

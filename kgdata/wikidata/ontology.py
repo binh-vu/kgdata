@@ -1,7 +1,9 @@
-import os
+from functools import partial
+import os, gzip
 from operator import add, itemgetter
 from pathlib import Path
 from typing import Dict, Set, Union
+from hugedict.misc import identity
 
 import networkx as nx
 import rocksdb
@@ -257,7 +259,7 @@ def save_wdprops(indir: Union[str, Path], outdir: Union[str, Path]):
 
     wdprops = WDProperty.from_file(indir, load_parent_closure=True)
     db = rocksdb.DB(
-        os.path.join(outdir, "wdprops.db"),
+        os.path.join(outdir, "wdprops.db/primary"),
         rocksdb.Options(create_if_missing=True),
     )
     wb = rocksdb.WriteBatch()
@@ -266,12 +268,19 @@ def save_wdprops(indir: Union[str, Path], outdir: Union[str, Path]):
     db.write(wb)
 
 
-def save_wdclasses(indir: Union[str, Path], outdir: Union[str, Path]):
+def save_wdclasses(
+    indir: Union[str, Path], outdir: Union[str, Path], compression: bool
+):
     if indir == "":
         indir = os.path.join(WIKIDATA_DIR, "ontology")
 
+    if compression:
+        compress_fn = partial(gzip.compress, mtime=0)
+    else:
+        compress_fn = identity
+
     db = rocksdb.DB(
-        os.path.join(outdir, "wdclasses.db"),
+        os.path.join(outdir, "wdclasses.db/primary"),
         rocksdb.Options(create_if_missing=True),
     )
     wb = rocksdb.WriteBatch()
@@ -279,7 +288,7 @@ def save_wdclasses(indir: Union[str, Path], outdir: Union[str, Path]):
         enumerate(WDClass.iter_file(indir, load_parent_closure=True)),
         desc="Write WDClass",
     ):
-        wb.put(item.id.encode(), item.serialize())
+        wb.put(item.id.encode(), compress_fn(item.serialize()))
         if idx % 1000 == 0:
             db.write(wb)
             wb = rocksdb.WriteBatch()
