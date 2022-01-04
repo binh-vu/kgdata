@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import *
-
+import rocksdb
 import gzip
-from hugedict.misc import compress_custom, decompress_custom, identity
+from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identity
 import requests
 
 from hugedict.rocksdb import RocksDBDict
@@ -13,30 +13,6 @@ from kgdata.wikidata.models.wdproperty import WDProperty
 V = TypeVar("V", bound=Union[QNode, WDClass, WDProperty])
 
 
-class WDLocalDB(RocksDBDict[str, V]):
-    def __init__(
-        self,
-        EntClass,
-        dbfile: Union[Path, str],
-        compression: bool,
-        create_if_missing=True,
-        read_only=False,
-    ):
-        super().__init__(
-            dbpath=dbfile,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            deser_key=bytes.decode,
-            ser_key=str.encode,
-            deser_value=decompress_custom(EntClass.deserialize)
-            if compression
-            else EntClass.deserialize,
-            ser_value=compress_custom(EntClass.serialize)
-            if compression
-            else EntClass.serialize,
-        )
-
-
 class WDProxyDB(RocksDBDict[str, V]):
     def __init__(
         self,
@@ -45,6 +21,7 @@ class WDProxyDB(RocksDBDict[str, V]):
         compression: bool,
         create_if_missing=True,
         read_only=False,
+        db_options: Dict[str, Any] = None,
     ):
         super().__init__(
             dbpath=dbfile,
@@ -52,12 +29,13 @@ class WDProxyDB(RocksDBDict[str, V]):
             read_only=read_only,
             deser_key=bytes.decode,
             ser_key=str.encode,
-            deser_value=decompress_custom(EntClass.deserialize)
+            deser_value=zstd_decompress_custom(EntClass.deserialize)
             if compression
             else EntClass.deserialize,
-            ser_value=compress_custom(EntClass.serialize)
+            ser_value=zstd6_compress_custom(EntClass.serialize)
             if compression
             else EntClass.serialize,
+            db_options=db_options,
         )
 
         if not hasattr(EntClass, "from_qnode"):
@@ -109,33 +87,39 @@ class WDProxyDB(RocksDBDict[str, V]):
 
 def get_wikipedia_to_wikidata_db(
     dbpath: Union[Path, str],
+    create_if_missing=False,
+    read_only=True,
 ) -> RocksDBDict[str, str]:
+    db_options = {"compression": rocksdb.CompressionType.lz4_compression}
     return RocksDBDict(
         dbpath,
-        create_if_missing=False,
-        read_only=True,
+        create_if_missing=create_if_missing,
+        read_only=read_only,
         deser_key=bytes.decode,
         ser_key=str.encode,
         deser_value=bytes.decode,
         ser_value=str.encode,
+        db_options=db_options,
     )
 
 
 def get_qnode_label_db(
     dbfile: Union[Path, str],
-    compression: bool = False,
+    create_if_missing=False,
+    read_only=True,
 ) -> RocksDBDict[str, QNodeLabel]:
+    db_options = {
+        "compression": rocksdb.CompressionType.lz4_compression,
+    }
     return RocksDBDict(
         dbfile,
-        read_only=True,
+        create_if_missing=create_if_missing,
+        read_only=read_only,
         deser_key=bytes.decode,
         ser_key=str.encode,
-        deser_value=decompress_custom(QNodeLabel.deserialize)
-        if compression
-        else QNodeLabel.deserialize,
-        ser_value=compress_custom(QNodeLabel.serialize)
-        if compression
-        else QNodeLabel.serialize,
+        deser_value=QNodeLabel.deserialize,
+        ser_value=QNodeLabel.serialize,
+        db_options=db_options,
     )
 
 
@@ -144,19 +128,30 @@ def get_qnode_db(
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
-    compression: bool = False,
-    is_singleton: bool = False,
-    cache_dict={},
 ) -> RocksDBDict[str, QNode]:
-    if not is_singleton or dbfile not in cache_dict:
-        if proxy:
-            db = WDProxyDB(QNode, dbfile, compression, create_if_missing, read_only)
-        else:
-            db = WDLocalDB(QNode, dbfile, compression, create_if_missing, read_only)
-        if is_singleton:
-            cache_dict[dbfile] = db
-        return db
-    return cache_dict[dbfile]
+    # no compression as we pre-compress the qnodes -- get much better compression
+    db_options = {"compression": rocksdb.CompressionType.no_compression}
+    if proxy:
+        db = WDProxyDB(
+            QNode,
+            dbfile,
+            compression=True,
+            create_if_missing=create_if_missing,
+            read_only=read_only,
+            db_options=db_options,
+        )
+    else:
+        db = RocksDBDict(
+            dbpath=dbfile,
+            create_if_missing=create_if_missing,
+            read_only=read_only,
+            deser_key=bytes.decode,
+            ser_key=str.encode,
+            deser_value=zstd_decompress_custom(QNode.deserialize),
+            ser_value=zstd6_compress_custom(QNode.serialize),
+            db_options=db_options,
+        )
+    return db
 
 
 def get_wdclass_db(
@@ -164,19 +159,32 @@ def get_wdclass_db(
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
-    compression: bool = False,
-    is_singleton: bool = False,
-    cache_dict={},
 ) -> RocksDBDict[str, WDClass]:
-    if not is_singleton or dbfile not in cache_dict:
-        if proxy:
-            db = WDProxyDB(WDClass, dbfile, compression, create_if_missing, read_only)
-        else:
-            db = WDLocalDB(WDClass, dbfile, compression, create_if_missing, read_only)
-        if is_singleton:
-            cache_dict[dbfile] = db
-        return db
-    return cache_dict[dbfile]
+    db_options = {
+        "compression": rocksdb.CompressionType.lz4_compression,
+        "bottommost_compression": rocksdb.CompressionType.zstd_compression,
+    }
+    if proxy:
+        db = WDProxyDB(
+            WDClass,
+            dbfile,
+            compression=False,
+            create_if_missing=create_if_missing,
+            read_only=read_only,
+            db_options=db_options,
+        )
+    else:
+        db = RocksDBDict(
+            dbpath=dbfile,
+            create_if_missing=create_if_missing,
+            read_only=read_only,
+            deser_key=bytes.decode,
+            ser_key=str.encode,
+            deser_value=WDClass.deserialize,
+            ser_value=WDClass.serialize,
+            db_options=db_options,
+        )
+    return db
 
 
 def get_wdprop_db(
@@ -184,23 +192,29 @@ def get_wdprop_db(
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
-    is_singleton: bool = False,
-    compression: bool = False,
-    cache_dict={},
 ) -> RocksDBDict[str, WDProperty]:
-    if not is_singleton or dbfile not in cache_dict:
-        if proxy:
-            db = WDProxyDB(
-                WDProperty, dbfile, compression, create_if_missing, read_only
-            )
-        else:
-            db = WDLocalDB(
-                WDProperty, dbfile, compression, create_if_missing, read_only
-            )
-        if is_singleton:
-            cache_dict[dbfile] = db
-        return db
-    return cache_dict[dbfile]
+    db_options = {"compression": rocksdb.CompressionType.lz4_compression}
+    if proxy:
+        db = WDProxyDB(
+            WDProperty,
+            dbfile,
+            compression=False,
+            create_if_missing=create_if_missing,
+            read_only=read_only,
+            db_options=db_options,
+        )
+    else:
+        db = RocksDBDict(
+            dbpath=dbfile,
+            create_if_missing=create_if_missing,
+            read_only=read_only,
+            deser_key=bytes.decode,
+            ser_key=str.encode,
+            deser_value=WDProperty.deserialize,
+            ser_value=WDProperty.serialize,
+            db_options=db_options,
+        )
+    return db
 
 
 def query_wikidata_entities(

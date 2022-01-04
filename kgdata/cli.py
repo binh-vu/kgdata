@@ -1,5 +1,13 @@
-import os
+import os, glob
+from hugedict.misc import Chain2, zstd6_compress
+from kgdata.wikidata.db import (
+    get_qnode_db,
+    get_qnode_label_db,
+    get_wdprop_db,
+    get_wikipedia_to_wikidata_db,
+)
 import orjson
+import ujson
 from enum import Enum
 from pathlib import Path
 from typing import Literal
@@ -7,6 +15,7 @@ from typing import Literal
 import click
 from loguru import logger
 from operator import itemgetter
+from hugedict.loader import load, FileFormat
 
 
 @click.command()
@@ -14,13 +23,16 @@ from operator import itemgetter
 @click.option("-d", "--directory", default="", help="Wikidata directory")
 @click.option("-o", "--output", help="Output directory")
 @click.option(
-    "-c", "--compression", is_flag=True, help="Whether to compress the results"
+    "-c",
+    "--compact",
+    is_flag=True,
+    help="Whether to compact the results. May take a very very long time",
 )
 def wikidata(
-    build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links", "qnodes_label"],
+    build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links", "qnode_labels"],
     directory: str,
     output: str,
-    compression: bool,
+    compact: bool,
 ):
     try:
         assert build in [
@@ -28,7 +40,7 @@ def wikidata(
             "wdclasses",
             "wdprops",
             "enwiki_links",
-            "qnodes_label",
+            "qnode_labels",
         ]
     except ValueError:
         logger.error("Invalid build value: {}. Exiting!", build)
@@ -51,10 +63,10 @@ def wikidata(
         make_superclass_closure,
         examine_ontology_property,
     )
-    from kgdata.spark import rdd2db, does_result_dir_exist
+    from kgdata.spark import does_result_dir_exist
 
     logger.info("Wikidata directory: {}", WIKIDATA_DIR)
-    logger.info("Build: {}", build)
+    logger.info("Build: {}. Compaction: {}", build, compact)
 
     # process the raw wikidata dump
     prep01(overwrite=False)
@@ -64,56 +76,72 @@ def wikidata(
         qnodes_en(outfile=qnode_files)
 
     if build == "qnodes":
-        rdd2db(
-            os.path.join(qnode_files, "*.gz"),
-            os.path.join(output_dir, "qnodes.db"),
-            format="jsonline",
-            key_fn=itemgetter("id"),
-            compression=compression,
-            verbose=True,
+        dbpath = os.path.join(output_dir, "qnodes.db")
+        db = load(
+            db=get_qnode_db(dbpath).db,
+            infiles=glob.glob(os.path.join(qnode_files, "*.gz")),
+            format=FileFormat.jsonline,
+            key_fn=Chain2(str.encode, itemgetter("id")).exec,
+            value_fn=Chain2(zstd6_compress, orjson.dumps).exec,
+            n_processes=32,
+            shm_mem_limit_mb=128,
         )
 
-    if build == "qnodes_label":
-        rdd2db(
-            os.path.join(qnode_files, "*.gz"),
-            os.path.join(output_dir, "qnodes_label.db"),
-            format="jsonline",
-            key_fn=itemgetter("id"),
+        if compact:
+            logger.info("Run compaction...")
+            db.compact_range()
+
+    if build == "qnode_labels":
+        dbpath = os.path.join(output_dir, "qnode_labels.db")
+        db = load(
+            db=get_qnode_db(dbpath).db,
+            infiles=glob.glob(os.path.join(qnode_files, "*.gz")),
+            format=FileFormat.jsonline,
+            key_fn=Chain2(str.encode, itemgetter("id")).exec,
             value_fn=extract_id_label,
-            compression=compression,
-            verbose=True,
-            twophases=True,
+            n_processes=8,
+            shm_mem_limit_mb=8,
+            shm_mem_ratio=20,
         )
+        if compact:
+            logger.info("Run compaction...")
+            db.compact_range()
 
     if build == "enwiki_links":
         wiki_article_to_qnode()
-        rdd2db(
-            os.path.join(WIKIDATA_DIR, "step_2/enwiki_links/*.gz"),
-            os.path.join(output_dir, "enwiki_links.db"),
-            format="tuple2",
-            compression=compression,
-            verbose=True,
+        dbpath = os.path.join(output_dir, "enwiki_links.db")
+        db = load(
+            db=get_qnode_db(dbpath).db,
+            infiles=glob.glob(os.path.join(WIKIDATA_DIR, "step_2/enwiki_links/*.gz")),
+            format=FileFormat.tuple2,
+            key_fn=str.encode,
+            value_fn=str.encode,
+            n_processes=8,
+            shm_mem_limit_mb=8,
+            shm_mem_ratio=20,
         )
+        if compact:
+            logger.info("Run compaction...")
+            db.compact_range()
 
     if build in ["wdclasses", "wdprops"]:
         make_ontology()
         make_superclass_closure()
         # TODO: uncomment to verify if the data is correct
         # examine_ontology_property()
-
+        dbpath = os.path.join(output_dir, f"{build}.db")
         if build == "wdprops":
-            save_wdprops(
-                indir=os.path.join(WIKIDATA_DIR, "ontology"),
-                outdir=output_dir,
-            )
+            db = get_wdprop_db(dbpath, create_if_missing=True, read_only=False).db
+            save_wdprops(indir=os.path.join(WIKIDATA_DIR, "ontology"), db=db)
 
         if build == "wdclasses":
-            save_wdclasses(
-                indir=os.path.join(WIKIDATA_DIR, "ontology"),
-                outdir=output_dir,
-                compression=compression,
-            )
+            db = get_wdprop_db(dbpath, create_if_missing=True, read_only=False).db
+            save_wdclasses(indir=os.path.join(WIKIDATA_DIR, "ontology"), db=db)
             logger.info("Finish saving wdclasses to DB")
+
+        if compact:
+            logger.info("Run compaction...")
+            db.compact_range()
 
 
 @click.group()
@@ -127,7 +155,7 @@ cli.add_command(wikidata)
 def extract_id_label(odict):
     label = odict["label"]
     label = label["lang2value"][label["lang"]]
-    return orjson.dumps({"id": odict["id"], "label": label}).decode()
+    return orjson.dumps({"id": odict["id"], "label": label})
 
 
 if __name__ == "__main__":

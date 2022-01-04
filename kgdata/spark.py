@@ -1,6 +1,10 @@
 from functools import partial
 import glob
 import gzip
+from multiprocessing.shared_memory import SharedMemory
+from math import ceil
+from multiprocessing import Pool, Queue, Process
+import zstandard as zstd
 from uuid import uuid4
 from hugedict.misc import identity
 from hugedict.parallel.parallel import Parallel
@@ -14,6 +18,7 @@ import sm.misc as M
 import rocksdb
 from pyspark import SparkContext, SparkConf
 from tqdm.auto import tqdm
+from multiprocessing.managers import SharedMemoryManager
 
 from sm.misc.deser import (
     deserialize_byte_lines,
@@ -314,108 +319,7 @@ def fix_rdd():
     os.rename(newfile, infile)
 
 
-def rdd2db(
-    infiles: str,
-    outfile: str,
-    format: str = "jsonline",
-    key_fn: Optional[Callable[[Any], str]] = None,
-    value_fn: Optional[Callable[[Any], str]] = None,
-    db_type: str = "rocksdb",
-    compression: bool = False,
-    verbose: bool = False,
-    twophases: bool = False,
-):
-    if db_type == "rocksdb":
-        db = rocksdb.DB(
-            os.path.join(outfile, "primary"), rocksdb.Options(create_if_missing=True)
-        )
-    else:
-        raise NotImplementedError(db_type)
-
-    if key_fn is None:
-        key_fn = identity
-    if value_fn is None:
-        value_fn = identity
-
-    if compression:
-        compress_fn = partial(gzip.compress, mtime=0)
-    else:
-        compress_fn = identity
-
-    if twophases:
-        # we use a temporary directory to store the intermediate files
-        tmpdir = Path(f"/tmp/rdd2db-{str(uuid4()).replace('-', '')}")
-        tmpdir.mkdir(parents=True)
-
-        pp = Parallel()
-        pp.foreach(
-            rdd2db_convert_rdd,
-            [
-                (infile, tmpdir / Path(infile).name, format, key_fn, value_fn)
-                for infile in glob.glob(infiles)
-            ],
-            show_progress=True,
-        )
-        for infile in tqdm(
-            glob.glob(infiles), desc="load rdd to database", disable=not verbose
-        ):
-            lst = M.deserialize_json(tmpdir / Path(infile).name)
-            wb = rocksdb.WriteBatch()
-            for id, item in lst:
-                wb.put(id.encode(), compress_fn(item.encode()))
-            db.write(wb)
-        shutil.rmtree(tmpdir)
-        return
-
-    for infile in tqdm(
-        glob.glob(infiles), desc="load rdd to database", disable=not verbose
-    ):
-        if format == "jsonline":
-            it = (
-                (key_fn(x).encode(), value_fn(x).encode())
-                for x in deserialize_jl(infile)
-            )
-        elif format == "tab_key_value":
-            it = (
-                (key_fn(k).encode(), value_fn(v).encode())
-                for k, v in deserialize_key_val_lines(infile)
-            )
-        elif format == "tuple2":
-            it = (
-                (key_fn(k).encode(), value_fn(v).encode())
-                for k, v in deserialize_jl(infile)
-            )
-        else:
-            raise NotImplementedError(format)
-
-        wb = rocksdb.WriteBatch()
-        for id, item in it:
-            wb.put(id, compress_fn(item))
-        db.write(wb)
-
-
-def rdd2db_convert_rdd(infile: str, outfile, format, key_fn, value_fn):
-    if format == "jsonline":
-        it = ((key_fn(x), value_fn(x)) for x in deserialize_jl(infile))
-    elif format == "tab_key_value":
-        it = ((key_fn(k), value_fn(v)) for k, v in deserialize_key_val_lines(infile))
-    elif format == "tuple2":
-        it = ((key_fn(k), value_fn(v)) for k, v in deserialize_jl(infile))
-    else:
-        raise NotImplementedError(format)
-
-    M.serialize_json(list(it), outfile)
-
-
 if __name__ == "__main__":
     # fix RDD
     # fix_rdd()
-
-    # load qnodes to rocksdb
-    rdd2db(
-        "/data/binhvu/workspace/sm-dev/data/wikidata/step_2/qnodes_en/*.gz",
-        # "/data/binhvu/workspace/sm-dev/data/home/databases/qnodes.db",
-        "/tmp/data/qnodes.db",
-        compression=True,
-        verbose=True,
-    )
+    pass
