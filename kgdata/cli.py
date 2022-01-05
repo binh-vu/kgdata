@@ -83,7 +83,8 @@ def wikidata(
             format=FileFormat.jsonline,
             key_fn=Chain2(str.encode, itemgetter("id")).exec,
             value_fn=Chain2(zstd6_compress, orjson.dumps).exec,
-            n_processes=32,
+            n_processes=8,
+            shm_mem_ratio=12,
             shm_mem_limit_mb=128,
         )
 
