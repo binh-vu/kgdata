@@ -11,6 +11,7 @@ from kgdata.wikidata.models.wdclass import WDClass
 from kgdata.wikidata.models.wdproperty import WDProperty
 
 V = TypeVar("V", bound=Union[QNode, WDClass, WDProperty])
+CompressionType = rocksdb.CompressionType  # type: ignore
 
 
 class WDProxyDB(RocksDBDict[str, V]):
@@ -59,7 +60,7 @@ class WDProxyDB(RocksDBDict[str, V]):
             return ent
         return self.deser_value(item)
 
-    def get(self, key: str, default=None):
+    def get(self, key: str, default: Optional[V] = None):
         try:
             return self[key]
         except KeyError:
@@ -90,7 +91,7 @@ def get_wikipedia_to_wikidata_db(
     create_if_missing=False,
     read_only=True,
 ) -> RocksDBDict[str, str]:
-    db_options = {"compression": rocksdb.CompressionType.lz4_compression}
+    db_options = {"compression": CompressionType.lz4_compression}
     return RocksDBDict(
         dbpath,
         create_if_missing=create_if_missing,
@@ -109,7 +110,7 @@ def get_qnode_label_db(
     read_only=True,
 ) -> RocksDBDict[str, QNodeLabel]:
     db_options = {
-        "compression": rocksdb.CompressionType.lz4_compression,
+        "compression": CompressionType.lz4_compression,
     }
     return RocksDBDict(
         dbfile,
@@ -130,9 +131,9 @@ def get_qnode_db(
     proxy: bool = False,
 ) -> RocksDBDict[str, QNode]:
     # no compression as we pre-compress the qnodes -- get much better compression
-    db_options = {"compression": rocksdb.CompressionType.no_compression}
+    db_options = {"compression": CompressionType.no_compression}
     if proxy:
-        db = WDProxyDB(
+        db: RocksDBDict[str, QNode] = WDProxyDB(
             QNode,
             dbfile,
             compression=True,
@@ -161,8 +162,8 @@ def get_wdclass_db(
     proxy: bool = False,
 ) -> RocksDBDict[str, WDClass]:
     db_options = {
-        "compression": rocksdb.CompressionType.lz4_compression,
-        "bottommost_compression": rocksdb.CompressionType.zstd_compression,
+        "compression": CompressionType.lz4_compression,
+        "bottommost_compression": CompressionType.zstd_compression,
     }
     if proxy:
         db = WDProxyDB(
@@ -193,7 +194,7 @@ def get_wdprop_db(
     read_only=False,
     proxy: bool = False,
 ) -> RocksDBDict[str, WDProperty]:
-    db_options = {"compression": rocksdb.CompressionType.lz4_compression}
+    db_options = {"compression": CompressionType.lz4_compression}
     if proxy:
         db = WDProxyDB(
             WDProperty,
