@@ -64,7 +64,7 @@ def get_spark_context():
             ).iterdir()
             if file.name.endswith(".egg") or file.name.endswith(".zip")
         ]
-        if len(egg_file) > 1:
+        if len(egg_file) > 0:
             assert len(egg_file) == 1, f"{len(egg_file)} != 1"
             egg_file = egg_file[0]
             _sc.addPyFile(egg_file)

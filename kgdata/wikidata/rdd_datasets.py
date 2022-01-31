@@ -26,7 +26,9 @@ def qnodes(indir: str = os.path.join(WIKIDATA_DIR, "step_1")):
 
 
 def qnodes_en(
-    qnodes_rdd=None, outfile: str = os.path.join(WIKIDATA_DIR, "step_2/qnodes_en")
+    qnodes_rdd=None,
+    outfile: str = os.path.join(WIKIDATA_DIR, "step_2/qnodes_en"),
+    raw: bool = False,
 ):
     """Get all QNodes in Wikidata (only english)"""
     sc = get_spark_context()
@@ -42,6 +44,8 @@ def qnodes_en(
             sc.textFile(outfile).map(QNode.deserialize), keyfn=attrgetter("id")
         )
 
+    if raw:
+        return sc.textFile(outfile).map(orjson.loads)
     return sc.textFile(outfile).map(QNode.deserialize)
 
 
@@ -901,8 +905,8 @@ def wikidata_quantity_prop_stats(
 
 if __name__ == "__main__":
     # wikidata_quantity_prop_stats()
-    # qnodes_identifier()
-    # exit()
+    qnodes_identifier()
+    exit()
 
     # rdd = qnodes()
     # values = rdd.filter(lambda x: x['id'] == "L252247-F2").take(1)

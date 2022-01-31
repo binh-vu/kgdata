@@ -1,11 +1,5 @@
 import os, glob
 from hugedict.misc import Chain2, zstd6_compress
-from kgdata.wikidata.db import (
-    get_qnode_db,
-    get_qnode_label_db,
-    get_wdprop_db,
-    get_wikipedia_to_wikidata_db,
-)
 import orjson
 import ujson
 from enum import Enum
@@ -64,12 +58,21 @@ def wikidata(
         examine_ontology_property,
     )
     from kgdata.spark import does_result_dir_exist
+    from kgdata.wikidata.db import (
+        get_qnode_db,
+        get_wdprop_db,
+        get_wdclass_db,
+    )
 
     logger.info("Wikidata directory: {}", WIKIDATA_DIR)
     logger.info("Build: {}. Compaction: {}", build, compact)
 
     # process the raw wikidata dump
-    prep01(overwrite=False)
+    prep01(
+        indir=os.path.join(WIKIDATA_DIR, "step_0"),
+        outdir=os.path.join(WIKIDATA_DIR, "step_1"),
+        overwrite=False,
+    )
     # extract qnodes from wikidata english
     qnode_files = os.path.join(WIKIDATA_DIR, "step_2/qnodes_en")
     if not does_result_dir_exist(qnode_files):
@@ -136,7 +139,7 @@ def wikidata(
             save_wdprops(indir=os.path.join(WIKIDATA_DIR, "ontology"), db=db)
 
         if build == "wdclasses":
-            db = get_wdprop_db(dbpath, create_if_missing=True, read_only=False).db
+            db = get_wdclass_db(dbpath, create_if_missing=True, read_only=False).db
             save_wdclasses(indir=os.path.join(WIKIDATA_DIR, "ontology"), db=db)
             logger.info("Finish saving wdclasses to DB")
 
