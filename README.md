@@ -11,15 +11,15 @@ Options:
   -b, --build TEXT      Build database
   -d, --directory TEXT  Wikidata directory
   -o, --output TEXT     Output directory
-  -c, --compression     Whether to compress the results
-  --help                Show this message and exit.  
+  -c, --compact         Whether to compact the db after extraction
+  --help                Show this message and exit.
 ```
 
 1. Download the wikidata dumps (e.g., [`latest-all.json.bz2`](https://dumps.wikimedia.org/wikidatawiki/entities/20200518/wikidata-20200518-all.json.bz2)) and put it to `<wikidata_dir>/step_0` folder.
 2. Extract Qnodes: `kgdata wikidata -d <wikidata_dir> -b qnodes -o <database_directory> -c`
-3. Extract ontology: 
-    - `kgdata wikidata -d <wikidata_dir> -b wdclasses -o <database_directory>`
-    - `kgdata wikidata -d <wikidata_dir> -b wdprops -o <database_directory>`
+3. Extract ontology:
+   - `kgdata wikidata -d <wikidata_dir> -b wdclasses -o <database_directory>`
+   - `kgdata wikidata -d <wikidata_dir> -b wdprops -o <database_directory>`
 
 ## Installation
 
