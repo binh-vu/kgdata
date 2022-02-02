@@ -1,4 +1,4 @@
-import copy, itertools, numpy as np, fastnumbers, math
+import copy, itertools, numpy as np, fastnumbers, math, shutil
 from functools import reduce
 import os, orjson, functools, warnings
 import pickle, codecs
@@ -56,11 +56,11 @@ def qnodes_identifier(
     if not os.path.exists(outfile):
         sc = get_spark_context()
         qnodes_rdd = qnodes_rdd or qnodes_en()
-        ids = qnodes_rdd.map(lambda x: x.id).distinct().collect()
-        with open(outfile, "w") as f:
-            for id in ids:
-                f.write(id)
-                f.write("\n")
+        ids_rdd = qnodes_rdd.map(lambda x: x.id).distinct()
+        ids_rdd.coalesce(1).saveAsTextFile(outfile + ".tmp")
+        assert os.path.join(outfile + ".tmp", "_SUCCESS")
+        os.rename(os.path.join(outfile + ".tmp", "part-00000"), outfile)
+        shutil.rmtree(outfile + ".tmp")
 
 
 def wikidata_wikipedia_links(

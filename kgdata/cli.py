@@ -23,7 +23,7 @@ from hugedict.loader import load, FileFormat
     help="Whether to compact the results. May take a very very long time",
 )
 def wikidata(
-    build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links", "qnode_labels"],
+    build: Literal["qnodes", "wdclasses", "wdprops", "enwiki_links", "qnode_labels", "qnode_identifiers"],
     directory: str,
     output: str,
     compact: bool,
@@ -35,6 +35,7 @@ def wikidata(
             "wdprops",
             "enwiki_links",
             "qnode_labels",
+            "qnode_identifiers"
         ]
     except ValueError:
         logger.error("Invalid build value: {}. Exiting!", build)
@@ -49,7 +50,7 @@ def wikidata(
 
     from kgdata.config import WIKIDATA_DIR
     from kgdata.wikidata.s00_prep_data import prep01
-    from kgdata.wikidata.rdd_datasets import qnodes_en, wiki_article_to_qnode
+    from kgdata.wikidata.rdd_datasets import qnodes_en, wiki_article_to_qnode, qnodes_identifier
     from kgdata.wikidata.ontology import (
         save_wdprops,
         save_wdclasses,
@@ -110,6 +111,9 @@ def wikidata(
         if compact:
             logger.info("Run compaction...")
             db.compact_range()
+
+    if build == "qnode_identifiers":
+        qnodes_identifier(outfile=os.path.join(output_dir, "qnode_identifiers.txt"))
 
     if build == "enwiki_links":
         wiki_article_to_qnode()

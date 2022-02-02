@@ -21,6 +21,8 @@ Options:
    - `kgdata wikidata -d <wikidata_dir> -b wdclasses -o <database_directory>`
    - `kgdata wikidata -d <wikidata_dir> -b wdprops -o <database_directory>`
 
+For more commands, see `scripts/build.sh`.
+
 ## Installation
 
 ### From pip
