@@ -1,9 +1,17 @@
+from dataclasses import asdict
 import glob
+import gzip
+import os
+from hugedict.parallel.parallel import Parallel
+from kgdata.config import DEFAULT_DATA_DIR
 import orjson
 import ujson
 
 from kgdata.wikipedia.wikimodels import *
 from sm.misc.deser import get_open_fn
+from pathlib import Path
+from tqdm import tqdm
+import xml.etree.ElementTree as ET
 
 """Module containing code for reading and extracting wikipedia dump from DBPedia at 2016 so it is easier for us to work with
 """
@@ -71,7 +79,9 @@ def iter_page_articles(compressed_file: str):
         del tree
 
 
-def split_page_articles(bz2_infile: str, outdir: str, pages_per_file: int = 50000):
+def split_page_articles(
+    bz2_infile: Union[Path, str], outdir: Union[Path, str], pages_per_file: int = 64000
+):
     """Split the big `page_articles_en.xml.bz2` to multiple files (compressed in gzip) for faster processing
 
     Parameters
@@ -92,7 +102,7 @@ def split_page_articles(bz2_infile: str, outdir: str, pages_per_file: int = 5000
         i += 1
 
     assert ppf == int(ppf), "Please choose a better number"
-    assert Path(outdir).parent.exists(), "Invalid output directory"
+    assert Path(outdir).exists(), "Invalid output directory"
 
     ppf = f"{int(ppf)}{units[i]}"
     filename_format = os.path.join(outdir, f"data_{ppf}.%05d.gz")
@@ -303,7 +313,9 @@ def extract_page_identifications(infile: str, outfile: str):
             f.write(b"\n")
 
 
-def group_pages(infile: str, outdir: str):
+def group_pages(
+    indir: Union[Path, str], outdir: Union[Path, str], batch_size: int = 64000
+):
     """Group wikipedia pages/articles that are belong to the same entity
 
     Parameters
@@ -312,8 +324,12 @@ def group_pages(infile: str, outdir: str):
         patterns to find extracted pages
     outdir : str
         output directory
+    batch_size: int
+        number of records per file
     """
-    infiles = sorted(glob.glob(infile))
+    infiles = sorted(glob.glob(os.path.join(indir, "*.gz")))
+    Path(outdir).mkdir(exist_ok=True)
+
     wiki_links = []
     for infile in tqdm(infiles, desc="read file"):
         with get_open_fn(infile)(infile, "rb") as f:
@@ -389,7 +405,6 @@ def group_pages(infile: str, outdir: str):
             groups.append({"group": group, "final": (leaf, title2id[leaf])})
 
     # write result
-    batch_size = 50000
     count = 0
     for i in tqdm(range(0, len(groups), batch_size), desc="writing result"):
         with gzip.open(os.path.join(outdir, "data.%05d.gz" % count), "wb") as f:
@@ -401,13 +416,34 @@ def group_pages(infile: str, outdir: str):
 
 if __name__ == "__main__":
     count = 0
-    # for page in tqdm(iter_page_articles("/workspace/sm-dev/data/wikipedia/pages_articles_en/step_1/data_50k.00000.gz")):
-    #     count += 1
-    # extract_raw_tables("./data/wikitables/pages_articles_en/data_50k.00100.gz", "./data/wikitables/pages_articles_en_tables/data_50k.00100.gz", report=True)
-    # extract_redirect_links(
-    #     "/home/rook/workspace/sm-dev/data/wikipedia/pages_articles_en/step_1/data_50k.00000.gz"
+    data_dir = DEFAULT_DATA_DIR / "wikipedia-20211201"
+    (data_dir / "step_2").mkdir(exist_ok=True)
+
+    # split_page_articles(
+    #     bz2_infile=list((DEFAULT_DATA_DIR / "wikipedia-20211201/step_0").glob("*.bz2"))[
+    #         0
+    #     ],
+    #     outdir=data_dir / "step_1",
+    #     pages_per_file=64000,
     # )
-    group_pages(
-        "/workspace/sm-dev/data/wikipedia/pages_articles_en/identifications/*.gz",
-        "/workspace/sm-dev/data/wikipedia/pages_articles_en/article_groups",
-    )
+
+    # pp = Parallel()
+    # pp.map(
+    #     extract_page_identifications,
+    #     inputs=[
+    #         (infile, data_dir / "step_2" / infile.name)
+    #         for infile in tqdm((data_dir / "step_1").glob("*.gz"))
+    #     ],
+    #     show_progress=True,
+    # )
+
+    # group_pages(
+    #     indir=data_dir / "step_2",
+    #     outdir=data_dir / "step_3",
+    # )
+
+    testfile = data_dir / "step_3/data.00000.gz"
+    with get_open_fn(testfile)(testfile, "r") as f:
+        for line in f:
+            print(orjson.loads(line))
+            break
