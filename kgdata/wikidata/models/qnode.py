@@ -184,6 +184,10 @@ class MultiLingualString(str):
     def as_lang(self, lang: str) -> str:
         return self.lang2value[lang]
 
+    @staticmethod
+    def en(label: str):
+        return MultiLingualString(lang2value={"en": label}, lang="en")
+
     def serialize(self):
         return {"lang2value": self.lang2value, "lang": self.lang}
 

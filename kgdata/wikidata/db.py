@@ -22,7 +22,7 @@ class WDProxyDB(RocksDBDict[str, V]):
         compression: bool,
         create_if_missing=True,
         read_only=False,
-        db_options: Dict[str, Any] = None,
+        db_options: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(
             dbpath=dbfile,
@@ -40,9 +40,11 @@ class WDProxyDB(RocksDBDict[str, V]):
         )
 
         if not hasattr(EntClass, "from_qnode"):
-            self.extract_ent_from_qnode = identity
+            self.extract_ent_from_qnode: Callable[[QNode], V] = identity
         else:
-            self.extract_ent_from_qnode = getattr(EntClass, "from_qnode")
+            self.extract_ent_from_qnode: Callable[[QNode], V] = getattr(
+                EntClass, "from_qnode"
+            )
 
     def __getitem__(self, key: str):
         item = self.db.get(key.encode())
@@ -156,7 +158,7 @@ def get_qnode_db(
 
 
 def get_wdclass_db(
-    dbfile: str,
+    dbfile: Union[Path, str],
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
