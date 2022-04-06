@@ -126,6 +126,26 @@ def get_qnode_label_db(
     )
 
 
+def get_qnode_redirection_db(
+    dbfile: Union[Path, str],
+    create_if_missing=False,
+    read_only=True,
+) -> RocksDBDict[str, str]:
+    db_options = {
+        "compression": CompressionType.lz4_compression,
+    }
+    return RocksDBDict(
+        dbfile,
+        create_if_missing=create_if_missing,
+        read_only=read_only,
+        deser_key=bytes.decode,
+        ser_key=str.encode,
+        deser_value=bytes.decode,
+        ser_value=str.encode,
+        db_options=db_options,
+    )
+
+
 def get_qnode_db(
     dbfile: Union[Path, str],
     create_if_missing=True,

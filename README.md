@@ -15,13 +15,27 @@ Options:
   --help                Show this message and exit.
 ```
 
-1. Download the wikidata dumps (e.g., [`latest-all.json.bz2`](https://dumps.wikimedia.org/wikidatawiki/entities/20200518/wikidata-20200518-all.json.bz2)) and put it to `<wikidata_dir>/step_0` folder.
-2. Extract Qnodes: `kgdata wikidata -d <wikidata_dir> -b qnodes -o <database_directory> -c`
-3. Extract ontology:
-   - `kgdata wikidata -d <wikidata_dir> -b wdclasses -o <database_directory>`
-   - `kgdata wikidata -d <wikidata_dir> -b wdprops -o <database_directory>`
+You need the following dumps:
+
+1. entity dump ([`latest-all.json.bz2`](https://dumps.wikimedia.org/wikidatawiki/entities/20200518/wikidata-20200518-all.json.bz2)): needed to extract qnodes, classes and properties.
+2. `wikidatawiki-page.sql.gz` and `wikidatawiki-redirect.sql.gz` ([link](https://dumps.wikimedia.org/wikidatawiki)): needed to extract redirections between qnodes.
+
+Then, execute the following steps:
+
+1.  Download the wikidata dumps (e.g., [`latest-all.json.bz2`](https://dumps.wikimedia.org/wikidatawiki/entities/20200518/wikidata-20200518-all.json.bz2)) and put it to `<wikidata_dir>/step_0` folder.
+1.  Extract Qnodes, Qnode Labels, and Qnode Redirections:
+    - `kgdata wikidata -d <wikidata_dir> -b qnodes -o <database_directory> -c`
+    - `kgdata wikidata -d <wikidata_dir> -b qnode_labels -o <database_directory> -c`
+    - `kgdata wikidata -d <wikidata_dir> -b qnode_redirections -o <database_directory> -c`
+1.  Extract ontology:
+    - `kgdata wikidata -d <wikidata_dir> -b wdclasses -o <database_directory> -c`
+    - `kgdata wikidata -d <wikidata_dir> -b wdprops -o <database_directory> -c`
 
 For more commands, see `scripts/build.sh`.
+If compaction step (compact rocksdb) takes lots of time, you can run without `-c` flag.
+If you run directly from source, replacing the `kgdata` command with `python -m kgdata`.
+
+We provide functions to read the databases built from the previous step and return a dictionary-like objects in the module: [`kgdata.wikidata.db`](/kgdata/wikidata/db.py). Inside the same folder, you can find models of Wikidata [entities](/kgdata/wikidata/models/qnode.py), [classes](/kgdata/wikidata/models/wdclass.py), and [properties](/kgdata/wikidata/models/wdproperty.py).
 
 ## Installation
 

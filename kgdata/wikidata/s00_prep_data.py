@@ -60,7 +60,9 @@ def prep01(
 
     match_files = glob.glob(os.path.join(indir, "*.bz2"))
     if len(match_files) != 1:
-        raise Exception(f"Invalid input directory. Expect to have only one .bz2 file but got {len(matched_files)} files")
+        raise Exception(
+            f"Invalid input directory. Expect to have only one .bz2 file but got {len(match_files)} files"
+        )
     infile = match_files[0]
 
     n_writers = 8
