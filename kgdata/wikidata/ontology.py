@@ -3,9 +3,9 @@ import os, gzip
 from operator import add, itemgetter
 from pathlib import Path
 from typing import Dict, Optional, Set, Union
+from graph.interface import BaseEdge, BaseNode
 from hugedict.misc import identity
 
-import networkx as nx
 import rocksdb
 from loguru import logger
 from tqdm.auto import tqdm
@@ -15,6 +15,7 @@ from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleT
 from kgdata.wikidata.models import QNode, WDClass, WDProperty
 from kgdata.wikidata.rdd_datasets import qnodes_en
 from sm.misc import serialize_jl, serialize_json, deserialize_jl
+from graph.retworkx import digraph_find_cycle, RetworkXStrDiGraph
 
 """
 This module provides function to extract Wikidata ontology from its dump. 
@@ -224,29 +225,46 @@ def make_superclass_closure(outdir: str = os.path.join(WIKIDATA_DIR, "ontology")
 
 
 def examine_ontology_property(indir: str = os.path.join(WIKIDATA_DIR, "ontology")):
-    classes = WDClass.from_file(indir)
+    def print_cycle(edges: list[BaseEdge[str, str]]):
+        print("\t>", " -> ".join([e.source for e in edges]) + " -> " + edges[-1].target)
 
-    g = nx.DiGraph()
-    for c in tqdm(classes.values()):
-        for pcid in c.parents:
-            g.add_edge(c.id, pcid)
+    def find_cycles(g: RetworkXStrDiGraph[str, BaseNode, BaseEdge[str, str]]):
+        nodes = g.nodes()
+        for node in nodes:
+            cycle = digraph_find_cycle(g, node.id)
+            if len(cycle) == 0:
+                continue
 
-    # cycles = list(nx.simple_cycles(g))
-    # print(f"Detect {len(cycles)} cycles in the ontology classes")
-    # for cycle in cycles:
-    #     print("\t> ", cycle)
+            while True:
+                print_cycle(cycle)
+                e = cycle[0]
+                g.remove_edges_between_nodes(e.source, e.target)
+                cycle = digraph_find_cycle(g, cycle[-1].target)
+                if len(cycle) == 0:
+                    break
+
+    # classes = WDClass.from_file(indir)
+    # g: RetworkXStrDiGraph[str, BaseNode, BaseEdge[str, str]] = RetworkXStrDiGraph(
+    #     multigraph=False
+    # )
+    # for c in tqdm(classes.values()):
+    #     for pcid in c.parents:
+    #         g.add_edge(BaseEdge(-1, c.id, pcid, ""))
+
+    # print("Detecting cycles in the ontology classes...")
+    # find_cycles(g)
 
     predicates = WDProperty.from_file(indir)
 
-    g = nx.DiGraph()
+    g: RetworkXStrDiGraph[str, BaseNode, BaseEdge[str, str]] = RetworkXStrDiGraph(
+        multigraph=False
+    )
     for p in tqdm(predicates.values()):
         for ppid in p.parents:
-            g.add_edge(p.id, ppid)
+            g.add_edge(BaseEdge(-1, p.id, ppid, ""))
 
-    cycles = list(nx.simple_cycles(g))
-    print(f"Detect {len(cycles)} cycles in the ontology predicates")
-    for cycle in cycles:
-        print("\t> ", cycle)
+    print("Detecting cycles in the ontology properties...")
+    find_cycles(g)
 
 
 def save_wdprops(indir: Union[str, Path], db):
