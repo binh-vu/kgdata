@@ -1,4 +1,15 @@
-KGData is a library to process dumps of knowledge graphs.
+KGData is a library to process dumps of Wikipedia, Wikidata and DBPedia.
+
+![PyPI](https://img.shields.io/pypi/v/kgdata)
+
+## Contents
+
+<!--ts-->
+   * [Usage](#usage)
+      * [Wikidata](#wikidata)
+      * [Wikipedia](#wikipedia)
+   * [Installation](#installation)
+<!--te-->
 
 ## Usage
 
@@ -35,7 +46,9 @@ For more commands, see `scripts/build.sh`.
 If compaction step (compact rocksdb) takes lots of time, you can run without `-c` flag.
 If you run directly from source, replacing the `kgdata` command with `python -m kgdata`.
 
-We provide functions to read the databases built from the previous step and return a dictionary-like objects in the module: [`kgdata.wikidata.db`](/kgdata/wikidata/db.py). Inside the same folder, you can find models of Wikidata [entities](/kgdata/wikidata/models/qnode.py), [classes](/kgdata/wikidata/models/wdclass.py), and [properties](/kgdata/wikidata/models/wdproperty.py).
+We provide functions to read the databases built from the previous step and return a dictionary-like objects in the module: [`kgdata.wikidata.db`](/kgdata/wikidata/db.py). In the same folder, you can find models of Wikidata [entities](/kgdata/wikidata/models/qnode.py), [classes](/kgdata/wikidata/models/wdclass.py), and [properties](/kgdata/wikidata/models/wdproperty.py).
+
+### Wikipedia
 
 ## Installation
 
