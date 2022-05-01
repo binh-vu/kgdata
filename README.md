@@ -5,10 +5,11 @@ KGData is a library to process dumps of Wikipedia, Wikidata and DBPedia.
 ## Contents
 
 <!--ts-->
-   * [Usage](#usage)
-      * [Wikidata](#wikidata)
-      * [Wikipedia](#wikipedia)
-   * [Installation](#installation)
+
+- [Usage](#usage)
+  - [Wikidata](#wikidata)
+  - [Wikipedia](#wikipedia)
+- [Installation](#installation)
 <!--te-->
 
 ## Usage
@@ -49,6 +50,10 @@ If you run directly from source, replacing the `kgdata` command with `python -m 
 We provide functions to read the databases built from the previous step and return a dictionary-like objects in the module: [`kgdata.wikidata.db`](/kgdata/wikidata/db.py). In the same folder, you can find models of Wikidata [entities](/kgdata/wikidata/models/qnode.py), [classes](/kgdata/wikidata/models/wdclass.py), and [properties](/kgdata/wikidata/models/wdproperty.py).
 
 ### Wikipedia
+
+Here is a list of dumps that you need to download depending on the database/files you want to build:
+
+1. [Static HTML Dumps](https://dumps.wikimedia.org/other/enterprise_html/): they only dumps some namespaces. The namespace that you likely to use is 0 (main articles). For example, enwiki-NS0-20220420-ENTERPRISE-HTML.json.tar.gz.
 
 ## Installation
 

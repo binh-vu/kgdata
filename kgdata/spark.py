@@ -14,17 +14,7 @@ import shutil
 from operator import add, itemgetter
 from pathlib import Path
 from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
-import sm.misc as M
-import rocksdb
 from pyspark import SparkContext, SparkConf
-from tqdm.auto import tqdm
-from multiprocessing.managers import SharedMemoryManager
-
-from sm.misc.deser import (
-    deserialize_byte_lines,
-    deserialize_key_val_lines,
-    deserialize_jl,
-)
 
 # SparkContext singleton
 _sc = None

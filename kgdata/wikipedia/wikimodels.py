@@ -75,23 +75,3 @@ class Table:
         # lazy import here to avoid circular import
         from kgdata.wikipedia.table_parser import TableVisitor
         return TableVisitor().parse(text)
-
-
-def get_title_from_url(url: str) -> str:
-    """This function converts a wikipedia page/article's URL to its title. The function is tested manually in `20200425-wikipedia-links` notebook in section 2.2.
-
-    Parameters
-    ----------
-    url : str
-        a wikipedia page/article's URL
-
-    Returns
-    -------
-    str
-        a wikipedia page/article's title
-    """
-    path = urlparse(url).path
-    assert path.startswith("/wiki/"), path
-    path = path[6:]
-    title = unquote_plus(path).replace("_", " ")
-    return title.strip()

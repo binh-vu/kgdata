@@ -1,8 +1,7 @@
+from kgdata.wikipedia.config import WikipediaConfig
 import requests
 from typing import List, Dict
 from tqdm.auto import tqdm
-from collections import OrderedDict
-from sm_unk.misc.fn_cache import EagerSingleFileCache
 
 
 def get_urls_from_page_ids(page_ids: List[str]):
@@ -19,7 +18,7 @@ def get_urls_from_page_ids(page_ids: List[str]):
         list of corresponding URLs
     """
     s_page_ids = "|".join(page_ids)
-    resp = requests.get(f"https://en.wikipedia.org/w/api.php",
+    resp = requests.get(f"{WikipediaConfig.WikiURL}/w/api.php",
                         params={
                             "action": "query",
                             "prop": "info",
@@ -33,15 +32,8 @@ def get_urls_from_page_ids(page_ids: List[str]):
 
 
 def does_wikiurl_not_exist(url: str):
-    assert url.startswith("https://en.wikipedia.org/wiki/"), url
-    cache = EagerSingleFileCache.get_instance("wikiapi.does_wikiurl_exist")
-
-    if url in cache:
-        return cache[url].status_code
-
+    assert url.startswith("{WikipediaConfig.WikiURL}/wiki/"), url
     resp = requests.get(url, params={"redirect": "no"})
-    cache[url] = resp
-    
     return resp.status_code == 404
 
 
@@ -64,17 +56,11 @@ def get_page_ids_from_titles(titles: List[str],
         for title in titles), "All titles must not contain the delimiter `|`"
     assert len(set(titles)) == len(titles), "Should not have duplicated titles"
 
-    original_titles = titles
-
-    cache = EagerSingleFileCache.get_instance(
-        "wikiapi.get_page_ids_from_titles")
-
     # update the result to only find the one not in the cache
-    titles = [title for title in titles if title not in cache]
     set_titles = set(titles)
 
     if len(titles) > batch_size:
-        results = OrderedDict()
+        results = {}
         for i in tqdm(range(0, len(titles), batch_size)):
             result = get_page_ids_from_titles(titles[i:i + batch_size],
                                               batch_size)
@@ -82,8 +68,9 @@ def get_page_ids_from_titles(titles: List[str],
                 results[k] = v
         return results
 
+    results = {}
     if len(titles) > 0:
-        resp = requests.get(f"https://en.wikipedia.org/w/api.php",
+        resp = requests.get(f"{WikipediaConfig.WikiURL}/w/api.php",
                         params={
                             "action": "query",
                             "titles": "|".join(titles),
@@ -92,16 +79,14 @@ def get_page_ids_from_titles(titles: List[str],
                         })
         data = resp.json()
         assert data['batchcomplete'] is True
-        pages = [page for page in data['query']['pages'] if 'pageid' in page]
 
         titles_tokens = [set(title.lower().split(" ")) for title in titles]
 
-        tmp_res = {}
         for i, page in enumerate(data['query']['pages']):
             if 'pageid' not in page:
                 assert page.get('missing', False), str(page)
                 assert page['title'] in set_titles
-                tmp_res[page['title']] = None
+                results[page['title']] = None
             else:
                 # now we need to find the title
                 tokens = set(page['title'].lower().split(" "))
@@ -111,20 +96,17 @@ def get_page_ids_from_titles(titles: List[str],
                 title_with_score.sort(reverse=True, key=lambda x: x[1])
 
                 title = title_with_score[0][0]
-                assert title not in tmp_res
-                tmp_res[title] = {
+                assert title not in results
+                results[title] = {
                     "id": page['pageid'],
                     "wiki_title": page['title'],
                     "match_title": title,
                     "rank_titles": title_with_score
                 }
 
-        for k, v in tmp_res.items():
-            cache[k] = v
+        for k, v in results.items():
+            results[k] = v
 
-    results = OrderedDict()
-    for title in original_titles:
-        results[title] = cache[title]
     return results
 
 
