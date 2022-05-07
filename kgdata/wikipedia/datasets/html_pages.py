@@ -47,7 +47,7 @@ def enterprise_html_dumps(
         (outdir / "_SUCCESS").touch()
 
     sc = get_spark_context()
-    return sc.textFile(str(outdir / "*.gz")).map(orjson.loads)
+    return sc.textFile(str(outdir / "*/*.gz")).map(orjson.loads)
 
 
 if __name__ == "__main__":

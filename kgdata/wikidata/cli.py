@@ -196,19 +196,7 @@ def wikidata(
         return
 
 
-@click.group()
-def cli():
-    pass
-
-
-cli.add_command(wikidata)
-
-
 def extract_id_label(odict):
     label = odict["label"]
     label = label["lang2value"][label["lang"]]
     return orjson.dumps({"id": odict["id"], "label": label})
-
-
-if __name__ == "__main__":
-    cli()

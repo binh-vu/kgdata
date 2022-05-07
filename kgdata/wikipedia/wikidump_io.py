@@ -13,7 +13,9 @@ from pathlib import Path
 from tqdm import tqdm
 import xml.etree.ElementTree as ET
 
-"""Module containing code for reading and extracting wikipedia dump from DBPedia at 2016 so it is easier for us to work with
+"""Module containing code for reading and extracting wikipedia dump from DBPedia at 2016 so it is easier for us to work with. 
+
+This module is deprecated.
 """
 
 logger = logging.getLogger("wikipedia")

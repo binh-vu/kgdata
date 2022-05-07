@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kgdata"
-version = "1.7.1"
+version = "1.7.2"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -13,13 +13,13 @@ kgdata = 'kgdata.cli:cli'
 
 [tool.poetry.dependencies]
 python = "^3.8"
-orjson = "^3.6.4"
-tqdm = "^4.63.1"
+orjson = "^3.6.8"
+tqdm = "^4.64.0"
 beautifulsoup4 = "^4.9.3"
 cityhash = "^0.2.3"
 pyspark = "3.0.3"
 lbry-rocksdb-optimized = "^0.8.1"
-loguru = "^0.5.3"
+loguru = "^0.6.0"
 rdflib = "^6.1.1"
 six = "^1.16.0"
 "ruamel.yaml" = "^0.17.9"
