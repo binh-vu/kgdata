@@ -128,3 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .idea
+
+# ignore poetry lock cause dev it on m1 env.
+poetry.lock
