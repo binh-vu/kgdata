@@ -211,7 +211,7 @@ def get_wdclass_db(
 
 
 def get_wdprop_db(
-    dbfile: str,
+    dbfile: Union[Path, str],
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
