@@ -52,7 +52,7 @@ class WDClass:
         records = {r.id: r for r in records}
 
         if load_parent_closure:
-            logger.info("Load parent closure...")
+            logger.info("Load ancestors...")
             parents_closure = deserialize_jl(
                 os.path.join(indir, "superclasses_closure.jl")
             )
