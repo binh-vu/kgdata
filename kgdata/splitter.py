@@ -3,6 +3,7 @@
 
 from bz2 import BZ2File
 from gzip import GzipFile
+from io import TextIOWrapper
 import shutil
 from pathlib import Path
 from typing import BinaryIO, Callable, ContextManager, Iterable, Tuple, Union, cast
@@ -12,6 +13,19 @@ from tqdm import tqdm
 from multiprocessing import Process, Queue
 
 
+def default_currentbyte_constructor(
+    file_object: Union[BZ2File, GzipFile, BinaryIO, TextIOWrapper]
+) -> Callable[[], int]:
+    """Get a function that returns the current byte position that the file reader is currently at."""
+    if isinstance(file_object, BZ2File):
+        return file_object.buffer._buffer.raw._fp.tell
+
+    if isinstance(file_object, GzipFile):
+        return file_object.fileobj.tell
+
+    return file_object.tell
+
+
 def split_a_file(
     infile: Union[str, Path, Callable[[], Tuple[int, ContextManager[BinaryIO]]]],
     outfile: Union[str, Path],
@@ -19,6 +33,9 @@ def split_a_file(
         [Union[BZ2File, GzipFile, BinaryIO]], Iterable[bytes]
     ] = identity_func,
     record_postprocess: str = "kgdata.splitter.strip_newline",
+    currentbyte_constructor: Callable[
+        [Union[BZ2File, GzipFile, BinaryIO]], Callable[[], int]
+    ] = default_currentbyte_constructor,
     override: bool = False,
     n_writers: int = 8,
     n_records_per_file: int = 64000,
@@ -37,6 +54,7 @@ def split_a_file(
         record_iter: a function that returns an iterator of records given a file object, by default it returns the file object itself.
         record_postprocess: name/path to import the function that post-process an record. by default we strip the newline from the end of the string.
             when the function returns None, skip the record.
+        currentbyte_constructor: a function that returns a function that returns the current byte position of a file object.
         override: whether to override existing files.
         n_writers: number of parallel writers.
         n_records_per_file: number of records per file.
@@ -79,30 +97,31 @@ def split_a_file(
 
     data_size_file_size = datasize(file_size)
     try:
-        with file_object as f, tqdm(total=file_size, desc="splitting") as pbar:
+        with file_object as f, tqdm(
+            total=file_size,
+            desc="splitting",
+            unit="B",
+            unit_scale=True,
+        ) as pbar:
             last_bytes = 0
+            tell = currentbyte_constructor(f)
             for i, line in enumerate(record_iter(f)):
                 queues[i % n_writers].put(line)
-                current_bytes = f.tell()
-                pbar.set_postfix(
-                    processed_bytes=f"%.2f%% (%s/%s)"
-                    % (
-                        current_bytes * 100 / file_size,
-                        datasize(current_bytes),
-                        data_size_file_size,
-                    )
-                )
-                pbar.update(f.tell() - last_bytes)
-                last_bytes = f.tell()
+                current_bytes = tell()
+                pbar.update(current_bytes - last_bytes)
+                last_bytes = current_bytes
     finally:
         print(">>> Finish! Waiting to exit...")
         for q in queues:
             q.put(None)
 
+        success = True
         for p in writers:
             p.join()
+            success = success and (p.exitcode == 0)
 
-    (outdir / "_SUCCESS").touch()
+        if success:
+            (outdir / "_SUCCESS").touch()
 
 
 def write_to_file(
