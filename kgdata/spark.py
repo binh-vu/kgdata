@@ -31,7 +31,7 @@ def get_spark_context():
     if _sc is None:
         conf = SparkConf().setAll(
             [
-                (key, os.environ[key])
+                (key, os.environ[key.replace(".", "_")])
                 for key in [
                     "spark.master",
                     "spark.ui.port",
@@ -41,7 +41,7 @@ def get_spark_context():
                     "spark.driver.memory",
                     "spark.driver.maxResultSize",
                 ]
-                if key in os.environ
+                if key.replace(".", "_") in os.environ
             ]
         )
         _sc = SparkContext(conf=conf)
@@ -69,7 +69,8 @@ def close_spark_context():
         _sc = None
 
 
-def does_result_dir_exist(dpath, allow_override=True):
+def does_result_dir_exist(dpath: Union[str, Path], allow_override=True):
+    dpath = str(dpath)
     if not os.path.exists(dpath):
         return False
     if not os.path.exists(os.path.join(dpath, "_SUCCESS")):
@@ -261,8 +262,16 @@ def left_outer_join_broadcast(
         rdd1.saveAsTextFile(outfile)
 
 
-def saveAsSingleTextFile(rdd, outfile, compressionCodecClass=None):
-    rdd = rdd.coalesce(1, shuffle=True)
+def head(rdd, n: int):
+    sc = get_spark_context()
+    return sc.parallelize(rdd.take(n))
+
+
+def saveAsSingleTextFile(
+    rdd, outfile: Union[str, Path], compressionCodecClass=None, shuffle=True
+):
+    rdd = rdd.coalesce(1, shuffle=shuffle)
+    outfile = str(outfile)
     if os.path.exists(outfile + "_tmp"):
         shutil.rmtree(outfile + "_tmp")
 
