@@ -31,7 +31,7 @@ def get_spark_context():
     if _sc is None:
         conf = SparkConf().setAll(
             [
-                (key, os.environ[key.replace(".", "_")])
+                (key, os.environ[key] if key in os.environ else os.environ[key.replace(".", "_")])
                 for key in [
                     "spark.master",
                     "spark.ui.port",
@@ -41,7 +41,7 @@ def get_spark_context():
                     "spark.driver.memory",
                     "spark.driver.maxResultSize",
                 ]
-                if key.replace(".", "_") in os.environ
+                if key.replace(".", "_") in os.environ or key in os.environ
             ]
         )
         _sc = SparkContext(conf=conf)
