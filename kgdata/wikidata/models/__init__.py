@@ -15,3 +15,5 @@ from .qnode import (
 )
 from .wdclass import WDClass
 from .wdproperty import WDProperty, WDQuantityPropertyStats, QuantityStats
+from .wdentity import WDEntity
+from .wdvalue import WDValue

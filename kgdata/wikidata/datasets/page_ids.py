@@ -6,17 +6,19 @@ from kgdata.spark import does_result_dir_exist, get_spark_context, ensure_unique
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_ids import is_entity_id
 from kgdata.wikidata.datasets.page_dump import page_dump
-import orjson
 from pyspark.rdd import RDD
+from sm.misc import deserialize_byte_lines
+from tqdm import tqdm
 
 
-def page_ids():
-    """Get mapping from Wikidata internal page id and Wikidata entity id.
+def page_ids(return_rdd: bool = True) -> Union[RDD, Dict[str, str]]:
+    """Get mapping from Wikidata internal page id and Wikidata entity id (possible old id).
+    To use the entity id, we should use it with redirections (`entity_redirections`)
 
     Pages may contain user pages, etc. So we are only keep pages that have entity ids.
 
     Returns:
-        RDD[tuple[str, str]]
+        RDD[tuple[str, str]] or dict[str, str]
     """
     cfg = WDDataDirCfg.get_instance()
 
@@ -33,20 +35,36 @@ def page_ids():
             )
         )
 
-    if not (cfg.page_ids / "_VERIFIED").exists():
-        ensure_unique_records(
+    if not (cfg.page_ids / "_METADATA").exists():
+        rdd = (
             get_spark_context()
             .textFile(os.path.join(cfg.page_ids, "*.gz"))
-            .map(lambda x: x.split("\t")),
+            .map(lambda x: x.split("\t"))
+        )
+        ensure_unique_records(
+            rdd,
             itemgetter(0),
         )
-        (cfg.page_ids / "_VERIFIED").touch()
+        (cfg.page_ids / "_METADATA").write_text(
+            f"""
+key.unique: true
+n_records: {(rdd.count())}
+            """.strip()
+        )
 
-    return (
-        get_spark_context()
-        .textFile(os.path.join(cfg.page_ids, "*.gz"))
-        .map(lambda x: x.split("\t"))
-    )
+    if return_rdd:
+        return (
+            get_spark_context()
+            .textFile(os.path.join(cfg.page_ids, "*.gz"))
+            .map(lambda x: x.split("\t"))
+        )
+
+    output = {}
+    for file in tqdm(list(cfg.page_ids.glob("*.gz")), desc="loading page ids"):
+        for line in deserialize_byte_lines(file):
+            k, v = line.rstrip().split(b"\t")
+            output[k.decode()] = v.decode()
+    return output
 
 
 def extract_id(row: list):

@@ -23,6 +23,9 @@ class WDDataDirCfg:
         self.page_ids = datadir / "page_ids"
         self.entities = datadir / "entities"
 
+        self.classes = datadir / "classes"
+        self.properties = datadir / "properties"
+
         self.entity_redirections = datadir / "entity_redirections"
 
     def get_entity_dump_file(self):
