@@ -1,3 +1,5 @@
+import gzip
+from kgdata.dataset import Dataset
 import orjson
 from collections import deque
 from typing import List, Dict
@@ -7,16 +9,17 @@ from kgdata.wikidata.models.new_wdclass import WDClass
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entities import entities, ser_entity
+from kgdata.splitter import split_a_list
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def classes():
+def classes(lang: str = "en") -> Dataset[WDClass]:
     cfg = WDDataDirCfg.get_instance()
-    sc = get_spark_context()
 
     if not does_result_dir_exist(cfg.classes / "ids"):
         (
-            entities()
+            entities(lang)
+            .get_rdd()
             .flatMap(get_class_ids)
             .distinct()
             .saveAsTextFile(
@@ -26,11 +29,13 @@ def classes():
         )
 
     if not does_result_dir_exist(cfg.classes / "classes"):
+        sc = get_spark_context()
         class_ids = sc.broadcast(
             set(sc.textFile(str(cfg.classes / "ids/*.gz")).collect())
         )
         (
-            entities()
+            entities(lang)
+            .get_rdd()
             .filter(lambda ent: ent.id in class_ids.value)
             .map(lambda x: orjson.dumps(WDClass.from_entity(x).to_dict()))
             .saveAsTextFile(
@@ -40,6 +45,7 @@ def classes():
         )
 
     if not does_result_dir_exist(cfg.classes / "ancestors"):
+        sc = get_spark_context()
         saveAsSingleTextFile(
             sc.textFile(str(cfg.classes / "classes/*.gz"))
             .map(orjson.loads)
@@ -56,12 +62,42 @@ def classes():
         }
 
         id2ancestors = build_ancestors(id2parents)
-        M.serialize_jl(
-            sorted(id2ancestors.items()),
-            cfg.classes / "ancestors/id2ancestors.ndjson.gz",
+        split_a_list(
+            [orjson.dumps(x) for x in sorted(id2ancestors.items())],
+            (cfg.classes / "ancestors/id2ancestors/part.ndjson.gz"),
+        )
+        (cfg.classes / "ancestors" / "_SUCCESS").touch()
+
+    if not does_result_dir_exist(cfg.classes / "full_classes"):
+        sc = get_spark_context()
+        id2ancestors = sc.textFile(
+            str(cfg.classes / "ancestors/id2ancestors/*.gz")
+        ).map(orjson.loads)
+
+        def merge_ancestors(o):
+            id, (cls, ancestors) = o
+            cls.ancestors = set(ancestors)
+            return cls
+
+        (
+            sc.textFile(str(cfg.classes / "classes/*.gz"))
+            .map(orjson.loads)
+            .map(WDClass.from_dict)
+            .map(lambda x: (x.id, x))
+            .join(id2ancestors)
+            .map(merge_ancestors)
+            .map(WDClass.to_dict)
+            .map(orjson.dumps)
+            .saveAsTextFile(
+                str(cfg.classes / "full_classes"),
+                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            )
         )
 
-        (cfg.classes / "ancestors" / "_SUCCESS").touch()
+    return Dataset(
+        cfg.classes / "full_classes/*.gz",
+        deserialize=lambda x: WDClass.from_dict(orjson.loads(x)),
+    )
 
 
 def build_ancestors(id2parents: dict) -> dict:
@@ -84,10 +120,6 @@ def get_ancestors(id: str, id2parents: dict) -> List[str]:
         queue.extend(id2parents[ptr])
 
     return list(ancestors.keys())
-
-
-def is_direct_class_ids(ent: WDEntity) -> bool:
-    return "P279" in ent.props
 
 
 def get_class_ids(ent: WDEntity) -> List[str]:

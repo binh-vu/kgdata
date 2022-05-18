@@ -7,9 +7,10 @@ from kgdata.spark import (
 )
 from kgdata.splitter import split_a_file
 from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.dataset import Dataset
 
 
-def page_dump():
+def page_dump() -> Dataset[str]:
     """Wikidata entity redirections"""
     cfg = WDDataDirCfg.get_instance()
 
@@ -22,7 +23,7 @@ def page_dump():
         override=False,
     )
 
-    return get_spark_context().textFile(str(cfg.page_dump / "*.sql.gz"))
+    return Dataset.string(cfg.page_dump / "*.sql.gz")
 
 
 def _record_iter(f: Union[BZ2File, GzipFile, BinaryIO]):

@@ -25,6 +25,7 @@ class WDDataDirCfg:
 
         self.classes = datadir / "classes"
         self.properties = datadir / "properties"
+        self.wp2wd = datadir / "wp2wd"
 
         self.entity_redirections = datadir / "entity_redirections"
 
@@ -56,3 +57,4 @@ class WDDataDirCfg:
     def init(datadir: Union[str, Path]):
         """Initialize or update the config object to use the given directory"""
         WDDataDirCfg.instance = WDDataDirCfg(Path(datadir))
+        return WDDataDirCfg.instance

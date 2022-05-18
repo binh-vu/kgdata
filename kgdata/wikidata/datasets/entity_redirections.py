@@ -1,6 +1,6 @@
 from collections import defaultdict
 from operator import itemgetter
-from typing import Dict, List, Union, cast
+from typing import Dict, List, Tuple, Union, cast
 
 from kgdata.config import WIKIDATA_DIR
 from kgdata.spark import (
@@ -13,6 +13,7 @@ from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import is_entity_id
 from kgdata.wikidata.datasets.entity_redirection_dump import entity_redirection_dump
+from kgdata.dataset import Dataset
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.datasets.page_ids import page_ids, parse_sql_values
 import orjson
@@ -21,11 +22,11 @@ from sm.misc import identity_func, deserialize_jl, deserialize_csv, serialize_cs
 from tqdm import tqdm
 
 
-def entity_redirections(return_rdd: bool = True) -> Union[RDD, Dict[str, str]]:
+def entity_redirections() -> Dataset[Tuple[str, str]]:
     """Wikidata entity redirections
 
     Returns:
-        RDD[tuple[str, str]] or dict[str, str]
+        Dataset[tuple[str, str]]
     """
     cfg = WDDataDirCfg.get_instance()
 
@@ -33,6 +34,7 @@ def entity_redirections(return_rdd: bool = True) -> Union[RDD, Dict[str, str]]:
         # mapping from page id to the latest entity id
         saveAsSingleTextFile(
             entity_redirection_dump()
+            .get_rdd()
             .flatMap(parse_sql_values)
             .map(extract_id)
             .filter(lambda x: x is not None)
@@ -41,9 +43,7 @@ def entity_redirections(return_rdd: bool = True) -> Union[RDD, Dict[str, str]]:
         )
 
     if not (cfg.entity_redirections / "redirections.tsv").exists():
-        page2ent = page_ids(return_rdd=False)
-        assert isinstance(page2ent, dict)
-
+        page2ent = page_ids().get_dict()
         raw_redirections = deserialize_csv(
             cfg.entity_redirections / "raw_redirections.tsv", delimiter="\t"
         )
@@ -100,10 +100,9 @@ def entity_redirections(return_rdd: bool = True) -> Union[RDD, Dict[str, str]]:
             delimiter="\t",
         )
 
-    return (
-        get_spark_context()
-        .textFile(str(cfg.entity_redirections / "redirections.tsv"))
-        .map(lambda x: x.split("\t"))
+    return Dataset(
+        file_pattern=cfg.entity_redirections / "redirections.tsv",
+        deserialize=lambda x: tuple(x.split("\t")),
     )
 
 

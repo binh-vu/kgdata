@@ -6,9 +6,19 @@ from gzip import GzipFile
 from io import TextIOWrapper
 import shutil
 from pathlib import Path
-from typing import BinaryIO, Callable, ContextManager, Iterable, Tuple, Union, cast
+from typing import (
+    BinaryIO,
+    Callable,
+    ContextManager,
+    Iterable,
+    List,
+    Tuple,
+    Union,
+    cast,
+)
 
 from sm.misc import get_open_fn, datasize, identity_func, import_func, percentage
+from sm.misc.deser import serialize_byte_lines
 from tqdm import tqdm
 from multiprocessing import Process, Queue
 
@@ -18,10 +28,10 @@ def default_currentbyte_constructor(
 ) -> Callable[[], int]:
     """Get a function that returns the current byte position that the file reader is currently at."""
     if isinstance(file_object, BZ2File):
-        return file_object.buffer._buffer.raw._fp.tell
+        return file_object.buffer._buffer.raw._fp.tell  # type: ignore
 
     if isinstance(file_object, GzipFile):
-        return file_object.fileobj.tell
+        return file_object.fileobj.tell  # type: ignore
 
     return file_object.tell
 
@@ -171,3 +181,22 @@ def write_to_file(
 def strip_newline(line: bytes) -> bytes:
     """Strip newline from a line."""
     return line.rstrip(b"\n")
+
+
+def split_a_list(
+    lst: List[bytes], outfile: Union[str, Path], n_records_per_file: int = 64000
+):
+    outfile = Path(outfile)
+    outfile.parent.mkdir(exist_ok=True, parents=True)
+
+    name_parts = outfile.name.split(".", 1)
+    name_parts[0] = name_parts[0] + "-{auto:05d}"
+
+    name_template = str(outfile.parent / ".".join(name_parts))
+    counter = 0
+
+    for i in tqdm(range(0, len(lst), n_records_per_file), desc="splitting"):
+        serialize_byte_lines(
+            lst[i : i + n_records_per_file], name_template.format(auto=counter)
+        )
+        counter += 1

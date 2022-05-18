@@ -9,6 +9,7 @@ from kgdata.spark import (
 from kgdata.splitter import default_currentbyte_constructor
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
+from kgdata.dataset import Dataset
 from kgdata.wikidata.models.wdentity import WDEntity
 from sm.misc import identity_func
 from tqdm import tqdm
@@ -26,13 +27,14 @@ def is_entity_id(id: str) -> bool:
     )
 
 
-def entity_ids():
+def entity_ids() -> Dataset[str]:
     """Get Wikidata entity ids"""
     cfg = WDDataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.entity_ids / "ids"):
         (
             entity_dump()
+            .get_rdd()
             .map(itemgetter("id"))
             .sortBy(identity_func)
             .saveAsTextFile(
@@ -88,7 +90,7 @@ def entity_ids():
             "seen id prefixes: {}\n".format(seen_prefixes)
         )
 
-    return rdd
+    return Dataset.string(cfg.entity_ids / "ids/*.gz")
 
 
 if __name__ == "__main__":

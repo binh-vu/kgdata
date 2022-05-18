@@ -3,36 +3,28 @@ import os
 import tarfile
 from pathlib import Path
 from typing import BinaryIO, Union, cast
+from kgdata.wikipedia.config import WPDataDirConfig
 
 import orjson
 from kgdata.config import WIKIPEDIA_DIR
-from kgdata.spark import get_spark_context
+from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.splitter import split_a_file
 from pyspark import RDD
+from kgdata.dataset import Dataset
 
 
-def enterprise_html_dumps(
-    dump_file: Union[str, Path] = os.path.join(
-        WIKIPEDIA_DIR, "dumps/*NS0-*ENTERPRISE-HTML.json.tar.gz"
-    ),
-    outdir: Union[str, Path] = os.path.join(WIKIPEDIA_DIR, "html_dumps"),
-):
+def enterprise_html_dumps() -> Dataset[dict]:
     """
     Extract page
 
     Returns:
-        RDD[dict]
+        Dataset[dict]
     """
-    outdir = Path(outdir)
+    cfg = WPDataDirConfig.get_instance()
 
-    match_files = glob.glob(str(dump_file))
-    if len(match_files) == 0:
-        raise Exception("No file found: {}".format(dump_file))
-    elif len(match_files) > 1:
-        raise Exception("Too many files found: {}".format(dump_file))
-    dump_file = match_files[0]
+    dump_file = cfg.get_html_dump_file()
 
-    if not (outdir / "_SUCCESS").exists():
+    if not does_result_dir_exist(cfg.html_dump):
         with tarfile.open(dump_file, "r:*") as archive:
             for file in archive:
                 split_a_file(
@@ -40,14 +32,15 @@ def enterprise_html_dumps(
                         file.size,
                         cast(BinaryIO, archive.extractfile(file)),
                     ),
-                    outfile=outdir / file.name.split(".", 1)[0] / "part.ndjson.gz",
+                    outfile=cfg.html_dump
+                    / file.name.split(".", 1)[0]
+                    / "part.ndjson.gz",
                     n_writers=8,
                     override=True,
                 )
-        (outdir / "_SUCCESS").touch()
+        (cfg.html_dump / "_SUCCESS").touch()
 
-    sc = get_spark_context()
-    return sc.textFile(str(outdir / "*/*.gz")).map(orjson.loads)
+    return Dataset(cfg.html_dump / "*/*.gz", deserialize=orjson.loads)
 
 
 if __name__ == "__main__":

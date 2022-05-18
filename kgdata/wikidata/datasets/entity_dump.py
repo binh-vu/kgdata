@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import BinaryIO, Union, cast
 from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.dataset import Dataset
 
 import orjson
 from kgdata.spark import get_spark_context
@@ -12,12 +13,12 @@ from kgdata.splitter import split_a_file
 from pyspark import RDD
 
 
-def entity_dump():
+def entity_dump() -> Dataset[dict]:
     """
     Split the Wikidata entity dumps into smaller files.
 
     Returns:
-        RDD[dict]
+        Dataset[dict]
     """
     cfg = WDDataDirCfg.get_instance()
 
@@ -30,8 +31,7 @@ def entity_dump():
         override=False,
     )
 
-    sc = get_spark_context()
-    return sc.textFile(str(cfg.entity_dump / "*.gz")).map(orjson.loads)
+    return Dataset(file_pattern=str(cfg.entity_dump / "*.gz"), deserialize=orjson.loads)
 
 
 def _record_iter(f: Union[BZ2File, GzipFile, BinaryIO]):

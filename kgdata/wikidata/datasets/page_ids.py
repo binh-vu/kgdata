@@ -1,30 +1,32 @@
 import csv
 import os
 from operator import itemgetter
-from typing import Dict, Union
+from typing import Dict, Tuple, Union
 from kgdata.spark import does_result_dir_exist, get_spark_context, ensure_unique_records
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_ids import is_entity_id
+from kgdata.dataset import Dataset
 from kgdata.wikidata.datasets.page_dump import page_dump
 from pyspark.rdd import RDD
 from sm.misc import deserialize_byte_lines
 from tqdm import tqdm
 
 
-def page_ids(return_rdd: bool = True) -> Union[RDD, Dict[str, str]]:
+def page_ids() -> Dataset[Tuple[str, str]]:
     """Get mapping from Wikidata internal page id and Wikidata entity id (possible old id).
     To use the entity id, we should use it with redirections (`entity_redirections`)
 
     Pages may contain user pages, etc. So we are only keep pages that have entity ids.
 
     Returns:
-        RDD[tuple[str, str]] or dict[str, str]
+        Dataset[tuple[str, str]]
     """
     cfg = WDDataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.page_ids):
         (
             page_dump()
+            .get_rdd()
             .flatMap(parse_sql_values)
             .map(extract_id)
             .filter(lambda x: x is not None)
@@ -52,19 +54,9 @@ n_records: {(rdd.count())}
             """.strip()
         )
 
-    if return_rdd:
-        return (
-            get_spark_context()
-            .textFile(os.path.join(cfg.page_ids, "*.gz"))
-            .map(lambda x: x.split("\t"))
-        )
-
-    output = {}
-    for file in tqdm(list(cfg.page_ids.glob("*.gz")), desc="loading page ids"):
-        for line in deserialize_byte_lines(file):
-            k, v = line.rstrip().split(b"\t")
-            output[k.decode()] = v.decode()
-    return output
+    return Dataset(
+        file_pattern=cfg.page_ids / "*.gz", deserialize=lambda x: tuple(x.split("\t"))
+    )
 
 
 def extract_id(row: list):

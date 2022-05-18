@@ -17,31 +17,35 @@ KGData is a library to process dumps of Wikipedia, Wikidata and DBPedia.
 ### Wikidata
 
 ```
-Usage: python -m kgdata wikidata [OPTIONS]
+Usage: python -m kgdata.wikidata [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  -b, --build TEXT      Build database
-  -d, --directory TEXT  Wikidata directory
-  -o, --output TEXT     Output directory
-  -c, --compact         Whether to compact the db after extraction
-  --help                Show this message and exit.
+  --help  Show this message and exit.
+
+Commands:
+  classes              Wikidata classes
+  entities             Wikidata entities
+  entity_labels        Wikidata entity labels
+  entity_redirections  Wikidata entity redirections
+  properties           Wikidata properties
+  wp2wd                Mapping from Wikipedia articles to Wikidata entities
 ```
 
 You need the following dumps:
 
-1. entity dump ([`latest-all.json.bz2`](https://dumps.wikimedia.org/wikidatawiki/entities/20200518/wikidata-20200518-all.json.bz2)): needed to extract qnodes, classes and properties.
-2. `wikidatawiki-page.sql.gz` and `wikidatawiki-redirect.sql.gz` ([link](https://dumps.wikimedia.org/wikidatawiki)): needed to extract redirections between qnodes.
+1. entity dump ([`latest-all.json.bz2`](https://dumps.wikimedia.org/wikidatawiki/entities/20200518/wikidata-20200518-all.json.bz2)): needed to extract entities, classes and properties.
+2. `wikidatawiki-page.sql.gz` and `wikidatawiki-redirect.sql.gz` ([link](https://dumps.wikimedia.org/wikidatawiki)): needed to extract redirections of old entities.
 
 Then, execute the following steps:
 
 1.  Download the wikidata dumps (e.g., [`latest-all.json.bz2`](https://dumps.wikimedia.org/wikidatawiki/entities/20200518/wikidata-20200518-all.json.bz2)) and put it to `<wikidata_dir>/step_0` folder.
-1.  Extract Qnodes, Qnode Labels, and Qnode Redirections:
-    - `kgdata wikidata -d <wikidata_dir> -b qnodes -o <database_directory> -c`
-    - `kgdata wikidata -d <wikidata_dir> -b qnode_labels -o <database_directory> -c`
-    - `kgdata wikidata -d <wikidata_dir> -b qnode_redirections -o <database_directory> -c`
+1.  Extract entities, entity Labels, and entity redirections:
+    - `kgdata wikidata entities -d <wikidata_dir> -o <database_directory> -c`
+    - `kgdata wikidata entity_labels -d <wikidata_dir> -o <database_directory> -c`
+    - `kgdata wikidata entity_redirections -d <wikidata_dir> -o <database_directory> -c`
 1.  Extract ontology:
-    - `kgdata wikidata -d <wikidata_dir> -b wdclasses -o <database_directory> -c`
-    - `kgdata wikidata -d <wikidata_dir> -b wdprops -o <database_directory> -c`
+    - `kgdata wikidata classes -d <wikidata_dir> -o <database_directory> -c`
+    - `kgdata wikidata properties -d <wikidata_dir> -o <database_directory> -c`
 
 For more commands, see `scripts/build.sh`.
 If compaction step (compact rocksdb) takes lots of time, you can run without `-c` flag.

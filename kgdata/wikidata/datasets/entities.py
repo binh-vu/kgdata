@@ -14,25 +14,25 @@ import orjson
 import sm.misc as M
 from pyspark.rdd import RDD
 from pyspark import Broadcast
+from kgdata.dataset import Dataset
 
 
-def entities(lang: str = "en"):
+def entities(lang: str = "en") -> Dataset[WDEntity]:
     """Normalize Wikidata entity from Wikidata entity json dumps.
 
     This data does not verify if references within entities are valid. For example,
     an entity may have a property value that links to another entity that does not exist.
 
     Returns:
-        RDD[WDEntity]
+        Dataset[WDEntity]
     """
     cfg = WDDataDirCfg.get_instance()
-    sc = get_spark_context()
-
     outdir = cfg.entities.parent / (cfg.entities.name + "_" + lang)
 
     if not does_result_dir_exist(outdir / "unverified"):
         (
             entity_dump()
+            .get_rdd()
             .map(partial(WDEntity.from_wikidump, lang=lang))
             .map(ser_entity)
             .saveAsTextFile(
@@ -76,6 +76,7 @@ def entities(lang: str = "en"):
         )
 
     if not does_result_dir_exist(outdir / "fixed"):
+        sc = get_spark_context()
         unknown_entities = sc.broadcast(
             set(M.deserialize_lines(outdir / "unknown_entities.txt", trim=True))
         )
@@ -113,10 +114,10 @@ def entities(lang: str = "en"):
             )
         )
 
-    return sc.textFile(str(outdir / "fixed/*.gz")).map(deser_entity)
+    return Dataset(file_pattern=outdir / "fixed/*.gz", deserialize=deser_entity)
 
 
-def deser_entity(line: bytes):
+def deser_entity(line: Union[str, bytes]) -> WDEntity:
     return WDEntity.from_dict(orjson.loads(line))
 
 
@@ -196,4 +197,4 @@ def fixed_entity(
 
 if __name__ == "__main__":
     WDDataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
-    print("Total:", entities().count())
+    print("Total:", entities().get_rdd().count())
