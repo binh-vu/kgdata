@@ -29,7 +29,7 @@ from kgdata.spark import (
     left_outer_join,
     does_result_dir_exist,
 )
-from kgdata.wikidata.rdd_datasets import wikidata_wikipedia_links
+from kgdata.wikidata.deprecated.rdd_datasets import wikidata_wikipedia_links
 from kgdata.wikipedia.prelude import get_title_from_url, title2groups
 from sm.misc.deser import get_open_fn
 
@@ -817,7 +817,7 @@ def populated_relational_tables_en_inclusive(
 
         if not does_result_dir_exist(step02_file):
             # get the list of wikidata and useful props only
-            from kgdata.wikidata.rdd_datasets import wiki_reltables_instances
+            from kgdata.wikidata.deprecated.rdd_datasets import wiki_reltables_instances
 
             qnodes_rdd = (
                 wiki_reltables_instances()

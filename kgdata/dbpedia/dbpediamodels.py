@@ -7,7 +7,7 @@ import copy
 import orjson
 import pandas as pd
 
-from kgdata.wikidata.models import QNode
+from kgdata.wikidata.models import WDEntity
 
 
 @dataclass
@@ -37,13 +37,13 @@ class ExternalLink:
     __slots__ = ("dbpedia", "qnode", "qnode_id")
 
     dbpedia: Optional[dict]
-    qnode: Optional[QNode]
+    qnode: Optional[WDEntity]
     qnode_id: Optional[str]
 
     @staticmethod
     def from_dict(o: dict):
         if o["qnode"] is not None:
-            o["qnode"] = QNode.from_dict(o["qnode"])
+            o["qnode"] = WDEntity.from_dict(o["qnode"])
         return ExternalLink(**o)
 
 

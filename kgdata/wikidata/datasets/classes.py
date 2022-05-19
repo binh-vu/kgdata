@@ -5,7 +5,7 @@ from collections import deque
 from typing import List, Dict
 import sm.misc as M
 from tqdm import tqdm
-from kgdata.wikidata.models.new_wdclass import WDClass
+from kgdata.wikidata.models import WDClass
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entities import entities, ser_entity

@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 from kgdata.config import WIKIDATA_DIR
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.models import QNode, WDClass, WDProperty
-from kgdata.wikidata.rdd_datasets import qnodes_en
+from kgdata.wikidata.deprecated.rdd_datasets import qnodes_en
 from sm.misc import serialize_jl, serialize_json, deserialize_jl
 from graph.retworkx import digraph_find_cycle, RetworkXStrDiGraph
 

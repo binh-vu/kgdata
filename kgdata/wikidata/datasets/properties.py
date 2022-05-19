@@ -2,7 +2,7 @@ from kgdata.dataset import Dataset
 from kgdata.splitter import split_a_list
 import orjson
 from typing import List
-from kgdata.wikidata.models.new_wdprop import WDProperty
+from kgdata.wikidata.models import WDProperty
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entities import entities, ser_entity

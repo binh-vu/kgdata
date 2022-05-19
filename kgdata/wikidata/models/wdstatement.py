@@ -1,16 +1,16 @@
 from dataclasses import dataclass
 from typing import Dict, List, Literal
 
-from kgdata.wikidata.models.wdvalue import WDValueType, WDValue
+from kgdata.wikidata.models.wdvalue import WDValueKind, WDValue
 
 
 @dataclass
 class WDStatement:
     __slots__ = ("value", "qualifiers", "qualifiers_order", "rank")
 
-    value: WDValueType
+    value: WDValueKind
     # mapping from qualifier id into data value
-    qualifiers: Dict[str, List[WDValueType]]
+    qualifiers: Dict[str, List[WDValueKind]]
     # list of qualifiers id that records the order (as dict lacks of order)
     qualifiers_order: List[str]
     # rank of a statement

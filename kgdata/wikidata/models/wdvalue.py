@@ -1,7 +1,7 @@
 from __future__ import annotations
+import orjson
 from typing import Generic, Literal, TypeVar, TypedDict, Union
 from typing_extensions import TypeGuard
-from dataclasses import dataclass
 
 """
 https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON#Data_Values is moved to https://doc.wikimedia.org/Wikibase/master/php/md_docs_topics_json.html
@@ -10,8 +10,26 @@ so keep in mind the type may not be exhausted
 """
 
 
-T = TypeVar("T")
+WDValueType = Literal[
+    "string",
+    "wikibase-entityid",
+    "time",
+    "quantity",
+    "monolingualtext",
+    "globecoordinate",
+]
+
+T = TypeVar(
+    "T",
+    Literal["string"],
+    Literal["wikibase-entityid"],
+    Literal["time"],
+    Literal["quantity"],
+    Literal["monolingualtext"],
+    Literal["globecoordinate"],
+)
 V = TypeVar("V", covariant=True)
+
 
 ValueWikibaseEntityId = TypedDict(
     "ValueWikibaseEntityId",
@@ -113,11 +131,15 @@ class WDValue(Generic[T, V]):
     def as_entity_id(self: WDValueEntityId) -> str:
         return self.value["id"]
 
-    def as_qnode_id_safe(self: WDValueEntityId) -> str:
+    def as_entity_id_safe(self: WDValue) -> str:
+        assert WDValue.is_entity_id(self)
+        return self.value["id"]
+
+    def as_qnode_id_safe(self: WDValue) -> str:
         assert WDValue.is_qnode(self)
         return self.value["id"]
 
-    def as_pnode_id_safe(self: WDValueEntityId) -> str:
+    def as_pnode_id_safe(self: WDValue) -> str:
         assert WDValue.is_pnode(self)
         return self.value["id"]
 
@@ -127,6 +149,9 @@ class WDValue(Generic[T, V]):
             "value": self.value,
         }
 
+    def to_string_repr(self) -> str:
+        return orjson.dumps(self.to_dict()).decode()
+
 
 WDValueString = WDValue[Literal["string"], str]
 WDValueEntityId = WDValue[Literal["wikibase-entityid"], ValueWikibaseEntityId]
@@ -135,7 +160,7 @@ WDValueQuantity = WDValue[Literal["quantity"], ValueQuantity]
 WDValueMonolingualText = WDValue[Literal["monolingualtext"], ValueMonolingualText]
 WDValueGlobeCoordinate = WDValue[Literal["globecoordinate"], ValueGlobeCoordinate]
 
-WDValueType = Union[
+WDValueKind = Union[
     WDValueString,
     WDValueEntityId,
     WDValueTime,
@@ -145,15 +170,17 @@ WDValueType = Union[
 ]
 
 
-def type_check(val: WDValueType):
-    """The function is here to see if the type checker is able to flag error
+def type_check(val: WDValueKind):
+    """The function is here to see if the type checker is able to flag error.
+
+    Uncomment to see the errors.
 
     Tested with Pylance and mypy in 2022-05-15.
     """
     if WDValue.is_entity_id(val):
-        val.as_string()
+        # val.as_string()
         val.as_entity_id()
 
     if WDValue.is_string(val):
         val.as_string()
-        val.as_entity_id()
+        # val.as_entity_id()

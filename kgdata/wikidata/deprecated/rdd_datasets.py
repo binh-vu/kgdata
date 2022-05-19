@@ -835,7 +835,7 @@ def wikidata_quantity_prop_stats(
                 statdict["min"] = min(statdict["min"], min(lst))
                 statdict["max"] = max(statdict["max"], max(lst))
             statdict["sum"] += sum(lst)
-            statdict["sum_square"] += sum([x ** 2 for x in lst])
+            statdict["sum_square"] += sum([x**2 for x in lst])
             statdict["n_overi36"] += len(olst) - len(lst)
             return statdict
 
@@ -878,7 +878,7 @@ def wikidata_quantity_prop_stats(
                     item["mean"] = (item["n_overi36"] * max_i36 + item["sum"]) / item[
                         "size"
                     ]
-                    nsum_square = item["n_overi36"] * (max_i36 ** 2) + item.pop(
+                    nsum_square = item["n_overi36"] * (max_i36**2) + item.pop(
                         "sum_square"
                     )
                     nsum = item["n_overi36"] * max_i36 + item.pop("sum")

@@ -58,12 +58,12 @@ def wikidata(
 
     from kgdata.config import WIKIDATA_DIR
     from kgdata.wikidata.s00_prep_data import prep01
-    from kgdata.wikidata.rdd_datasets import (
+    from kgdata.wikidata.deprecated.rdd_datasets import (
         qnodes_en,
         wiki_article_to_qnode,
         qnodes_identifier,
     )
-    from kgdata.wikidata.ontology import (
+    from kgdata.wikidata.deprecated.models.ontology import (
         save_wdprops,
         save_wdclasses,
         make_ontology,
@@ -71,7 +71,7 @@ def wikidata(
         examine_ontology_property,
     )
     from kgdata.spark import does_result_dir_exist
-    from kgdata.wikidata.db import (
+    from kgdata.wikidata.deprecated.db import (
         get_qnode_db,
         get_wdprop_db,
         get_wdclass_db,

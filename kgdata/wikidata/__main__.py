@@ -10,7 +10,7 @@ from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.classes import classes
 from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
-from kgdata.wikidata.newdb import (
+from kgdata.wikidata.db import (
     get_entity_db,
     get_entity_label_db,
     get_entity_redirection_db,
@@ -170,7 +170,7 @@ def db_properties(directory: str, output: str, compact: bool, lang: str):
     """Wikidata properties"""
     WDDataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdproperties.db"
+    dbpath = Path(output) / "wdprops.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     db = load(

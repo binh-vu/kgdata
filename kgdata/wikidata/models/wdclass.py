@@ -1,16 +1,9 @@
-import os
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
-from pickle import load
-from typing import List, Dict, Set, Union, Generator
-from loguru import logger
+from dataclasses import dataclass
+from typing import List, Set
+from kgdata.wikidata.models.wdentity import WDEntity
 
-import orjson
 
-from kgdata.config import WIKIDATA_DIR
-from sm.misc import deserialize_json, deserialize_jl
-from kgdata.wikidata.models.qnode import (
-    QNode,
+from kgdata.wikidata.models.multilingual import (
     MultiLingualString,
     MultiLingualStringList,
 )
@@ -22,130 +15,77 @@ class WDClass:
         "id",
         "label",
         "description",
-        "datatype",
         "aliases",
         "parents",
         "properties",
         "different_froms",
         "equivalent_classes",
-        "parents_closure",
+        "ancestors",
     )
     id: str
     label: MultiLingualString
     description: MultiLingualString
-    datatype: str
     aliases: MultiLingualStringList
     parents: List[str]
+    # properties of a type, "P1963"
     properties: List[str]
     different_froms: List[str]
     equivalent_classes: List[str]
-    # not include itself
-    parents_closure: Set[str]
-
-    @staticmethod
-    def from_file(
-        indir: Union[str, Path] = os.path.join(WIKIDATA_DIR, "ontology"),
-        load_parent_closure: bool = False,
-    ) -> Dict[str, "WDClass"]:
-        records = deserialize_jl(os.path.join(indir, "classes.jl"))
-        records = [WDClass.from_dict(c) for c in records]
-        records = {r.id: r for r in records}
-
-        if load_parent_closure:
-            logger.info("Load ancestors...")
-            parents_closure = deserialize_jl(
-                os.path.join(indir, "superclasses_closure.jl")
-            )
-            for rid, parents in parents_closure:
-                records[rid].parents_closure = set(parents)
-
-        return records
-
-    @staticmethod
-    def iter_file(
-        indir: Union[str, Path] = os.path.join(WIKIDATA_DIR, "ontology"),
-        load_parent_closure: bool = False,
-    ) -> Generator["WDClass", None, None]:
-        if load_parent_closure:
-            with open(os.path.join(indir, "classes.jl"), "r") as f, open(
-                os.path.join(indir, "superclasses_closure.jl"), "r"
-            ) as g:
-                while True:
-                    try:
-                        record = orjson.loads(next(f))
-                    except StopIteration:
-                        try:
-                            next(g)
-                        except StopIteration:
-                            break
-                        raise Exception(
-                            "Invalid superclasses_closure file. Number of rows doesn't match with the classes file"
-                        )
-
-                    cid, parents = orjson.loads(next(g))
-                    assert record["id"] == cid
-                    record["parents_closure"] = parents
-                    yield WDClass.from_dict(record)
-        else:
-            with open(os.path.join(indir, "classes.jl"), "r") as f:
-                for line in f:
-                    yield WDClass.from_dict(orjson.loads(line))
-
-    @staticmethod
-    def deserialize(s):
-        o = orjson.loads(s)
-        return WDClass.from_dict(o)
+    ancestors: Set[str]
 
     @staticmethod
     def from_dict(o):
         o["label"] = MultiLingualString(**o["label"])
         o["description"] = MultiLingualString(**o["description"])
         o["aliases"] = MultiLingualStringList(**o["aliases"])
-        o["parents_closure"] = set(o["parents_closure"])
+        o["ancestors"] = set(o["ancestors"])
         return WDClass(**o)
 
-    @staticmethod
-    def from_qnode(qnode: QNode):
-        return WDClass(
-            id=qnode.id,
-            label=qnode.label,
-            description=qnode.description,
-            datatype=qnode.datatype,  # type: ignore
-            aliases=qnode.aliases,
-            parents=sorted(
-                {stmt.value.as_entity_id() for stmt in qnode.props.get("P279", [])}
-            ),
-            properties=sorted(
-                {stmt.value.as_entity_id() for stmt in qnode.props.get("P1963", [])}
-            ),
-            different_froms=sorted(
-                {stmt.value.as_entity_id() for stmt in qnode.props.get("P1889", [])}
-            ),
-            equivalent_classes=sorted(
-                {stmt.value.as_string() for stmt in qnode.props.get("P1709", [])}
-            ),
-            parents_closure=set(),
-        )
-
-    def serialize(self):
-        odict = {
-            k: getattr(self, k)
-            for k in [
-                "id",
-                "label",
-                "description",
-                "datatype",
-                "aliases",
-                "parents",
-                "properties",
-                "different_froms",
-                "equivalent_classes",
-                "parents_closure",
-            ]
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "label": self.label.to_dict(),
+            "description": self.description.to_dict(),
+            "aliases": self.aliases.to_dict(),
+            "parents": self.parents,
+            "properties": self.properties,
+            "different_froms": self.different_froms,
+            "equivalent_classes": self.equivalent_classes,
+            "ancestors": list(self.ancestors),
         }
-        for k in ["label", "description", "aliases"]:
-            odict[k] = odict[k].serialize()
-        return orjson.dumps(odict, option=orjson.OPT_SERIALIZE_DATACLASS, default=list)
 
-    def get_uri(self):
-        return f"http://www.wikidata.org/entity/{self.id}"
+    @staticmethod
+    def from_entity(ent: WDEntity):
+        assert ent.datatype is None
+
+        parents = []
+        for stmt in ent.props.get("P279", []):
+            assert stmt.value.is_entity_id(stmt.value)
+            parents.append(stmt.value.as_entity_id())
+
+        properties = []
+        for stmt in ent.props.get("P1963", []):
+            assert stmt.value.is_entity_id(stmt.value)
+            properties.append(stmt.value.as_entity_id())
+
+        different_froms = []
+        for stmt in ent.props.get("P1889", []):
+            assert stmt.value.is_entity_id(stmt.value)
+            different_froms.append(stmt.value.as_entity_id())
+
+        equivalent_classes = []
+        for stmt in ent.props.get("P1709", []):
+            assert stmt.value.is_string(stmt.value)
+            equivalent_classes.append(stmt.value.as_string())
+
+        return WDClass(
+            id=ent.id,
+            label=ent.label,
+            description=ent.description,
+            aliases=ent.aliases,
+            parents=sorted(parents),
+            properties=sorted(properties),
+            different_froms=sorted(different_froms),
+            equivalent_classes=sorted(equivalent_classes),
+            ancestors=set(),
+        )
