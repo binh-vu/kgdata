@@ -1,17 +1,16 @@
 from collections import defaultdict
 from operator import itemgetter
-from typing import Dict, List, Tuple, Union, cast
+import shutil
+from typing import Dict, List, Tuple, Union
 
 from kgdata.config import WIKIDATA_DIR
 from kgdata.spark import (
-    does_result_dir_exist,
     get_spark_context,
-    head,
     saveAsSingleTextFile,
 )
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
-from kgdata.wikidata.datasets.entity_ids import is_entity_id
+from kgdata.wikidata.datasets.entity_ids import entity_ids, is_entity_id
 from kgdata.wikidata.datasets.entity_redirection_dump import entity_redirection_dump
 from kgdata.dataset import Dataset
 from kgdata.wikidata.models.wdentity import WDEntity
@@ -19,11 +18,18 @@ from kgdata.wikidata.datasets.page_ids import page_ids, parse_sql_values
 import orjson
 from pyspark.rdd import RDD
 from sm.misc import identity_func, deserialize_jl, deserialize_csv, serialize_csv
+from sm.misc.deser import deserialize_lines
 from tqdm import tqdm
 
 
 def entity_redirections() -> Dataset[Tuple[str, str]]:
-    """Wikidata entity redirections
+    """Wikidata entity redirections. It combines two datasets: page_ids and entity_redirection_dump.
+    The first one contains mapping from page_id => entity_id (can be old id).
+    The second one contains mapping from page_id => final entity_id.
+
+    We did a join between two datasets based on page_id so we can get the mapping from old entity_id to the final entity_id.
+
+    Finally, we check if the final entity id is in the entity_ids dataset. If not, we remove the mapping.
 
     Returns:
         Dataset[tuple[str, str]]
@@ -95,13 +101,47 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
             refined_redirections[before_item] = final_item
 
         serialize_csv(
-            cast(List[List[str]], sorted(refined_redirections.items())),
+            [
+                [before, after]
+                for before, after in sorted(refined_redirections.items())
+                if before != after  # there is a case where this is equal: P2094
+            ],
             cfg.entity_redirections / "redirections.tsv",
             delimiter="\t",
         )
 
+    if not (cfg.entity_redirections / "fixed_redirections.tsv").exists():
+        lst = deserialize_csv(
+            cfg.entity_redirections / "redirections.tsv", delimiter="\t"
+        )
+
+        saveAsSingleTextFile(
+            get_spark_context()
+            .parallelize(list(set(x[1] for x in lst)))
+            .subtract(entity_ids().get_rdd()),
+            cfg.entity_redirections / "unknown_target_entities.txt",
+        )
+
+        unknown_ents = set(
+            deserialize_lines(
+                cfg.entity_redirections / "unknown_target_entities.txt", trim=True
+            )
+        )
+
+        if len(unknown_ents) > 0:
+            serialize_csv(
+                [[before, after] for before, after in lst if after not in unknown_ents],
+                cfg.entity_redirections / "fixed_redirections.tsv",
+                delimiter="\t",
+            )
+        else:
+            shutil.copyfile(
+                str(cfg.entity_redirections / "redirections.tsv"),
+                str(cfg.entity_redirections / "fixed_redirections.tsv"),
+            )
+
     return Dataset(
-        file_pattern=cfg.entity_redirections / "redirections.tsv",
+        file_pattern=cfg.entity_redirections / "fixed_redirections.tsv",
         deserialize=lambda x: tuple(x.split("\t")),
     )
 

@@ -37,12 +37,12 @@ class Dataset(Generic[V]):
     def get_dict(self: Dataset[Tuple[str, str]], rstrip: bool = True):
         output = {}
         if rstrip:
-            for file in tqdm(self.get_files(), desc="read dataset..."):
+            for file in tqdm(self.get_files(), desc="read dataset"):
                 for line in deserialize_lines(file):
                     k, v = self.deserialize(line.rstrip())
                     output[k] = v
         else:
-            for file in tqdm(self.get_files(), desc="read dataset..."):
+            for file in tqdm(self.get_files(), desc="read dataset"):
                 for line in deserialize_lines(file):
                     k, v = self.deserialize(line)
                     output[k] = v

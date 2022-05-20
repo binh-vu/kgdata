@@ -36,23 +36,22 @@ def entity_ids() -> Dataset[str]:
             entity_dump()
             .get_rdd()
             .map(itemgetter("id"))
-            .sortBy(identity_func)
             .saveAsTextFile(
                 str(cfg.entity_ids / "ids"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
             )
         )
 
-    rdd = get_spark_context().textFile(str(cfg.entity_ids / "ids/*.gz"))
+    dataset = Dataset.string(cfg.entity_ids / "ids/*.gz")
 
     if not (cfg.entity_ids / "identifiers.txt").exists():
         saveAsSingleTextFile(
-            rdd.sortBy(identity_func),
+            dataset.get_rdd().sortBy(identity_func).map(lambda x: x + "_"),
             (cfg.entity_ids / "identifiers.txt"),
             shuffle=False,
         )
 
-    if not (cfg.entity_ids / "verified.txt").exists():
+    if not (cfg.entity_ids / "metadata.txt").exists():
         prefixes = {"P", "Q", "L"}
         seen_prefixes = set()
 
@@ -66,10 +65,11 @@ def entity_ids() -> Dataset[str]:
                 desc="verifying entity ids",
             ) as pbar,
         ):
+            n_ids = 0
             last_bytes = 0
             prev_id = ""
             for line in f:
-                id = line.strip().decode()
+                id = line.strip().decode()[:-1]
                 if prev_id >= id:
                     raise ValueError(
                         f"Id must be unique and sorted, but found: {prev_id} and {id}"
@@ -86,13 +86,13 @@ def entity_ids() -> Dataset[str]:
                 # verify the `is_entity_id` function
                 assert is_entity_id(id), id
 
-        (cfg.entity_ids / "verified.txt").write_text(
-            "seen id prefixes: {}\n".format(seen_prefixes)
+                n_ids += 1
+
+        (cfg.entity_ids / "metadata.txt").write_text(
+            f"""
+seen id prefixes: {sorted(seen_prefixes)}
+total number of ids: {n_ids}
+""".strip()
         )
 
-    return Dataset.string(cfg.entity_ids / "ids/*.gz")
-
-
-if __name__ == "__main__":
-    WDDataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
-    entity_ids()
+    return dataset

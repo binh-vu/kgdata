@@ -1,5 +1,7 @@
 from kgdata.dataset import Dataset
 from kgdata.splitter import split_a_list
+from kgdata.wikidata.datasets.entity_ids import entity_ids
+from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 import orjson
 from typing import List
 from kgdata.wikidata.models import WDProperty
@@ -41,6 +43,15 @@ def properties(lang="en") -> Dataset[WDProperty]:
                 str(cfg.properties / "properties"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
             )
+        )
+
+    if not (cfg.properties / "unknown_properties.txt").exists():
+        saveAsSingleTextFile(
+            get_spark_context()
+            .textFile(str(cfg.properties / "ids/*.gz"))
+            .subtract(entity_ids())
+            .subtract(entity_redirections().get_rdd().map(lambda x: x[0])),
+            cfg.properties / "unknown_properties.txt",
         )
 
     if not does_result_dir_exist(cfg.properties / "ancestors"):
