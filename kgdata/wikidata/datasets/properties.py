@@ -49,7 +49,7 @@ def properties(lang="en") -> Dataset[WDProperty]:
         saveAsSingleTextFile(
             get_spark_context()
             .textFile(str(cfg.properties / "ids/*.gz"))
-            .subtract(entity_ids())
+            .subtract(entity_ids().get_rdd())
             .subtract(entity_redirections().get_rdd().map(lambda x: x[0])),
             cfg.properties / "unknown_properties.txt",
         )
@@ -123,8 +123,10 @@ def get_property_ids(ent: WDEntity) -> List[str]:
         if stmt.value.is_entity_id(stmt.value):
             prop_ids.add(stmt.value.as_entity_id())
 
+    # statement property and qualifiers
+    prop_ids.update(ent.props.keys())
     for stmts in ent.props.values():
         for stmt in stmts:
             prop_ids.update(stmt.qualifiers.keys())
-    prop_ids.update(ent.props.keys())
+
     return list(prop_ids)
