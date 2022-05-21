@@ -37,7 +37,7 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
             entities(lang)
             .get_rdd()
             .filter(lambda ent: ent.id in class_ids.value)
-            .map(lambda x: orjson.dumps(WDClass.from_entity(x).to_dict()))
+            .map(lambda x: orjson.dumps(extract_class(x).to_dict()))
             .saveAsTextFile(
                 str(cfg.classes / "classes"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
@@ -100,6 +100,13 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
     )
 
 
+def extract_class(ent: WDEntity) -> WDClass:
+    cls = WDClass.from_entity(ent)
+    # we do have cases where the class is a subclass of itself, which is wrong.
+    cls.parents = [p for p in cls.parents if p != cls.id]
+    return cls
+
+
 def build_ancestors(id2parents: dict) -> dict:
     id2ancestors = {}
     for id in tqdm(id2parents, desc="build ancestors"):
@@ -133,5 +140,16 @@ def get_class_ids(ent: WDEntity) -> List[str]:
         for stmt in ent.props.get(pid, []):
             if stmt.value.is_entity_id(stmt.value):
                 lst.add(stmt.value.as_entity_id())
+
+    # class of class:
+    # - Wikidata metaclass Q19361238
+    # - metaclass Q19478619
+    # - class Q5127848
+    if any(
+        stmt.value.as_entity_id() in {"Q19361238", "Q19478619", "Q5127848"}
+        for stmt in ent.props.get("P31", [])
+        if stmt.value.is_entity_id(stmt.value)
+    ):
+        lst.add(ent.id)
 
     return list(lst)
