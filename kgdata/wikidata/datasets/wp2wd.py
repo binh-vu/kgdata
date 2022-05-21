@@ -14,12 +14,13 @@ from functools import partial
 def wp2wd(lang="en") -> Dataset[Tuple[str, str]]:
     """Get alignments between wikidata qnode and wiki articles."""
     cfg = WDDataDirCfg.get_instance()
+    site = lang + "wiki"
 
     if not does_result_dir_exist(cfg.wp2wd / lang):
         (
             entities(lang)
             .get_rdd()
-            .map(lambda x: extract_link(x, lang))
+            .map(lambda x: extract_link(x, site))
             .filter(lambda x: x is not None)
             .map(orjson.dumps)
             .saveAsTextFile(
