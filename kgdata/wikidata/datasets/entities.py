@@ -97,7 +97,6 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
             .map(partial(WDEntity.from_wikidump, lang=lang))
             .map(lambda x: fixed_entity(x, unknown_entities, redirected_entities))
             .map(lambda x: x[0])
-            .sortBy(lambda x: x.id)
             .map(ser_entity)
             .saveAsTextFile(
                 str(outdir / "fixed"),

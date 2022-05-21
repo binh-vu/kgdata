@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kgdata"
-version = "2.0.5"
+version = "2.0.6"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"

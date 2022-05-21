@@ -46,11 +46,13 @@ def load_wdentities(
     ]
 
     logger.info("Generating SST files...")
-    sst_files = pp.map(generate_sst, inputs=inputs, progress_desc="loading")
+    sst_files = pp.map(
+        generate_sst, inputs=inputs, progress_desc="loading", show_progress=True
+    )
 
     logger.info("Loading SST files...")
     opts = Options(raw_mode=True)
-    opts.set_compression_type(DBCompressionType.none())
+    # opts.set_compression_type(DBCompressionType.none())
     db = Rdict(path=str(dbpath / "primary"), options=opts)
     db.ingest_external_file(sst_files)
     db.flush()
@@ -65,14 +67,16 @@ def generate_sst(outdir: Path, args: FileReaderArgs):
     outfile.parent.mkdir(parents=True, exist_ok=True)
 
     if outfile.exists():
-        return outfile
+        return str(outfile)
 
     outputs = read_file(args)
     writer = SstFileWriter()
     writer.open(str(outfile))
-    for k, v in outputs:
+    for k, v in sorted(outputs, key=itemgetter(0)):
         writer[k] = v
     writer.finish()
+
+    return str(outfile)
 
 
 @click.command(name="entities")
