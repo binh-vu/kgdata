@@ -15,6 +15,12 @@ class MultiLingualString(str):
     def as_lang(self, lang: str) -> str:
         return self.lang2value[lang]
 
+    def as_lang_default(self, lang: str, default: str) -> str:
+        return self.lang2value.get(lang, default)
+
+    def has_lang(self, lang: str) -> bool:
+        return lang in self.lang2value
+
     @staticmethod
     def en(label: str):
         return MultiLingualString(lang2value={"en": label}, lang="en")
