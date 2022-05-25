@@ -25,6 +25,8 @@ class WDDataDirCfg:
 
         self.classes = datadir / "classes"
         self.properties = datadir / "properties"
+        self.property_domains = datadir / "property_domains"
+        self.property_ranges = datadir / "property_ranges"
         self.wp2wd = datadir / "wp2wd"
 
         self.entity_redirections = datadir / "entity_redirections"

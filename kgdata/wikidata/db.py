@@ -288,3 +288,43 @@ def get_wp2wd_db(
         ser_value=str.encode,
         db_options=db_options,
     )
+
+
+def get_wdprop_range_db(
+    dbfile: Union[Path, str],
+    create_if_missing=False,
+    read_only=True,
+) -> RocksDBDict[str, Dict[str, int]]:
+    db_options = {
+        "compression": CompressionType.lz4_compression,
+    }
+    return RocksDBDict(
+        dbfile,
+        create_if_missing=create_if_missing,
+        read_only=read_only,
+        deser_key=bytes.decode,
+        ser_key=str.encode,
+        deser_value=orjson.loads,
+        ser_value=orjson.dumps,
+        db_options=db_options,
+    )
+
+
+def get_wdprop_domain_db(
+    dbfile: Union[Path, str],
+    create_if_missing=False,
+    read_only=True,
+) -> RocksDBDict[str, Dict[str, int]]:
+    db_options = {
+        "compression": CompressionType.lz4_compression,
+    }
+    return RocksDBDict(
+        dbfile,
+        create_if_missing=create_if_missing,
+        read_only=read_only,
+        deser_key=bytes.decode,
+        ser_key=str.encode,
+        deser_value=orjson.loads,
+        ser_value=orjson.dumps,
+        db_options=db_options,
+    )

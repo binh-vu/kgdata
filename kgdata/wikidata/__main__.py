@@ -1,6 +1,8 @@
 import glob
 from pathlib import Path
+from typing import List
 import click, os
+from click.types import Choice
 from hugedict.loader import FileFormat, load
 from hugedict.misc import Chain2, zstd6_compress, Chain3
 from kgdata.wikidata.config import WDDataDirCfg
@@ -8,12 +10,15 @@ from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.datasets.properties import properties
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.classes import classes
+from kgdata.wikidata.datasets.property_domains import property_domains
+from kgdata.wikidata.datasets.property_ranges import property_ranges
 from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.db import (
     get_entity_db,
     get_entity_label_db,
     get_entity_redirection_db,
+    get_wdprop_domain_db,
     get_wp2wd_db,
     get_wdclass_db,
     get_wdprop_db,
@@ -160,14 +165,24 @@ def db_classes(directory: str, output: str, compact: bool, lang: str):
 @click.option("-d", "--directory", default="", help="Wikidata directory")
 @click.option("-o", "--output", help="Output directory")
 @click.option(
+    "-e",
+    "--extra",
+    type=Choice(["domains", "ranges"], case_sensitive=False),
+    multiple=True,
+)
+@click.option(
     "-c",
     "--compact",
     is_flag=True,
     help="Whether to compact the results. May take a very very long time",
 )
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def db_properties(directory: str, output: str, compact: bool, lang: str):
-    """Wikidata properties"""
+def db_properties(
+    directory: str, output: str, extra: List[str], compact: bool, lang: str
+):
+    """Build databases storing Wikidata properties. It comes with a list of extra
+    options (sub databases) for building domains and ranges of properties.
+    """
     WDDataDirCfg.init(directory)
 
     dbpath = Path(output) / "wdprops.db"
@@ -184,8 +199,40 @@ def db_properties(directory: str, output: str, compact: bool, lang: str):
         shm_mem_limit_mb=128,
     )
     if compact:
-        logger.info("Run compaction...")
+        logger.info("Compacting wdprops.db...")
         db.compact_range()
+
+    for name in extra:
+        if name == "domains":
+            dbpath = Path(output) / "wdprop_domains.db"
+            dbpath.mkdir(exist_ok=True, parents=True)
+            infiles = property_domains(lang=lang).get_files()
+            db = get_wdprop_domain_db(
+                dbpath, create_if_missing=True, read_only=False
+            ).db
+        elif name == "ranges":
+            dbpath = Path(output) / "wdprop_ranges.db"
+            dbpath.mkdir(exist_ok=True, parents=True)
+            infiles = property_ranges(lang=lang).get_files()
+            db = get_wdprop_domain_db(
+                dbpath, create_if_missing=True, read_only=False
+            ).db
+        else:
+            raise NotImplementedError(name)
+
+        db = load(
+            db=db,
+            infiles=infiles,
+            format=FileFormat.tuple2,
+            key_fn=str.encode,
+            value_fn=orjson.dumps,
+            n_processes=8,
+            shm_mem_ratio=12,
+            shm_mem_limit_mb=128,
+        )
+        if compact:
+            logger.info("Compacting {} db...", name)
+            db.compact_range()
 
 
 @click.command(name="wp2wd")

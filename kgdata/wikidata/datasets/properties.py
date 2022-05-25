@@ -130,3 +130,4 @@ def get_property_ids(ent: WDEntity) -> List[str]:
             prop_ids.update(stmt.qualifiers.keys())
 
     return list(prop_ids)
+
