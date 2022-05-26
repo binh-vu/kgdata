@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Dict, List, Set, Tuple, Union
 from kgdata.wikidata.datasets.property_domains import merge_counters
 
@@ -10,6 +11,7 @@ from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.classes import build_ancestors
 from kgdata.wikidata.datasets.entities import entities, ser_entity
 from kgdata.wikidata.datasets.entity_ids import entity_ids
+from kgdata.wikidata.datasets.entity_types import entity_types
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.models import WDProperty
 from kgdata.wikidata.models.wdentity import WDEntity
@@ -24,12 +26,18 @@ def property_ranges(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
     cfg = WDDataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.property_ranges):
-        entity_rdd = entities(lang).get_rdd()
-        (
-            entity_rdd.flatMap(get_target_property_entity)
-            .join(entity_rdd.flatMap(get_instanceof))
-            .map(lambda x: (x[1][0], {cls_id: 1 for cls_id in x[1][1]}))
+        # mapping from entity id to the incoming properties with counts
+        ent_prop_counts = (
+            entities(lang)
+            .get_rdd()
+            .flatMap(get_target_property_entity)
             .reduceByKey(merge_counters)
+        )
+        (
+            ent_prop_counts.join(entity_types(lang).get_rdd())
+            .flatMap(lambda x: join_prop_counts_and_types(x[1][0], x[1][1]))
+            .reduceByKey(merge_counters)
+            .coalesce(256)
             .map(orjson.dumps)
             .saveAsTextFile(
                 str(cfg.property_ranges),
@@ -40,33 +48,34 @@ def property_ranges(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
     return Dataset(cfg.property_ranges / "*.gz", deserialize=orjson.loads)
 
 
-def get_instanceof(ent: WDEntity) -> List[Tuple[str, str]]:
-    instanceof = "P31"
-    return [
-        (ent.id, stmt.value.as_entity_id_safe())
-        for stmt in ent.props.get(instanceof, [])
-    ]
+def join_prop_counts_and_types(
+    prop_counts: Dict[str, int], classes: List[str]
+) -> List[Tuple[str, Dict[str, int]]]:
+    out = []
+    for prop, count in prop_counts.items():
+        out.append((prop, {cls: count for cls in classes}))
+    return out
 
 
-def get_target_property_entity(ent: WDEntity) -> List[Tuple[str, str]]:
+def get_target_property_entity(ent: WDEntity) -> List[Tuple[str, Dict[str, int]]]:
     instanceof = "P31"
     subclass_of = "P279"
     subproperty_of = "P1647"
 
     ignored_props = {instanceof, subclass_of, subproperty_of}
 
-    out = set()
+    out = defaultdict(set)
     for pid, stmts in ent.props.items():
         if pid in ignored_props:
             continue
 
         for stmt in stmts:
             if stmt.value.is_entity_id(stmt.value):
-                out.add((stmt.value.as_entity_id(), pid))
+                out[stmt.value.as_entity_id()].add(pid)
 
             for qid, qvals in stmt.qualifiers.items():
                 for qval in qvals:
                     if qval.is_entity_id(qval):
-                        out.add((qval.as_entity_id(), qid))
+                        out[qval.as_entity_id()].add(qid)
 
-    return list(out)
+    return [(ent_id, {pid: 1 for pid in props}) for ent_id, props in out.items()]

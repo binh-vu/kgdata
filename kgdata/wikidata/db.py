@@ -10,7 +10,12 @@ from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identit
 import requests
 
 from hugedict.rocksdb import RocksDBDict
-from kgdata.wikidata.models import WDClass, WDProperty
+from kgdata.wikidata.models import (
+    WDClass,
+    WDProperty,
+    WDPropertyRanges,
+    WDPropertyDomains,
+)
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel)
 CompressionType = rocksdb.CompressionType  # type: ignore
@@ -294,7 +299,7 @@ def get_wdprop_range_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
     read_only=True,
-) -> RocksDBDict[str, Dict[str, int]]:
+) -> RocksDBDict[str, WDPropertyRanges]:
     db_options = {
         "compression": CompressionType.lz4_compression,
     }
@@ -314,7 +319,7 @@ def get_wdprop_domain_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
     read_only=True,
-) -> RocksDBDict[str, Dict[str, int]]:
+) -> RocksDBDict[str, WDPropertyDomains]:
     db_options = {
         "compression": CompressionType.lz4_compression,
     }

@@ -31,6 +31,7 @@ def property_domains(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
             .get_rdd()
             .flatMap(get_property_domains)
             .reduceByKey(merge_counters)
+            .coalesce(256)
             .map(orjson.dumps)
             .saveAsTextFile(
                 str(cfg.property_domains),
@@ -60,9 +61,13 @@ def get_property_domains(ent: WDEntity) -> List[Tuple[str, Dict[str, int]]]:
         stmt.value.as_entity_id_safe(): 1 for stmt in ent.props.get(instanceof, [])
     }
 
-    lst = []
-    for prop in ent.props.keys():
+    lst = {}
+    for prop, stmts in ent.props.items():
         if prop in ignored_props:
             continue
-        lst.append((prop, domains))
-    return lst
+        lst[prop] = domains
+        for stmt in stmts:
+            for qid in stmt.qualifiers.keys():
+                lst[qid] = domains
+
+    return list(lst.items())

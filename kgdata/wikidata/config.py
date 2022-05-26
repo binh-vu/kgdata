@@ -20,6 +20,7 @@ class WDDataDirCfg:
         self.entity_redirection_dump = datadir / "entity_redirection_dump"
 
         self.entity_ids = datadir / "entity_ids"
+        self.entity_types = datadir / "entity_types"
         self.page_ids = datadir / "page_ids"
         self.entities = datadir / "entities"
 

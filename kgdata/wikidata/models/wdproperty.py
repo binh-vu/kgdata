@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Literal, Set
+from typing import List, Literal, Mapping, Set
 from kgdata.wikidata.models.wdentity import WDEntity
 
 import orjson
@@ -146,3 +146,9 @@ class WDProperty:
 
     def is_transitive(self):
         return "Q18647515" in self.instanceof
+
+
+# domains of a property, mapping from the class id to the number of instances of the class having this property
+WDPropertyDomains = Mapping[str, int]
+# ranges of a property, mapping from the class id to the number of instances of the class having this incoming property
+WDPropertyRanges = Mapping[str, int]

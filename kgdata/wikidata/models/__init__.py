@@ -1,5 +1,5 @@
 from .wdclass import WDClass
-from .wdproperty import WDProperty
+from .wdproperty import WDProperty, WDPropertyDomains, WDPropertyRanges
 from .propertystats import WDQuantityPropertyStats, QuantityStats
 from .wdentity import WDEntity
 from .wdvalue import (
