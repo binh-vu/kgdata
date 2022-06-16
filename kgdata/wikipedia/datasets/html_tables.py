@@ -45,7 +45,7 @@ def deser_table(x: Union[str, bytes]) -> HTMLTable:
 def extract_tables(article: HTMLArticle):
     try:
         tables = HTMLTableExtractor(article.url, article.html, "lxml").extract_tables(
-            auto_span=False, auto_pad=False
+            auto_span=False, auto_pad=False, extract_context=False
         )
 
         return [orjson.dumps(tbl.to_dict()) for tbl in tables]
