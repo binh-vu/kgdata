@@ -1,4 +1,5 @@
 import orjson
+from typing import TypedDict, Union
 from loguru import logger
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
@@ -15,12 +16,7 @@ def html_tables() -> Dataset[HTMLTable]:
 
     cfg = WPDataDirConfig.get_instance()
 
-    # resp = (
-    #     html_articles()
-    #     .get_rdd()
-    #     .filter(lambda x: x.page_id == "25966409" or x.page_id == 25966409)
-    #     .take(1)
-    # )
+    # resp = html_articles().get_rdd().filter(lambda x: x.page_id == 673723).take(1)
     # M.serialize_pkl(resp, "/tmp/debug.pkl")
     # return
 
@@ -35,7 +31,11 @@ def html_tables() -> Dataset[HTMLTable]:
             )
         )
 
-    return Dataset(file_pattern=cfg.html_tables / "*.gz", deserialize=orjson.loads)
+    return Dataset(file_pattern=cfg.html_tables / "*.gz", deserialize=deser_table)
+
+
+def deser_table(x: Union[str, bytes]) -> HTMLTable:
+    return HTMLTable.from_dict(orjson.loads(x))
 
 
 def extract_tables(article: HTMLArticle):
@@ -44,16 +44,7 @@ def extract_tables(article: HTMLArticle):
             auto_span=False, auto_pad=False
         )
 
-        return [
-            orjson.dumps(
-                {
-                    "page_id": article.page_id,
-                    "url": article.url,
-                    "table": tbl.to_dict(),
-                }
-            )
-            for tbl in tables
-        ]
+        return [orjson.dumps(tbl.to_dict()) for tbl in tables]
     except Exception as e:
         logger.exception(
             "Error while extracting tables from article {}: {}",
