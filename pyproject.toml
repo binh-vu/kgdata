@@ -33,7 +33,7 @@ sem-desc = "^3.5.1"
 click = "^8.1.3"
 parsimonious = "^0.8.1"
 hugedict = "^1.4.0"
-web-table-extractor = "^1.1.0"
+web-table-extractor = "^1.2.0"
 lxml = "^4.9.0"
 
 [tool.poetry.dev-dependencies]
