@@ -16,6 +16,7 @@ class Dataset(Generic[V]):
     # pattern to files (e.g., /*.gz)
     file_pattern: Union[str, Path]
     deserialize: Callable[[str], V]
+    filter: Optional[Callable[[str], bool]]
 
     # whether the deserialize function is an identity function
     # only happens when is this a list of string
@@ -23,18 +24,25 @@ class Dataset(Generic[V]):
 
     @staticmethod
     def string(file_pattern: Union[str, Path]) -> Dataset[str]:
-        return Dataset(file_pattern, deserialize=identity_func, is_deser_identity=True)
+        return Dataset(
+            file_pattern, deserialize=identity_func, filter=None, is_deser_identity=True
+        )
 
     def get_files(self) -> List[str]:
         return glob.glob(str(self.file_pattern))
 
     def get_rdd(self):
         rdd = get_spark_context().textFile(str(self.file_pattern))
+        if self.filter is not None:
+            rdd = rdd.filter(self.filter)
+
         if not self.is_deser_identity:
             return rdd.map(self.deserialize)
+
         return rdd
 
     def get_dict(self: Dataset[Tuple[str, str]], rstrip: bool = True):
+        assert self.filter is None, "Does not support filtering for non-rdd usage yet."
         output = {}
         if rstrip:
             for file in tqdm(self.get_files(), desc="read dataset"):

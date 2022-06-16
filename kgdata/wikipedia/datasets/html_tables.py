@@ -31,7 +31,11 @@ def html_tables() -> Dataset[HTMLTable]:
             )
         )
 
-    return Dataset(file_pattern=cfg.html_tables / "*.gz", deserialize=deser_table)
+    return Dataset(
+        file_pattern=cfg.html_tables / "*.gz",
+        deserialize=deser_table,
+        filter=lambda x: x[0] == "{",
+    )
 
 
 def deser_table(x: Union[str, bytes]) -> HTMLTable:
@@ -51,7 +55,7 @@ def extract_tables(article: HTMLArticle):
             article.page_id,
             article.url,
         )
-        return []
+        return [article.url]
 
 
 if __name__ == "__main__":
@@ -60,12 +64,6 @@ if __name__ == "__main__":
         tables = HTMLTableExtractor(article.url, article.html).extract_tables()
         for tbl in tables:
             x = tbl.to_dict()
-            orjson.dumps(
-                {
-                    "page_id": article.page_id,
-                    "url": article.url,
-                    "table": tbl.to_dict(),
-                }
-            )
+            orjson.dumps(tbl.to_dict())
 
-    # print(resp)
+    # print(resp[0].page_id)

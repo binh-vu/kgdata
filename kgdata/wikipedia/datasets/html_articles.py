@@ -37,6 +37,7 @@ def html_articles() -> Dataset[HTMLArticle]:
                     / "part.ndjson.gz",
                     n_writers=8,
                     override=True,
+                    n_records_per_file=3000,
                 )
         (cfg.html_articles / "_SUCCESS").touch()
 
