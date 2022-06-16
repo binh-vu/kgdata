@@ -7,7 +7,7 @@ from parsimonious.expressions import (
     Sequence as PEGSequence,
 )
 
-from kgdata.wikipedia.wikimodels import Table, Row, Cell
+from kgdata.wikipedia.deprecated.wikimodels import Table, Row, Cell
 
 """
 (DEPRECATED) Module for parsing tables from wikipedia markup.

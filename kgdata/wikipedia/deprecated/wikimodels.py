@@ -73,5 +73,6 @@ class Table:
     @staticmethod
     def parse(text: str):
         # lazy import here to avoid circular import
-        from kgdata.wikipedia.table_parser import TableVisitor
+        from kgdata.wikipedia.deprecated.table_parser import TableVisitor
+
         return TableVisitor().parse(text)

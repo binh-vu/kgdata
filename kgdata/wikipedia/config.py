@@ -18,9 +18,10 @@ class WPDataDirConfig:
         # directorys contain dumps and their splitted files
         # for the name of the dumps, see the corresponding function `self.get_X_file` in this class
         self.dumps = datadir / "dumps"
-        self.html_dump = datadir / "html_dump"
+        self.html_articles = datadir / "html_articles"
+        self.html_tables = datadir / "html_tables"
 
-    def get_html_dump_file(self):
+    def get_html_article_file(self):
         return self._get_file(self.dumps / "*NS0-*ENTERPRISE-HTML.json.tar.gz")
 
     def _get_file(self, file: Union[str, Path]):

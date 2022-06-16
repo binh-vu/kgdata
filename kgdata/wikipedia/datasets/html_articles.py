@@ -4,27 +4,27 @@ import tarfile
 from pathlib import Path
 from typing import BinaryIO, Union, cast
 from kgdata.wikipedia.config import WPDataDirConfig
+from kgdata.wikipedia.models.html_article import HTMLArticle
 
 import orjson
 from kgdata.config import WIKIPEDIA_DIR
 from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.splitter import split_a_file
-from pyspark import RDD
 from kgdata.dataset import Dataset
 
 
-def enterprise_html_dumps() -> Dataset[dict]:
+def html_articles() -> Dataset[HTMLArticle]:
     """
-    Extract page
+    Extract HTML page
 
     Returns:
-        Dataset[dict]
+        Dataset[HTMLArticle]
     """
     cfg = WPDataDirConfig.get_instance()
 
-    dump_file = cfg.get_html_dump_file()
+    dump_file = cfg.get_html_article_file()
 
-    if not does_result_dir_exist(cfg.html_dump):
+    if not does_result_dir_exist(cfg.html_articles):
         with tarfile.open(dump_file, "r:*") as archive:
             for file in archive:
                 split_a_file(
@@ -32,16 +32,16 @@ def enterprise_html_dumps() -> Dataset[dict]:
                         file.size,
                         cast(BinaryIO, archive.extractfile(file)),
                     ),
-                    outfile=cfg.html_dump
+                    outfile=cfg.html_articles
                     / file.name.split(".", 1)[0]
                     / "part.ndjson.gz",
                     n_writers=8,
                     override=True,
                 )
-        (cfg.html_dump / "_SUCCESS").touch()
+        (cfg.html_articles / "_SUCCESS").touch()
 
-    return Dataset(cfg.html_dump / "*/*.gz", deserialize=orjson.loads)
+    return Dataset(cfg.html_articles / "*/*.gz", deserialize=deser_html_articles)
 
 
-if __name__ == "__main__":
-    enterprise_html_dumps()
+def deser_html_articles(line: Union[str, bytes]) -> HTMLArticle:
+    return HTMLArticle.from_dump_dict(orjson.loads(line))

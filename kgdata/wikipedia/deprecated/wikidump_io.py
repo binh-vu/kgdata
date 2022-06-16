@@ -7,7 +7,7 @@ from kgdata.config import DEFAULT_DATA_DIR
 import orjson
 import ujson
 
-from kgdata.wikipedia.wikimodels import *
+from kgdata.wikipedia.deprecated.wikimodels import *
 from sm.misc.deser import get_open_fn
 from pathlib import Path
 from tqdm import tqdm

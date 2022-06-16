@@ -8,7 +8,9 @@ from kgdata.spark import get_spark_context, ensure_unique_records, itemgetter
 """
 
 
-def title2groups(infile: str=os.path.join(WIKIPEDIA_DIR, "pages_articles_en/article_groups/*.gz")):
+def title2groups(
+    infile: str = os.path.join(WIKIPEDIA_DIR, "pages_articles_en/article_groups/*.gz")
+):
     """Get RDD that maps from article title into a cluster of articles
 
     Parameters
@@ -22,10 +24,16 @@ def title2groups(infile: str=os.path.join(WIKIPEDIA_DIR, "pages_articles_en/arti
         (title, { "final": (<title>, <wiki_id>), "group": [(<title>, <wiki_id>)] })
     """
     sc = get_spark_context()
-    return sc.textFile(infile).map(orjson.loads).flatMap(lambda x: [(title, x) for title, id in x['group']])
+    return (
+        sc.textFile(infile)
+        .map(orjson.loads)
+        .flatMap(lambda x: [(title, x) for title, id in x["group"]])
+    )
 
 
-def id2groups(infile: str=os.path.join(WIKIPEDIA_DIR, "pages_articles_en/article_groups/*.gz")):
+def id2groups(
+    infile: str = os.path.join(WIKIPEDIA_DIR, "pages_articles_en/article_groups/*.gz")
+):
     """Get RDD that maps from article id into a cluster of articles
 
     Parameters
@@ -39,7 +47,11 @@ def id2groups(infile: str=os.path.join(WIKIPEDIA_DIR, "pages_articles_en/article
         (id, { "final": (<title>, <wiki_id>), "group": [(<title>, <wiki_id>)] })
     """
     sc = get_spark_context()
-    return sc.textFile(infile).map(orjson.loads).flatMap(lambda x: [(id, x) for title, id in x['group']])
+    return (
+        sc.textFile(infile)
+        .map(orjson.loads)
+        .flatMap(lambda x: [(id, x) for title, id in x["group"]])
+    )
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from rdflib import Literal, URIRef
 from kgdata.config import DBPEDIA_DIR
 from kgdata.misc.ntriples_parser import ntriple_loads, ignore_comment
 from kgdata.spark import get_spark_context, ensure_unique_records
-from kgdata.wikipedia.rdd_datasets import id2groups
+from kgdata.wikipedia.deprecated.rdd_datasets import id2groups
 
 Triple = Tuple[str, str, str]
 
