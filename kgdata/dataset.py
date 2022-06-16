@@ -16,7 +16,7 @@ class Dataset(Generic[V]):
     # pattern to files (e.g., /*.gz)
     file_pattern: Union[str, Path]
     deserialize: Callable[[str], V]
-    filter: Optional[Callable[[str], bool]]
+    filter: Optional[Callable[[str], bool]] = None
 
     # whether the deserialize function is an identity function
     # only happens when is this a list of string
