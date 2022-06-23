@@ -5,7 +5,7 @@ import gzip
 from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identity
 import requests
 
-from hugedict.rocksdb import RocksDBDict
+from hugedict.prelude import RocksDBDict
 from kgdata.wikidata.deprecated.models.qnode import QNode, QNodeLabel
 from kgdata.wikidata.deprecated.wdclass import WDClass
 from kgdata.wikidata.deprecated.wdproperty import WDProperty
