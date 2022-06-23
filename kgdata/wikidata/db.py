@@ -1,15 +1,15 @@
 from functools import partial
 from pathlib import Path
 from typing import *
+
+from hugedict.types import HugeMutableMapping
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 import orjson
-import rocksdb
-import gzip
 from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identity
 import requests
 
-from hugedict.rocksdb import RocksDBDict
+from hugedict.prelude import RocksDBDict, RocksDBOptions
 from kgdata.wikidata.models import (
     WDClass,
     WDProperty,
@@ -18,30 +18,60 @@ from kgdata.wikidata.models import (
 )
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel)
-CompressionType = rocksdb.CompressionType  # type: ignore
 
 
-class WDProxyDB(RocksDBDict[str, V]):
+class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
+    # def __new__(
+    #     cls,
+    #     EntClass,
+    #     dbpath: Union[Path, str],
+    #     dboptions: Optional[RocksDBOptions] = None,
+    #     compression: bool = False,
+    #     create_if_missing=True,
+    #     readonly=False,
+    # ):
+    #     obj = super().__new__(
+    #         cls,
+    #         path=str(dbpath),
+    #         options=RocksDBOptions(create_if_missing=create_if_missing)
+    #         if dboptions is None
+    #         else dboptions,
+    #         readonly=readonly,
+    #         deser_key=partial(str, encoding="utf-8"),
+    #         deser_value=zstd_decompress_custom(partial(deserialize, EntClass))
+    #         if compression
+    #         else partial(deserialize, EntClass),
+    #         ser_value=zstd6_compress_custom(serialize) if compression else serialize,
+    #     )
+
+    #     if not hasattr(EntClass, "from_entity"):
+    #         obj.extract_ent_from_entity: Callable[[WDEntity], V] = identity
+    #     else:
+    #         obj.extract_ent_from_entity: Callable[[WDEntity], V] = getattr(
+    #             EntClass, "from_entity"
+    #         )
+    #     return obj
+
     def __init__(
         self,
         EntClass,
-        dbfile: Union[Path, str],
-        compression: bool,
+        dbpath: Union[Path, str],
+        dboptions: Optional[RocksDBOptions] = None,
+        compression: bool = False,
         create_if_missing=True,
-        read_only=False,
-        db_options: Optional[Dict[str, Any]] = None,
+        readonly=False,
     ):
         super().__init__(
-            dbpath=dbfile,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            deser_key=bytes.decode,
-            ser_key=str.encode,
+            path=str(dbpath),
+            options=RocksDBOptions(create_if_missing=create_if_missing)
+            if dboptions is None
+            else dboptions,
+            readonly=readonly,
+            deser_key=partial(str, encoding="utf-8"),
             deser_value=zstd_decompress_custom(partial(deserialize, EntClass))
             if compression
             else partial(deserialize, EntClass),
             ser_value=zstd6_compress_custom(serialize) if compression else serialize,
-            db_options=db_options,
         )
 
         if not hasattr(EntClass, "from_entity"):
@@ -52,18 +82,19 @@ class WDProxyDB(RocksDBDict[str, V]):
             )
 
     def __getitem__(self, key: str):
-        item = self.db.get(key.encode())
+        item = self.get(key)
         if item == b"\x00":
             raise KeyError(key)
         elif item is None:
             qnodes = query_wikidata_entities([key])
             if len(qnodes) == 0:
                 # no entity
-                self.db.put(key.encode(), b"\x00")
+                self._put(key.encode(), b"\x00")
                 raise KeyError(key)
             else:
                 ent = self.extract_ent_from_entity(qnodes[key])
-                self.db.put(key.encode(), self.ser_value(ent))
+                self._put(key.encode(), self.ser_value(ent))
+
             return ent
         return self.deser_value(item)
 
@@ -74,22 +105,22 @@ class WDProxyDB(RocksDBDict[str, V]):
             return default
 
     def __contains__(self, key):
-        item = self.db.get(key.encode())
+        item = self.get(key)
         if item == b"\x00":
             return False
         if item is None:
             qnodes = query_wikidata_entities([key])
             if len(qnodes) == 0:
                 # no entity
-                self.db.put(key.encode(), b"\x00")
+                self._put(key.encode(), b"\x00")
                 return False
 
             ent = self.extract_ent_from_entity(qnodes[key])
-            self.db.put(key.encode(), self.ser_value(ent))
+            self._put(key.encode(), self.ser_value(ent))
         return True
 
     def does_not_exist_locally(self, key):
-        item = self.db.get(key.encode())
+        item = self.get(key)
         return item == b"\x00"
 
 
@@ -147,30 +178,28 @@ def get_wdclass_db(
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
-) -> RocksDBDict[str, WDClass]:
-    db_options = {
-        "compression": CompressionType.lz4_compression,
-        "bottommost_compression": CompressionType.zstd_compression,
-    }
+) -> HugeMutableMapping[str, WDClass]:
+    dboptions = RocksDBOptions(
+        create_if_missing=create_if_missing,
+        compression_type="lz4",
+        bottommost_compression_type="zstd",
+    )
     if proxy:
         db = WDProxyDB(
             WDClass,
-            dbfile,
+            dbpath=dbfile,
+            dboptions=dboptions,
             compression=False,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            db_options=db_options,
+            readonly=read_only,
         )
     else:
         db = RocksDBDict(
-            dbpath=dbfile,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            deser_key=bytes.decode,
-            ser_key=str.encode,
+            path=str(dbfile),
+            options=dboptions,
+            readonly=read_only,
+            deser_key=partial(str, encoding="utf-8"),
             deser_value=partial(deserialize, WDClass),
             ser_value=serialize,
-            db_options=db_options,
         )
     return db
 
@@ -180,27 +209,27 @@ def get_wdprop_db(
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
-) -> RocksDBDict[str, WDProperty]:
-    db_options = {"compression": CompressionType.lz4_compression}
+) -> HugeMutableMapping[str, WDProperty]:
+    dboptions = RocksDBOptions(
+        create_if_missing=create_if_missing,
+        compression_type="lz4",
+    )
     if proxy:
         db = WDProxyDB(
             WDProperty,
             dbfile,
+            dboptions=dboptions,
             compression=False,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            db_options=db_options,
+            readonly=read_only,
         )
     else:
         db = RocksDBDict(
-            dbpath=dbfile,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            deser_key=bytes.decode,
-            ser_key=str.encode,
+            path=str(dbfile),
+            options=dboptions,
+            readonly=read_only,
+            deser_key=partial(str, encoding="utf-8"),
             deser_value=partial(deserialize, WDProperty),
             ser_value=serialize,
-            db_options=db_options,
         )
     return db
 
@@ -210,28 +239,28 @@ def get_entity_db(
     create_if_missing=True,
     read_only=False,
     proxy: bool = False,
-) -> RocksDBDict[str, WDEntity]:
+) -> HugeMutableMapping[str, WDEntity]:
     # no compression as we pre-compress the qnodes -- get much better compression
-    db_options = {"compression": CompressionType.no_compression}
+    dboptions = RocksDBOptions(
+        create_if_missing=create_if_missing,
+        compression_type="none",
+    )
     if proxy:
         db: RocksDBDict[str, WDEntity] = WDProxyDB(
             WDEntity,
             dbfile,
             compression=True,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            db_options=db_options,
+            readonly=read_only,
+            dboptions=dboptions,
         )
     else:
         db = RocksDBDict(
-            dbpath=dbfile,
-            create_if_missing=create_if_missing,
-            read_only=read_only,
-            deser_key=bytes.decode,
-            ser_key=str.encode,
+            path=str(dbfile),
+            options=dboptions,
+            readonly=read_only,
+            deser_key=partial(str, encoding="utf-8"),
             deser_value=zstd_decompress_custom(partial(deserialize, WDEntity)),
             ser_value=zstd6_compress_custom(serialize),
-            db_options=db_options,
         )
     return db
 
@@ -240,19 +269,18 @@ def get_entity_redirection_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
     read_only=True,
-) -> RocksDBDict[str, str]:
-    db_options = {
-        "compression": CompressionType.lz4_compression,
-    }
-    return RocksDBDict(
-        dbfile,
+) -> HugeMutableMapping[str, str]:
+    dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
-        read_only=read_only,
-        deser_key=bytes.decode,
-        ser_key=str.encode,
+        compression_type="lz4",
+    )
+    return RocksDBDict(
+        str(dbfile),
+        readonly=read_only,
+        options=dboptions,
+        deser_key=partial(str, encoding="utf-8"),
         deser_value=bytes.decode,
         ser_value=str.encode,
-        db_options=db_options,
     )
 
 
@@ -260,19 +288,18 @@ def get_entity_label_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
     read_only=True,
-) -> RocksDBDict[str, WDEntityLabel]:
-    db_options = {
-        "compression": CompressionType.lz4_compression,
-    }
-    return RocksDBDict(
-        dbfile,
+) -> HugeMutableMapping[str, WDEntityLabel]:
+    dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
-        read_only=read_only,
-        deser_key=bytes.decode,
-        ser_key=str.encode,
+        compression_type="lz4",
+    )
+    return RocksDBDict(
+        str(dbfile),
+        readonly=read_only,
+        options=dboptions,
+        deser_key=partial(str, encoding="utf-8"),
         deser_value=partial(deserialize, WDEntityLabel),
         ser_value=serialize,
-        db_options=db_options,
     )
 
 
@@ -280,18 +307,19 @@ def get_wp2wd_db(
     dbpath: Union[Path, str],
     create_if_missing=False,
     read_only=True,
-) -> RocksDBDict[str, str]:
+) -> HugeMutableMapping[str, str]:
     """Mapping from wikipedia article to wikidata id"""
-    db_options = {"compression": CompressionType.lz4_compression}
-    return RocksDBDict(
-        dbpath,
+    dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
-        read_only=read_only,
-        deser_key=bytes.decode,
-        ser_key=str.encode,
+        compression_type="lz4",
+    )
+    return RocksDBDict(
+        path=str(dbpath),
+        options=dboptions,
+        readonly=read_only,
+        deser_key=partial(str, encoding="utf-8"),
         deser_value=bytes.decode,
         ser_value=str.encode,
-        db_options=db_options,
     )
 
 
@@ -299,19 +327,18 @@ def get_wdprop_range_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
     read_only=True,
-) -> RocksDBDict[str, WDPropertyRanges]:
-    db_options = {
-        "compression": CompressionType.lz4_compression,
-    }
-    return RocksDBDict(
-        dbfile,
+) -> HugeMutableMapping[str, WDPropertyRanges]:
+    dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
-        read_only=read_only,
-        deser_key=bytes.decode,
-        ser_key=str.encode,
+        compression_type="lz4",
+    )
+    return RocksDBDict(
+        str(dbfile),
+        readonly=read_only,
+        options=dboptions,
+        deser_key=partial(str, encoding="utf-8"),
         deser_value=orjson.loads,
         ser_value=orjson.dumps,
-        db_options=db_options,
     )
 
 
@@ -319,17 +346,16 @@ def get_wdprop_domain_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
     read_only=True,
-) -> RocksDBDict[str, WDPropertyDomains]:
-    db_options = {
-        "compression": CompressionType.lz4_compression,
-    }
-    return RocksDBDict(
-        dbfile,
+) -> HugeMutableMapping[str, WDPropertyDomains]:
+    dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
-        read_only=read_only,
-        deser_key=bytes.decode,
-        ser_key=str.encode,
+        compression_type="lz4",
+    )
+    return RocksDBDict(
+        str(dbfile),
+        readonly=read_only,
+        options=dboptions,
+        deser_key=partial(str, encoding="utf-8"),
         deser_value=orjson.loads,
         ser_value=orjson.dumps,
-        db_options=db_options,
     )
