@@ -279,7 +279,7 @@ def get_entity_redirection_db(
         readonly=read_only,
         options=dboptions,
         deser_key=partial(str, encoding="utf-8"),
-        deser_value=bytes.decode,
+        deser_value=partial(str, encoding="utf-8"),
         ser_value=str.encode,
     )
 
@@ -318,7 +318,7 @@ def get_wp2wd_db(
         options=dboptions,
         readonly=read_only,
         deser_key=partial(str, encoding="utf-8"),
-        deser_value=bytes.decode,
+        deser_value=partial(str, encoding="utf-8"),
         ser_value=str.encode,
     )
 
