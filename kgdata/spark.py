@@ -7,7 +7,7 @@ from multiprocessing import Pool, Queue, Process
 import zstandard as zstd
 from uuid import uuid4
 from hugedict.misc import identity
-from hugedict.parallel.parallel import Parallel
+from hugedict.parallel import Parallel
 import orjson
 import os
 import shutil
@@ -31,7 +31,12 @@ def get_spark_context():
     if _sc is None:
         conf = SparkConf().setAll(
             [
-                (key, os.environ[key] if key in os.environ else os.environ[key.replace(".", "_")])
+                (
+                    key,
+                    os.environ[key]
+                    if key in os.environ
+                    else os.environ[key.replace(".", "_")],
+                )
                 for key in [
                     "spark.master",
                     "spark.ui.port",

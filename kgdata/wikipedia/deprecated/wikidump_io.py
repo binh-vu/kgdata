@@ -2,7 +2,7 @@ from dataclasses import asdict
 import glob
 import gzip
 import os
-from hugedict.parallel.parallel import Parallel
+from hugedict.parallel import Parallel
 from kgdata.config import DEFAULT_DATA_DIR
 import orjson
 import ujson
@@ -231,11 +231,11 @@ def _extract_raw_tables(
     tag_indices = []
     text = page.text
 
-    for m in re.finditer("{\|", text):
+    for m in re.finditer(r"{\|", text):
         tag_indices.append((m.start(0), otag))
 
     # no specified in any wikipedi
-    for m in re.finditer("\|}(?!})", text):
+    for m in re.finditer(r"\|}(?!})", text):
         tag_indices.append((m.start(0), ctag))
 
     tag_indices.sort(key=itemgetter(0))
