@@ -21,37 +21,6 @@ V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel)
 
 
 class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
-    # def __new__(
-    #     cls,
-    #     EntClass,
-    #     dbpath: Union[Path, str],
-    #     dboptions: Optional[RocksDBOptions] = None,
-    #     compression: bool = False,
-    #     create_if_missing=True,
-    #     readonly=False,
-    # ):
-    #     obj = super().__new__(
-    #         cls,
-    #         path=str(dbpath),
-    #         options=RocksDBOptions(create_if_missing=create_if_missing)
-    #         if dboptions is None
-    #         else dboptions,
-    #         readonly=readonly,
-    #         deser_key=partial(str, encoding="utf-8"),
-    #         deser_value=zstd_decompress_custom(partial(deserialize, EntClass))
-    #         if compression
-    #         else partial(deserialize, EntClass),
-    #         ser_value=zstd6_compress_custom(serialize) if compression else serialize,
-    #     )
-
-    #     if not hasattr(EntClass, "from_entity"):
-    #         obj.extract_ent_from_entity: Callable[[WDEntity], V] = identity
-    #     else:
-    #         obj.extract_ent_from_entity: Callable[[WDEntity], V] = getattr(
-    #             EntClass, "from_entity"
-    #         )
-    #     return obj
-
     def __init__(
         self,
         EntClass,
