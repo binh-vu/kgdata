@@ -129,5 +129,7 @@ dmypy.json
 .pyre/
 .idea
 
+.DS_Store
+
 # ignore poetry lock cause dev it on m1 env.
 poetry.lock

@@ -1,6 +1,7 @@
-sphinx==5.0.0
--e git+https://github.com/binh-vu/pytorch_sphinx_theme.git#egg=pytorch_sphinx_theme
+furo
+sphinx
 sphinxcontrib.katex
 matplotlib
-sphinx_copybutton
+sphinx-copybutton
 sphinx-panels
+sphinx-autodoc-typehints

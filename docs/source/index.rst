@@ -3,19 +3,33 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to kgdata's documentation!
+kgdata documentation
 ==================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+kgdata is a Python library to process dumps of Wikipedia, Wikidata. What it can do:
+
+- Clean up the dumps to ensure the data is consistent (resolve redirect, remove dangling references)
+- Create embedded key-value databases to access entities from the dumps.
+- Extract Wikidata ontology.
+- Extract Wikipedia tables and convert the hyperlinks to Wikidata entities.
+- Create Pyserini indices to search Wikidata's entities.
 
 .. toctree::
-   :glob:
    :maxdepth: 1
-   :caption: Python API
+   :caption: Contents
 
-   api/*
+   installation
+   wikidata
+   wikipedia
+   api
+
+.. toctree::
+   :maxdepth: 1
+   :hidden: 
+   :caption: Development
+
+   changelog
+
 
 
 Indices and tables

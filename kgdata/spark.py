@@ -74,7 +74,13 @@ def close_spark_context():
         _sc = None
 
 
-def does_result_dir_exist(dpath: Union[str, Path], allow_override=True):
+def does_result_dir_exist(dpath: Union[str, Path], allow_override=True) -> bool:
+    """Check if the result directory exists
+
+    Args:
+        dpath (Union[str, Path]): path to the result directory
+        allow_override (bool, optional): allow override the result directory. Defaults to True.
+    """
     dpath = str(dpath)
     if not os.path.exists(dpath):
         return False
