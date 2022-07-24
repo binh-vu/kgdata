@@ -1,6 +1,13 @@
-KGData is a library to process dumps of Wikipedia, Wikidata and DBPedia.
+<h1 align="center">kgdata</h1>
+
+<div align="center">
 
 ![PyPI](https://img.shields.io/pypi/v/kgdata)
+![Documentation](https://kgdata.readthedocs.io/en/latest/?badge=latest)
+
+</div>
+
+KGData is a library to process dumps of Wikipedia, Wikidata and DBPedia. For a complete documentation, please see [the website](https://kgdata.readthedocs.io/)
 
 ## Contents
 
