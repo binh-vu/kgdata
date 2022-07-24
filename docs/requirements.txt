@@ -5,3 +5,4 @@ matplotlib
 sphinx-copybutton
 sphinx-panels
 sphinx-autodoc-typehints
+myst-parser==0.18.0

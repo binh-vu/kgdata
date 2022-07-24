@@ -1,4 +1,4 @@
-# Changelog
+# CHANGE LOG
 
 ## [2.3.3](https://github.com/binh-vu/kgdata/tree/2.3.3) (2022-07-06)
 
