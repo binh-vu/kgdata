@@ -18,7 +18,7 @@ kgdata is a Python library to process dumps of Wikipedia, Wikidata. What it can 
    :maxdepth: 1
    :caption: Contents
 
-   installation
+   getting-started
    wikidata
    wikipedia
    api
@@ -28,6 +28,7 @@ kgdata is a Python library to process dumps of Wikipedia, Wikidata. What it can 
    :hidden: 
    :caption: Development
 
+   development
    changelog
 
 
