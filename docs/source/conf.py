@@ -35,6 +35,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx.ext.extlinks",
+    "sphinx.ext.autosectionlabel",
     "sphinx_copybutton",
     "myst_parser"
     # "sphinx_autodoc_typehints"
