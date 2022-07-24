@@ -3,11 +3,11 @@
 <div align="center">
 
 ![PyPI](https://img.shields.io/pypi/v/kgdata)
-![Documentation](https://kgdata.readthedocs.io/en/latest/?badge=latest)
+![Documentation](https://readthedocs.org/projects/kgdata/badge/?version=latest&style=flat)
 
 </div>
 
-KGData is a library to process dumps of Wikipedia, Wikidata and DBPedia. For a complete documentation, please see [the website](https://kgdata.readthedocs.io/)
+KGData is a library to process dumps of Wikipedia, Wikidata and DBPedia. For a complete documentation, please see [the website](https://kgdata.readthedocs.io/).
 
 ## Contents
 
