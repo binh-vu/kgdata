@@ -50,7 +50,7 @@ def split_a_file(
     n_writers: int = 8,
     n_records_per_file: int = 64000,
 ):
-    """Split a file containing a list of records into smaller files stored in a directory.
+    r"""Split a file containing a list of records into smaller files stored in a directory.
     The list of records are written in a round-robin fashion by multiple writers (processes)
     in parallel but read process is run in sequence.
 
@@ -63,7 +63,7 @@ def split_a_file(
             indicate that the job is done.
         record_iter: a function that returns an iterator of records given a file object, by default it returns the file object itself.
         record_postprocess: name/path to import the function that post-process an record. by default we strip the newline from the end of the string.
-            when the function returns None, skip the record.
+          when the function returns None, skip the record.
         currentbyte_constructor: a function that returns a function that returns the current byte position of a file object.
         override: whether to override existing files.
         n_writers: number of parallel writers.

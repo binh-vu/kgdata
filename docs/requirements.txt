@@ -1,0 +1,7 @@
+furo
+sphinx
+sphinxcontrib.katex
+matplotlib
+sphinx-copybutton
+sphinx-panels
+sphinx-autodoc-typehints
