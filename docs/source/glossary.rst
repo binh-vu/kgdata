@@ -1,0 +1,1 @@
+.. |kgdata| replace:: `kgdata <https://kgdata.readthedocs.io/>`__

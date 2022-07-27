@@ -1,10 +1,12 @@
+.. include:: glossary.rst
+
 Getting Started
 ===============
 
 Installation
 ------------
 
-kgdata is distributed on `PyPI <https://pypi.org/project/kgdata/>`_ so you can install with pip as below.
+|kgdata| is distributed on `PyPI <https://pypi.org/project/kgdata/>`_ so you can install with pip as below.
 
 .. code:: bash
 

@@ -1,6 +1,8 @@
+"""Wikidata embedded key-value databases."""
+
 from functools import partial
 from pathlib import Path
-from typing import *
+from typing import Dict, Union, TypeVar, Optional, Callable, Set, List, Type
 
 from hugedict.types import HugeMutableMapping
 from kgdata.wikidata.models.wdentity import WDEntity

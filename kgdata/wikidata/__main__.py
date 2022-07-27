@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 import click, os
 from click.types import Choice
-from hugedict.loader import FileFormat, load
+from hugedict.prelude import rocksdb_load
 from hugedict.misc import Chain2, zstd6_compress, Chain3
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
@@ -41,25 +41,24 @@ from sm.misc.funcs import identity_func
 )
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_entities(directory: str, output: str, compact: bool, lang: str):
-    """Wikidata entities"""
+    """Build a key-value database of Wikidata entities"""
     WDDataDirCfg.init(directory)
 
     dbpath = Path(output) / "wdentities.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
-    db = load(
-        db=get_entity_db(dbpath).db,
+    dbopts = get_entity_db(dbpath).dbopts
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=dbopts,
         infiles=entities(lang=lang).get_files(),
-        format=FileFormat.jsonline,
-        key_fn=Chain2(str.encode, itemgetter("id")).exec,
-        value_fn=Chain2(zstd6_compress, orjson.dumps).exec,
-        n_processes=8,
-        shm_mem_ratio=12,
-        shm_mem_limit_mb=128,
+        format={
+            "record_type": {"type": "ndjson", "key": "id", "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=True,
     )
-    if compact:
-        logger.info("Run compaction...")
-        db.compact_range()
 
 
 @click.command(name="entity_labels")
@@ -267,6 +266,39 @@ def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
         db.compact_range()
 
 
+@click.command(name="search.entities")
+@click.option("-d", "--directory", default="", help="Wikidata directory")
+@click.option("-o", "--output", help="Output directory")
+@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
+def search_entities(directory: str, output: str, lang: str):
+    from kgdata.wikidata.search import build_index
+
+    WDDataDirCfg.init(directory)
+    build_index(name="entities", index_parent_dir=Path(output), lang=lang)
+
+
+@click.command(name="search.properties")
+@click.option("-d", "--directory", default="", help="Wikidata directory")
+@click.option("-o", "--output", help="Output directory")
+@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
+def search_props(directory: str, output: str, lang: str):
+    from kgdata.wikidata.search import build_index
+
+    WDDataDirCfg.init(directory)
+    build_index(name="props", index_parent_dir=Path(output), lang=lang)
+
+
+@click.command(name="search.classes")
+@click.option("-d", "--directory", default="", help="Wikidata directory")
+@click.option("-o", "--output", help="Output directory")
+@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
+def search_classes(directory: str, output: str, lang: str):
+    from kgdata.wikidata.search import build_index
+
+    WDDataDirCfg.init(directory)
+    build_index(name="classes", index_parent_dir=Path(output), lang=lang)
+
+
 @click.group()
 def wikidata():
     pass
@@ -278,6 +310,9 @@ wikidata.add_command(db_entity_redirections)
 wikidata.add_command(db_classes)
 wikidata.add_command(db_properties)
 wikidata.add_command(db_wp2wd)
+wikidata.add_command(search_entities)
+wikidata.add_command(search_props)
+wikidata.add_command(search_classes)
 
 
 if __name__ == "__main__":

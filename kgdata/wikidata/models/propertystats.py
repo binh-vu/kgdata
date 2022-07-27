@@ -1,19 +1,12 @@
 import glob
 import gzip
 import os
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Dict, Set, Union
+from dataclasses import dataclass
+from typing import List, Dict
 
 import orjson
 
 from kgdata.config import WIKIDATA_DIR
-from kgdata.wikidata.deprecated.models.qnode import (
-    QNode,
-    MultiLingualString,
-    MultiLingualStringList,
-)
-from sm.misc.deser import deserialize_jl, deserialize_json
 
 
 @dataclass
