@@ -12,7 +12,7 @@ Install from Source
 You can also consult the :source:`Dockerfile` for guidance to install from scratch.
 
 Setup Documentation
---------------------
+-------------------
 
 1. Installing dependencies & copying required files
 

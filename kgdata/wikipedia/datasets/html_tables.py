@@ -34,12 +34,17 @@ def html_tables() -> Dataset[HTMLTable]:
     return Dataset(
         file_pattern=cfg.html_tables / "*.gz",
         deserialize=deser_table,
-        filter=lambda x: x[0] == "{",
+        # can be json object, or string. it is string when we fail to extract tables from the articles
+        prefilter=lambda x: x[0] == "{",
     )
 
 
 def deser_table(x: Union[str, bytes]) -> HTMLTable:
     return HTMLTable.from_dict(orjson.loads(x))
+
+
+def ser_table(x: HTMLTable) -> bytes:
+    return orjson.dumps(x.to_dict())
 
 
 def extract_tables(article: HTMLArticle):

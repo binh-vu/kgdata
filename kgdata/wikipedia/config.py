@@ -20,6 +20,8 @@ class WPDataDirConfig:
         self.dumps = datadir / "dumps"
         self.html_articles = datadir / "html_articles"
         self.html_tables = datadir / "html_tables"
+        self.relational_tables = datadir / "relational_tables"
+        self.linked_relational_tables = datadir / "linked_relational_tables"
 
     def get_html_article_file(self):
         return self._get_file(self.dumps / "*NS0-*ENTERPRISE-HTML.json.tar.gz")

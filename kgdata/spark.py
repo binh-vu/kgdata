@@ -1,13 +1,6 @@
-from functools import partial
+"""Utility functions for Apache Spark."""
+
 import glob
-import gzip
-from multiprocessing.shared_memory import SharedMemory
-from math import ceil
-from multiprocessing import Pool, Queue, Process
-import zstandard as zstd
-from uuid import uuid4
-from hugedict.misc import identity
-from hugedict.parallel import Parallel
 import orjson
 import os
 import shutil
@@ -15,6 +8,7 @@ from operator import add, itemgetter
 from pathlib import Path
 from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
 from pyspark import SparkContext, SparkConf
+
 
 # SparkContext singleton
 _sc = None

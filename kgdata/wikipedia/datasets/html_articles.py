@@ -41,7 +41,7 @@ def html_articles() -> Dataset[HTMLArticle]:
                 )
         (cfg.html_articles / "_SUCCESS").touch()
 
-    return Dataset(cfg.html_articles / "*/*.gz", deserialize=deser_html_articles)
+    return Dataset(cfg.html_articles / "enwiki_0/*.gz", deserialize=deser_html_articles)
 
 
 def deser_html_articles(line: Union[str, bytes]) -> HTMLArticle:

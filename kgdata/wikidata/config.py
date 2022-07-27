@@ -1,3 +1,5 @@
+"""Locations of Wikidata dumps and datasets on disk."""
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Union
@@ -21,6 +23,7 @@ class WDDataDirCfg:
 
         self.entity_ids = datadir / "entity_ids"
         self.entity_types = datadir / "entity_types"
+        self.entity_metadata = datadir / "entity_metadata"
         self.page_ids = datadir / "page_ids"
         self.entities = datadir / "entities"
 
@@ -29,6 +32,8 @@ class WDDataDirCfg:
         self.property_domains = datadir / "property_domains"
         self.property_ranges = datadir / "property_ranges"
         self.wp2wd = datadir / "wp2wd"
+
+        self.search = datadir / "search"
 
         self.entity_redirections = datadir / "entity_redirections"
 

@@ -54,15 +54,19 @@ templates_path = ["_templates"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
-python_version = "3"
+# -- Options for intersphinx -------------------------------------------------
 
+python_version = "3"
 intersphinx_mapping = {
     "python": (
         f"https://docs.python.org/{python_version}",
         None,
     ),
     "numpy": ("https://numpy.org/doc/stable", None),
+    "hugedict": ("https://hugedict.readthedocs.io/en/latest/", None),
 }
+
+# -- Options for autosummary and autodoc -------------------------------------
 
 autosummary_generate = True
 autodoc_typehints = "both"
@@ -74,6 +78,9 @@ autodoc_default_options = {
     "undoc-members": True,
     "member-order": "bysource",
 }
+add_module_names = False
+
+# -- Options for external links ----------------------------------------------
 
 extlinks = {"source": ("https://github.com/binh-vu/kgdata/blob/master/%s", "%s")}
 
@@ -96,7 +103,6 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 html_css_files = [
-    # "https://cdn.jsdelivr.net/npm/katex@0.10.0-beta/dist/katex.min.css",
     "css/custom.css",
     "css/ibm-plex.min.css",
 ]
