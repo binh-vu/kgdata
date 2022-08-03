@@ -12,7 +12,7 @@ from functools import partial
 
 
 def wp2wd(lang="en") -> Dataset[Tuple[str, str]]:
-    """Get alignments between wikidata qnode and wiki articles."""
+    """Get alignments between wiki article titles and wikidata qnode."""
     cfg = WDDataDirCfg.get_instance()
     site = lang + "wiki"
 

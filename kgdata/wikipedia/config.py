@@ -22,6 +22,7 @@ class WPDataDirConfig:
         self.html_tables = datadir / "html_tables"
         self.relational_tables = datadir / "relational_tables"
         self.linked_relational_tables = datadir / "linked_relational_tables"
+        self.easy_tables = datadir / "easy_tables"
 
     def get_html_article_file(self):
         return self._get_file(self.dumps / "*NS0-*ENTERPRISE-HTML.json.tar.gz")

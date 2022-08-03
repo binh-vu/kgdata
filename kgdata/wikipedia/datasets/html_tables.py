@@ -1,3 +1,4 @@
+from urllib.parse import urlparse
 import orjson
 from typing import TypedDict, Union
 from loguru import logger
@@ -9,6 +10,7 @@ from kgdata.wikipedia.models.html_article import HTMLArticle
 from table_extractor.table_extractor import HTMLTableExtractor
 from table_extractor.models.html_table import HTMLTable
 import sm.misc as M
+import ujson
 
 
 def html_tables() -> Dataset[HTMLTable]:
@@ -16,15 +18,12 @@ def html_tables() -> Dataset[HTMLTable]:
 
     cfg = WPDataDirConfig.get_instance()
 
-    # resp = html_articles().get_rdd().filter(lambda x: x.page_id == 673723).take(1)
-    # M.serialize_pkl(resp, "/tmp/debug.pkl")
-    # return
-
     if not does_result_dir_exist(cfg.html_tables):
         (
             html_articles()
             .get_rdd()
             .flatMap(extract_tables)
+            .coalesce(1024, shuffle=True)
             .saveAsTextFile(
                 str(cfg.html_tables),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
@@ -39,21 +38,19 @@ def html_tables() -> Dataset[HTMLTable]:
     )
 
 
-def deser_table(x: Union[str, bytes]) -> HTMLTable:
-    return HTMLTable.from_dict(orjson.loads(x))
+def deser_table(x: str) -> HTMLTable:
+    return HTMLTable.from_dict(ujson.loads(x))
 
 
-def ser_table(x: HTMLTable) -> bytes:
-    return orjson.dumps(x.to_dict())
+def ser_table(x: HTMLTable) -> str:
+    return ujson.dumps(x.to_dict(), escape_forward_slashes=False)
 
 
 def extract_tables(article: HTMLArticle):
     try:
         tables = HTMLTableExtractor(article.url, article.html, "lxml").extract_tables(
-            auto_span=False, auto_pad=False, extract_context=False
+            auto_span=True, auto_pad=True, extract_context=False
         )
-
-        return [orjson.dumps(tbl.to_dict()) for tbl in tables]
     except Exception as e:
         logger.exception(
             "Error while extracting tables from article {}: {}",
@@ -61,6 +58,31 @@ def extract_tables(article: HTMLArticle):
             article.url,
         )
         return [article.url]
+
+    # fix Wikipedia relative links to absolute links
+    # html static articles store the relative links strangely
+    # ./Kendal => https://en.wikipedia.org/wiki/Kendal
+    # while it should be /wiki/Kendal.
+    # if the relative links are interpreted correctly, it will be https://en.wikipedia.org/wiki/<current_page>/Kendal
+    parsed_resp = urlparse(article.url)
+    domain = f"{parsed_resp.scheme}://{parsed_resp.netloc}/wiki"
+
+    for table in tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for el in cell.travel_elements_post_order():
+                    if el.tag != "a" or "href" not in el.attrs:
+                        continue
+
+                    href = el.attrs["href"]
+                    if href.startswith("./"):
+                        # assert el.attrs.get("rel", [""])[0] == "mw:WikiLink", (
+                        #     table.page_url,
+                        #     el,
+                        # )
+                        el.attrs["href"] = domain + href[1:]
+
+    return [ujson.dumps(tbl.to_dict()) for tbl in tables]
 
 
 if __name__ == "__main__":
@@ -71,4 +93,4 @@ if __name__ == "__main__":
             x = tbl.to_dict()
             orjson.dumps(tbl.to_dict())
 
-    # print(resp[0].page_id)
+    print(resp[0].page_id)

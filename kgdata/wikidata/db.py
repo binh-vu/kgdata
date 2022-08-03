@@ -11,7 +11,7 @@ import orjson
 from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identity
 import requests
 
-from hugedict.prelude import RocksDBDict, RocksDBOptions
+from hugedict.prelude import RocksDBDict, RocksDBOptions, RocksDBCompressionOptions
 from kgdata.wikidata.models import (
     WDClass,
     WDProperty,
@@ -150,6 +150,14 @@ def get_wdclass_db(
     read_only=False,
     proxy: bool = False,
 ) -> HugeMutableMapping[str, WDClass]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
         compression_type="lz4",
@@ -181,6 +189,14 @@ def get_wdprop_db(
     read_only=False,
     proxy: bool = False,
 ) -> HugeMutableMapping[str, WDProperty]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
         compression_type="lz4",
@@ -211,16 +227,28 @@ def get_entity_db(
     read_only=False,
     proxy: bool = False,
 ) -> HugeMutableMapping[str, WDEntity]:
-    # no compression as we pre-compress the qnodes -- get much better compression
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "2", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("2")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
-        compression_type="none",
+        compression_type="zstd",
+        compression_opts=RocksDBCompressionOptions(
+            window_bits=-14, level=6, strategy=0, max_dict_bytes=16 * 1024
+        ),
+        zstd_max_train_bytes=100 * 16 * 1024,
     )
+
     if proxy:
         db: RocksDBDict[str, WDEntity] = WDProxyDB(
             WDEntity,
             dbfile,
-            compression=True,
+            compression=False,
             readonly=read_only,
             dboptions=dboptions,
         )
@@ -230,8 +258,8 @@ def get_entity_db(
             options=dboptions,
             readonly=read_only,
             deser_key=partial(str, encoding="utf-8"),
-            deser_value=zstd_decompress_custom(partial(deserialize, WDEntity)),
-            ser_value=zstd6_compress_custom(serialize),
+            deser_value=partial(deserialize, WDEntity),
+            ser_value=serialize,
         )
     return db
 
@@ -241,6 +269,14 @@ def get_entity_redirection_db(
     create_if_missing=False,
     read_only=True,
 ) -> HugeMutableMapping[str, str]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
         compression_type="lz4",
@@ -260,6 +296,14 @@ def get_entity_label_db(
     create_if_missing=False,
     read_only=True,
 ) -> HugeMutableMapping[str, WDEntityLabel]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
         compression_type="lz4",
@@ -280,6 +324,14 @@ def get_wp2wd_db(
     read_only=True,
 ) -> HugeMutableMapping[str, str]:
     """Mapping from wikipedia article to wikidata id"""
+    version = Path(dbpath) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
         compression_type="lz4",
@@ -299,6 +351,14 @@ def get_wdprop_range_db(
     create_if_missing=False,
     read_only=True,
 ) -> HugeMutableMapping[str, WDPropertyRanges]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
         compression_type="lz4",
@@ -318,6 +378,14 @@ def get_wdprop_domain_db(
     create_if_missing=False,
     read_only=True,
 ) -> HugeMutableMapping[str, WDPropertyDomains]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
     dboptions = RocksDBOptions(
         create_if_missing=create_if_missing,
         compression_type="lz4",

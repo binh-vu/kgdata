@@ -1,10 +1,18 @@
 import glob
+import gc
 from pathlib import Path
-from typing import List
+import shutil
+from typing import List, cast
 import click, os
 from click.types import Choice
-from hugedict.prelude import rocksdb_load
-from hugedict.misc import Chain2, zstd6_compress, Chain3
+from hugedict.prelude import (
+    RocksDBDict,
+    RocksDBOptions,
+    rocksdb_load,
+    init_env_logger,
+    rocksdb_build_sst_file,
+    rocksdb_ingest_sst_files,
+)
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.datasets.properties import properties
@@ -19,6 +27,7 @@ from kgdata.wikidata.db import (
     get_entity_label_db,
     get_entity_redirection_db,
     get_wdprop_domain_db,
+    get_wdprop_range_db,
     get_wp2wd_db,
     get_wdclass_db,
     get_wdprop_db,
@@ -28,6 +37,9 @@ import orjson
 from operator import itemgetter
 
 from sm.misc.funcs import identity_func
+from sm.misc.deser import deserialize_jl
+from sm.misc.timer import Timer
+import ray
 
 
 @click.command(name="entities")
@@ -47,11 +59,13 @@ def db_entities(directory: str, output: str, compact: bool, lang: str):
     dbpath = Path(output) / "wdentities.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
-    dbopts = get_entity_db(dbpath).dbopts
+    options = cast(RocksDBDict, get_entity_db(dbpath)).options
+    gc.collect()
+
     rocksdb_load(
         dbpath=str(dbpath),
-        dbopts=dbopts,
-        infiles=entities(lang=lang).get_files(),
+        dbopts=options,
+        files=entities(lang=lang).get_files(),
         format={
             "record_type": {"type": "ndjson", "key": "id", "value": None},
             "is_sorted": False,
@@ -78,21 +92,53 @@ def db_entity_labels(directory: str, output: str, compact: bool, lang: str):
     dbpath = Path(output) / "wdentity_labels.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
-    db = load(
-        db=get_entity_label_db(dbpath, create_if_missing=True, read_only=False).db,
-        infiles=entities(lang=lang).get_files(),
-        format=FileFormat.jsonline,
-        key_fn=Chain2(str.encode, itemgetter("id")).exec,
-        value_fn=Chain3(
-            orjson.dumps, WDEntityLabel.to_dict, WDEntityLabel.from_wdentity_raw
-        ).exec,
-        n_processes=8,
-        shm_mem_ratio=12,
-        shm_mem_limit_mb=128,
-    )
-    if compact:
-        logger.info("Run compaction...")
-        db.compact_range()
+    temp_dir = dbpath / "_temporary"
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir()
+
+    options = cast(
+        RocksDBDict,
+        get_entity_label_db(dbpath, create_if_missing=True, read_only=False),
+    ).options
+    gc.collect()
+
+    ray.init()
+
+    @ray.remote
+    def _build_sst_file(infile: str, temp_dir: str, options: RocksDBOptions):
+        kvs = sorted(
+            [
+                (
+                    obj["id"].encode(),
+                    orjson.dumps(WDEntityLabel.from_wdentity_raw(obj).to_dict()),
+                )
+                for obj in deserialize_jl(infile)
+            ],
+            key=itemgetter(0),
+        )
+        tmp = {"counter": 0}
+
+        def input_gen():
+            if tmp["counter"] == len(kvs):
+                return None
+            obj = kvs[tmp["counter"]]
+            tmp["counter"] += 1
+            return obj
+
+        outfile = os.path.join(temp_dir, Path(infile).stem + ".sst")
+        rocksdb_build_sst_file(options, outfile, input_gen)
+        return outfile
+
+    ray_opts = ray.put(options)
+    with Timer().watch_and_report("Creating SST files"):
+        refs = []
+        for file in entities(lang=lang).get_files():
+            refs.append(_build_sst_file.remote(file, str(temp_dir), ray_opts))
+        sst_files = ray.get(refs)
+
+    with Timer().watch_and_report("Ingesting SST files"):
+        rocksdb_ingest_sst_files(str(dbpath), options, sst_files, True)
 
 
 @click.command(name="entity_redirections")
@@ -111,21 +157,23 @@ def db_entity_redirections(directory: str, output: str, compact: bool):
     dbpath = Path(output) / "wdentity_redirections.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
-    db = load(
-        db=get_entity_redirection_db(
-            dbpath, create_if_missing=True, read_only=False
-        ).db,
-        infiles=entity_redirections().get_files(),
-        format=FileFormat.tabsep,
-        key_fn=identity_func,
-        value_fn=identity_func,
-        n_processes=8,
-        shm_mem_ratio=12,
-        shm_mem_limit_mb=128,
+    options = cast(
+        RocksDBDict,
+        get_entity_redirection_db(dbpath, create_if_missing=True, read_only=False),
+    ).options
+    gc.collect()
+
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=options,
+        files=entity_redirections().get_files(),
+        format={
+            "record_type": {"type": "tabsep", "key": None, "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=True,
     )
-    if compact:
-        logger.info("Run compaction...")
-        db.compact_range()
 
 
 @click.command(name="classes")
@@ -145,19 +193,23 @@ def db_classes(directory: str, output: str, compact: bool, lang: str):
     dbpath = Path(output) / "wdclasses.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
-    db = load(
-        db=get_wdclass_db(dbpath).db,
-        infiles=classes(lang=lang).get_files(),
-        format=FileFormat.jsonline,
-        key_fn=Chain2(str.encode, itemgetter("id")).exec,
-        value_fn=orjson.dumps,
-        n_processes=8,
-        shm_mem_ratio=12,
-        shm_mem_limit_mb=128,
+    options = cast(
+        RocksDBDict,
+        get_wdclass_db(dbpath),
+    ).options
+    gc.collect()
+
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=options,
+        files=classes(lang=lang).get_files(),
+        format={
+            "record_type": {"type": "ndjson", "key": "id", "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=True,
     )
-    if compact:
-        logger.info("Run compaction...")
-        db.compact_range()
 
 
 @click.command(name="properties")
@@ -187,51 +239,57 @@ def db_properties(
     dbpath = Path(output) / "wdprops.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
-    db = load(
-        db=get_wdprop_db(dbpath).db,
-        infiles=properties(lang=lang).get_files(),
-        format=FileFormat.jsonline,
-        key_fn=Chain2(str.encode, itemgetter("id")).exec,
-        value_fn=orjson.dumps,
-        n_processes=8,
-        shm_mem_ratio=12,
-        shm_mem_limit_mb=128,
+    options = cast(
+        RocksDBDict,
+        get_wdprop_db(dbpath),
+    ).options
+    gc.collect()
+
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=options,
+        files=properties(lang=lang).get_files(),
+        format={
+            "record_type": {"type": "ndjson", "key": "id", "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=True,
     )
-    if compact:
-        logger.info("Compacting wdprops.db...")
-        db.compact_range()
 
     for name in extra:
         if name == "domains":
             dbpath = Path(output) / "wdprop_domains.db"
             dbpath.mkdir(exist_ok=True, parents=True)
-            infiles = property_domains(lang=lang).get_files()
-            db = get_wdprop_domain_db(
-                dbpath, create_if_missing=True, read_only=False
-            ).db
+            files = property_domains(lang=lang).get_files()
+            options = cast(
+                RocksDBDict,
+                get_wdprop_domain_db(dbpath, create_if_missing=True, read_only=False),
+            ).options
+            gc.collect()
         elif name == "ranges":
             dbpath = Path(output) / "wdprop_ranges.db"
             dbpath.mkdir(exist_ok=True, parents=True)
-            infiles = property_ranges(lang=lang).get_files()
-            db = get_wdprop_domain_db(
-                dbpath, create_if_missing=True, read_only=False
-            ).db
+            files = property_ranges(lang=lang).get_files()
+            options = cast(
+                RocksDBDict,
+                get_wdprop_range_db(dbpath, create_if_missing=True, read_only=False),
+            ).options
+            gc.collect()
         else:
             raise NotImplementedError(name)
 
-        db = load(
-            db=db,
-            infiles=infiles,
-            format=FileFormat.tuple2,
-            key_fn=str.encode,
-            value_fn=orjson.dumps,
-            n_processes=8,
-            shm_mem_ratio=12,
-            shm_mem_limit_mb=128,
+        rocksdb_load(
+            dbpath=str(dbpath),
+            dbopts=options,
+            files=files,
+            format={
+                "record_type": {"type": "tuple2", "key": None, "value": None},
+                "is_sorted": False,
+            },
+            verbose=True,
+            compact=True,
         )
-        if compact:
-            logger.info("Compacting {} db...", name)
-            db.compact_range()
 
 
 @click.command(name="wp2wd")
@@ -251,19 +309,23 @@ def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
     dbpath = Path(output) / "wp2wd.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
-    db = load(
-        db=get_wp2wd_db(dbpath, create_if_missing=True, read_only=False).db,
-        infiles=wp2wd(lang=lang).get_files(),
-        format=FileFormat.tuple2,
-        key_fn=str.encode,
-        value_fn=str.encode,
-        n_processes=8,
-        shm_mem_ratio=12,
-        shm_mem_limit_mb=128,
+    options = cast(
+        RocksDBDict,
+        get_wp2wd_db(dbpath, create_if_missing=True, read_only=False),
+    ).options
+    gc.collect()
+
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=options,
+        files=wp2wd(lang=lang).get_files(),
+        format={
+            "record_type": {"type": "tuple2", "key": None, "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=True,
     )
-    if compact:
-        logger.info("Run compaction...")
-        db.compact_range()
 
 
 @click.command(name="search.entities")
@@ -316,4 +378,5 @@ wikidata.add_command(search_classes)
 
 
 if __name__ == "__main__":
+    init_env_logger()
     wikidata()

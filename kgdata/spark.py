@@ -7,7 +7,7 @@ import shutil
 from operator import add, itemgetter
 from pathlib import Path
 from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
-from pyspark import SparkContext, SparkConf
+from pyspark import RDD, SparkContext, SparkConf
 
 
 # SparkContext singleton
@@ -130,8 +130,8 @@ K2 = TypeVar("K2")
 
 
 def left_outer_join(
-    rdd1,
-    rdd2,
+    rdd1: RDD[R1],
+    rdd2: RDD[R2],
     rdd1_keyfn: Callable[[R1], K1],
     rdd1_fk_fn: Callable[[R1], List[K2]],
     rdd2_keyfn: Callable[[R2], K2],

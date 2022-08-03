@@ -22,6 +22,7 @@ def properties(lang="en") -> Dataset[WDProperty]:
             .get_rdd()
             .flatMap(get_property_ids)
             .distinct()
+            .coalesce(128, shuffle=True)
             .saveAsTextFile(
                 str(cfg.properties / "ids"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
@@ -39,6 +40,7 @@ def properties(lang="en") -> Dataset[WDProperty]:
             .filter(lambda ent: ent.id in prop_ids.value)
             .map(lambda x: WDProperty.from_entity(x).to_dict())
             .map(orjson.dumps)
+            .coalesce(128, shuffle=True)
             .saveAsTextFile(
                 str(cfg.properties / "properties"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
@@ -101,6 +103,7 @@ def properties(lang="en") -> Dataset[WDProperty]:
             .map(merge_ancestors)
             .map(WDProperty.to_dict)
             .map(orjson.dumps)
+            .coalesce(128, shuffle=True)
             .saveAsTextFile(
                 str(cfg.properties / "full_properties"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
@@ -130,4 +133,3 @@ def get_property_ids(ent: WDEntity) -> List[str]:
             prop_ids.update(stmt.qualifiers.keys())
 
     return list(prop_ids)
-
