@@ -21,6 +21,7 @@ def relational_tables() -> Dataset[HTMLTable]:
             .get_rdd()
             .filter(is_relational_table)
             .map(ser_table)
+            .coalesce(1024, shuffle=True)
             .saveAsTextFile(
                 str(cfg.relational_tables),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",

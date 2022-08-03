@@ -1,3 +1,4 @@
+from typing import Optional
 from urllib.parse import unquote_plus, urlparse
 
 
@@ -18,3 +19,14 @@ def get_title_from_url(url: str) -> str:
     path = path[6:]
     title = unquote_plus(path).replace("_", " ")
     return title.strip()
+
+
+def is_wikipedia_url(url: str, lang: Optional[str] = None) -> bool:
+    """This function checks if a URL is a wikipedia URL.
+
+    Args:
+        url: A URL.
+        lang: A 2-char language code (e.g., en). If None, all languages are acceptable.
+    """
+    host = "wikipedia.org" if lang is None else f"{lang}.wikipedia.org"
+    return urlparse(url).netloc.endswith(host)

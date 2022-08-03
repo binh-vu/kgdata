@@ -16,7 +16,7 @@ Installation
 .. note::
 
     You need to have gcc in order for pip to compile `cityhash`. 
-    Also, this library uses Apache Spark 3.0.3 (``pyspark`` version is ``3.0.3``).
+    Also, this library uses Apache Spark 3.3.0 (``pyspark`` version is ``3.3.0``).
     If you use different Spark version, try to install from source (see :ref:`Install from Source`).
 
 
