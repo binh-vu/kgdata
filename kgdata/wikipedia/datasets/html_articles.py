@@ -46,3 +46,7 @@ def html_articles() -> Dataset[HTMLArticle]:
 
 def deser_html_articles(line: Union[str, bytes]) -> HTMLArticle:
     return HTMLArticle.from_dump_dict(orjson.loads(line))
+
+
+def ser_html_articles(article: HTMLArticle) -> bytes:
+    return orjson.dumps(article.to_dict())

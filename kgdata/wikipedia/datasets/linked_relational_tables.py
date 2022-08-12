@@ -11,8 +11,8 @@ from kgdata.spark import does_result_dir_exist, left_outer_join
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.config import WPDataDirConfig
 from kgdata.wikipedia.models.html_article import HTMLArticle
-from table_extractor.table_extractor import HTMLTableExtractor
-from table_extractor.models.html_table import HTMLTable, HTMLTableCell
+from rsoup.python.table_extractor import HTMLTableExtractor
+from rsoup.python.models.html_table import HTMLTable, HTMLTableCell
 import sm.misc as M
 from importlib import import_module
 

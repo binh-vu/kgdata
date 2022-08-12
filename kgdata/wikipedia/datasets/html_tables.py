@@ -7,13 +7,12 @@ from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.config import WPDataDirConfig
 from kgdata.wikipedia.models.html_article import HTMLArticle
-from table_extractor.table_extractor import HTMLTableExtractor
-from table_extractor.models.html_table import HTMLTable
+from rsoup.rsoup import TableExtractor, Table
 import sm.misc as M
 import ujson
 
 
-def html_tables() -> Dataset[HTMLTable]:
+def html_tables() -> Dataset[Table]:
     """Extracting all tables (at the lowest level) and their surrounding context from Wikipedia articles."""
 
     cfg = WPDataDirConfig.get_instance()
@@ -38,17 +37,17 @@ def html_tables() -> Dataset[HTMLTable]:
     )
 
 
-def deser_table(x: str) -> HTMLTable:
-    return HTMLTable.from_dict(ujson.loads(x))
+def deser_table(x: str) -> Table:
+    return Table.from_bytes(x)
 
 
-def ser_table(x: HTMLTable) -> str:
-    return ujson.dumps(x.to_dict(), escape_forward_slashes=False)
+def ser_table(x: Table) -> bytes:
+    return x.to_bytes()
 
 
 def extract_tables(article: HTMLArticle):
     try:
-        tables = HTMLTableExtractor(article.url, article.html, "lxml").extract_tables(
+        tables = TableExtractor(article.url, article.html, "lxml").extract_tables(
             auto_span=True, auto_pad=True, extract_context=False
         )
     except Exception as e:
