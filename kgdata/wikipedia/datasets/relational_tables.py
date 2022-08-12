@@ -7,8 +7,8 @@ from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.config import WPDataDirConfig
 from kgdata.wikipedia.models.html_article import HTMLArticle
-from table_extractor.table_extractor import HTMLTableExtractor
-from table_extractor.models.html_table import HTMLTable
+from rsoup.python.table_extractor import HTMLTableExtractor
+from rsoup.python.models.html_table import HTMLTable
 import sm.misc as M
 
 

@@ -78,6 +78,23 @@ class HTMLArticle:
             wikitext=o["article_body"]["wikitext"],
         )
 
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "page_id": self.page_id,
+            "date_modified": self.date_modified,
+            "url": self.url,
+            "lang": self.lang,
+            "wdentity": self.wdentity,
+            "additional_entities": [ent.to_dict() for ent in self.additional_entities],
+            "is_part_of": self.is_part_of,
+            "categories": [o.to_dict() for o in self.categories],
+            "templates": [o.to_dict() for o in self.templates],
+            "redirects": [o.to_dict() for o in self.redirects],
+            "html": self.html,
+            "wikitext": self.wikitext,
+        }
+
 
 @dataclass
 class AdditionalEntity:
@@ -85,8 +102,18 @@ class AdditionalEntity:
     url: str
     aspects: List[str]
 
+    def to_dict(self) -> dict:
+        return {
+            "identifier": self.identifier,
+            "url": self.url,
+            "aspects": self.aspects,
+        }
+
 
 @dataclass
 class NameAndURL:
     name: str
     url: str
+
+    def to_dict(self) -> dict:
+        return {"name": self.name, "url": self.url}

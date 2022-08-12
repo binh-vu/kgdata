@@ -2,7 +2,7 @@ from __future__ import annotations
 import copy
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Tuple
-from table_extractor.models.html_table import HTMLTable, ContentHierarchy, HTMLTableRow
+from rsoup.python.models.html_table import HTMLTable, ContentHierarchy, HTMLTableRow
 
 
 @dataclass
