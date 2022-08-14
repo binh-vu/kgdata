@@ -1,4 +1,3 @@
-from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_table
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
@@ -11,8 +10,8 @@ from kgdata.spark import does_result_dir_exist, left_outer_join
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.config import WPDataDirConfig
 from kgdata.wikipedia.models.html_article import HTMLArticle
-from rsoup.python.table_extractor import HTMLTableExtractor
-from rsoup.python.models.html_table import HTMLTable, HTMLTableCell
+
+from rsoup.rsoup import Table, Cell
 import sm.misc as M
 from importlib import import_module
 
@@ -35,7 +34,7 @@ def linked_tables(
 
     if not does_result_dir_exist(outdir):
         module = import_module(f"kgdata.wikipedia.datasets.{table_dataset_name}")
-        table_dataset: Dataset[HTMLTable] = getattr(module, table_dataset_name)()
+        table_dataset: Dataset[Table] = getattr(module, table_dataset_name)()
 
         tbl2titles = (
             table_dataset.get_rdd()
@@ -73,14 +72,14 @@ def linked_relational_tables(lang: str = "en") -> Dataset[LinkedHTMLTable]:
 
 
 def deser_linked_tables(x: str) -> LinkedHTMLTable:
-    return LinkedHTMLTable.from_dict(ujson.loads(x))
+    return LinkedHTMLTable.from_json(x)
 
 
-def ser_linked_tables(tbl: LinkedHTMLTable) -> str:
-    return ujson.dumps(tbl.to_dict(), escape_forward_slashes=False)
+def ser_linked_tables(tbl: LinkedHTMLTable) -> bytes:
+    return tbl.to_json()
 
 
-def extract_title_to_tables(tbl: HTMLTable) -> List[Tuple[str, str]]:
+def extract_title_to_tables(tbl: Table) -> List[Tuple[str, str]]:
     """Extract (link, table id) in a table"""
     urls = set()
     for ri, row in enumerate(tbl.rows):
@@ -90,7 +89,7 @@ def extract_title_to_tables(tbl: HTMLTable) -> List[Tuple[str, str]]:
 
 
 def merge_link_to_table(
-    x: Tuple[str, Tuple[HTMLTable, Union[None, Iterable[Tuple[str, Union[str, None]]]]]]
+    x: Tuple[str, Tuple[Table, Union[None, Iterable[Tuple[str, Union[str, None]]]]]]
 ) -> LinkedHTMLTable:
     tbl_id, (tbl, title_and_wd) = x
     if title_and_wd is None:
@@ -102,33 +101,34 @@ def merge_link_to_table(
     links: Dict[Tuple[int, int], List[WikiLink]] = {}
 
     if title_and_wd is not None:
-        for ri, row in enumerate(tbl.rows):
-            for ci, cell in enumerate(row.cells):
-                cell_links = extract_cell_links(cell)
-                if len(cell_links) > 0:
-                    links[ri, ci] = []
+        for ri, ci, cell in tbl.enumerate_cells():
+            cell_links = extract_cell_links(cell)
+            if len(cell_links) > 0:
+                links[ri, ci] = []
 
-                for link in cell_links:
-                    title = get_title_from_url(link.wikipedia_url)
-                    link.wikidata_id = title2wd[title]
-                    links[ri, ci].append(link)
+            for link in cell_links:
+                title = get_title_from_url(link.wikipedia_url)
+                link.wikidata_id = title2wd[title]
+                links[ri, ci].append(link)
 
     return LinkedHTMLTable(
-        id=tbl_id,
-        page_url=tbl.page_url,
-        caption=tbl.caption,
-        attrs=tbl.attrs,
-        context=tbl.context,
-        rows=tbl.rows,
+        table=tbl,
         links=links,
     )
 
 
-def extract_cell_links(cell: HTMLTableCell) -> List[WikiLink]:
-    return [
-        WikiLink(
-            start=el.start, end=el.end, wikipedia_url=el.attrs["href"], wikidata_id=None
-        )
-        for el in cell.travel_elements_post_order()
-        if el.tag == "a" and is_wikipedia_url(el.attrs["href"])
-    ]
+def extract_cell_links(cell: Cell) -> List[WikiLink]:
+    links = []
+
+    value = cell.value
+    for eid in value.iter_element_id():
+        if value.get_element_tag_by_id(eid) == "a":
+            href = value.get_element_attr_by_id(eid, "href")
+            if href is not None and is_wikipedia_url(href):
+                el = value.get_element_by_id(eid)
+                link = WikiLink(
+                    start=el.start, end=el.end, wikipedia_url=href, wikidata_id=None
+                )
+                links.append(link)
+
+    return links

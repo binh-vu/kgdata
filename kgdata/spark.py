@@ -8,6 +8,7 @@ from operator import add, itemgetter
 from pathlib import Path
 from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
 from pyspark import RDD, SparkContext, SparkConf
+from loguru import logger
 
 
 # SparkContext singleton
@@ -23,40 +24,61 @@ def get_spark_context():
     """
     global _sc
     if _sc is None:
-        conf = SparkConf().setAll(
-            [
-                (
+
+        def has_key(key):
+            return any(
+                k in os.environ
+                for k in [
                     key,
-                    os.environ[key]
-                    if key in os.environ
-                    else os.environ[key.replace(".", "_")],
-                )
-                for key in [
-                    "spark.master",
-                    "spark.ui.port",
-                    "spark.executor.memory",
-                    "spark.executor.cores",
-                    "spark.executor.instances",
-                    "spark.driver.memory",
-                    "spark.driver.maxResultSize",
+                    key.upper(),
+                    key.replace(".", "_"),
+                    key.upper().replace(".", "_"),
                 ]
-                if key.replace(".", "_") in os.environ or key in os.environ
+            )
+
+        def get_key(key):
+            lst = [
+                os.environ[k]
+                for k in [
+                    key,
+                    key.upper(),
+                    key.replace(".", "_"),
+                    key.upper().replace(".", "_"),
+                ]
+                if k in os.environ
             ]
-        )
+            assert len(lst) > 0, f"{key}: {has_key(key)}"
+            return lst[0]
+
+        opts = [
+            (key, get_key(key))
+            for key in [
+                "spark.master",
+                "spark.ui.port",
+                "spark.executor.memory",
+                "spark.executor.cores",
+                "spark.executor.instances",
+                "spark.driver.memory",
+                "spark.driver.maxResultSize",
+            ]
+            if has_key(key)
+        ]
+        logger.debug("Spark Options: {}", opts)
+        conf = SparkConf().setAll(opts)
         _sc = SparkContext(conf=conf)
 
         # add the current package, run `python setup.py bdist_egg` if does not exist
-        egg_file = [
-            str(file)
-            for file in (
-                Path(os.path.abspath(__file__)).parent.parent / "dist"
-            ).iterdir()
-            if file.name.endswith(".egg") or file.name.endswith(".zip")
-        ]
-        if len(egg_file) > 0:
-            assert len(egg_file) == 1, f"{len(egg_file)} != 1"
-            egg_file = egg_file[0]
-            _sc.addPyFile(egg_file)
+        dist_dir = Path(os.path.abspath(__file__)).parent.parent / "dist"
+        if dist_dir.exists():
+            egg_file = [
+                str(file)
+                for file in (dist_dir).iterdir()
+                if file.name.endswith(".egg") or file.name.endswith(".zip")
+            ]
+            if len(egg_file) > 0:
+                assert len(egg_file) == 1, f"{len(egg_file)} != 1"
+                egg_file = egg_file[0]
+                _sc.addPyFile(egg_file)
 
     return _sc
 

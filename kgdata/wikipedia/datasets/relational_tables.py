@@ -1,18 +1,12 @@
 from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_table
-import orjson
-from typing import TypedDict, Union
-from loguru import logger
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.config import WPDataDirConfig
-from kgdata.wikipedia.models.html_article import HTMLArticle
-from rsoup.python.table_extractor import HTMLTableExtractor
-from rsoup.python.models.html_table import HTMLTable
+from rsoup.rsoup import Table
 import sm.misc as M
 
 
-def relational_tables() -> Dataset[HTMLTable]:
+def relational_tables() -> Dataset[Table]:
     cfg = WPDataDirConfig.get_instance()
 
     if not does_result_dir_exist(cfg.relational_tables):
@@ -34,14 +28,15 @@ def relational_tables() -> Dataset[HTMLTable]:
     )
 
 
-def is_relational_table(tbl: HTMLTable) -> bool:
+def is_relational_table(tbl: Table) -> bool:
     if len(tbl.rows) == 0:
         return False
 
-    if not all(c.is_header for c in tbl.rows[0].cells):
+    rows = tbl.rows
+    if not all(c.is_header for c in rows[0].cells):
         return False
 
-    if not all(not c.is_header for r in tbl.rows[1:] for c in r.cells):
+    if not all(not c.is_header for r in rows[1:] for c in r.cells):
         return False
 
     return True
