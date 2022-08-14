@@ -1,40 +1,33 @@
 from __future__ import annotations
-import copy
+import copy, orjson
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple
-from rsoup.python.models.html_table import HTMLTable, ContentHierarchy, HTMLTableRow
+from typing import Dict, List, Optional, Tuple, Union
+from rsoup.rsoup import Table
 
 
 @dataclass
-class LinkedHTMLTable(HTMLTable):
+class LinkedHTMLTable:
+    table: Table
     # mapping from (row, col) => links)
     links: Dict[Tuple[int, int], List[WikiLink]]
 
-    def to_dict(self):
-        return {
-            "_v": 1,
-            "id": self.id,
-            "page_url": self.page_url,
-            "caption": self.caption,
-            "attrs": self.attrs,
-            "context": [c.to_dict() for c in self.context],
-            "rows": [r.to_dict() for r in self.rows],
-            "links": [
-                [ri, ci, [l.to_dict() for l in links]]
-                for (ri, ci), links in self.links.items()
-            ],
-        }
+    def to_json(self) -> bytes:
+        links = [
+            [ri, ci, [l.to_dict() for l in links]]
+            for (ri, ci), links in self.links.items()
+        ]
+        return orjson.dumps([self.table.to_json(), links])
 
     @staticmethod
-    def from_dict(o: dict):
-        assert o.pop("_v") == 1
-        o["context"] = [ContentHierarchy.from_dict(c) for c in o["context"]]
-        o["rows"] = [HTMLTableRow.from_dict(r) for r in o["rows"]]
-        o["links"] = {
-            (ri, ci): [WikiLink.from_dict(l) for l in links]
-            for ri, ci, links in o["links"]
+    def from_json(s: Union[str, bytes]) -> LinkedHTMLTable:
+        tbl, links = orjson.loads(s)
+        links = {
+            (ri, ci): [WikiLink.from_dict(l) for l in links] for ri, ci, links in links
         }
-        return LinkedHTMLTable(**o)
+        return LinkedHTMLTable(
+            table=Table.from_json(tbl),
+            links=links,
+        )
 
 
 @dataclass
