@@ -29,15 +29,14 @@ def easy_tables() -> Dataset[LinkedHTMLTable]:
             EasyTests.min_existing_links_all_columns,
         ]
 
-        print(
-            (
-                linked_relational_tables()
-                .get_rdd()
-                .filter(partial(is_easy_table, tests=tests))
-                .count()
-            )
-        )
-        return
+        # print(
+        #     (
+        #         linked_relational_tables()
+        #         .get_rdd()
+        #         .filter(partial(is_easy_table, tests=tests))
+        #         .count()
+        #     )
+        # )
         (
             linked_relational_tables()
             .get_rdd()
@@ -67,6 +66,18 @@ def is_easy_table(
     return all(test(tbl) for test in tests)
 
 
+def get_n_headers(tbl: LinkedHTMLTable) -> int:
+    n_headers = 0
+    try:
+        for row in tbl.table.iter_rows():
+            if not row.get_cell(0).is_header:
+                break
+            n_headers += 1
+    except KeyError as e:
+        raise KeyError(str(e) + " " + str((">>>", tbl.table.id, tbl.table.url)))
+    return n_headers
+
+
 class EasyTests:
     MIN_ROWS = 10
     MIN_FREQ_LINKS = 0.7
@@ -82,12 +93,14 @@ class EasyTests:
             min_rows: Minimum number of rows.
         """
         # minus one for the header
-        return len(tbl.rows) - 1 >= EasyTests.MIN_ROWS
+        n_headers = get_n_headers(tbl)
+        return tbl.table.n_rows() - n_headers >= EasyTests.MIN_ROWS
 
     @staticmethod
     def min_link_coverage_all_columns(tbl: LinkedHTMLTable) -> bool:
-        nrows = len(tbl.rows) - 1  # not counting the header
-        ncols = len(tbl.rows[0].cells)
+        n_headers = get_n_headers(tbl)
+        nrows, ncols = tbl.table.shape()
+        nrows -= n_headers
 
         if nrows == 0:
             return False
@@ -96,7 +109,7 @@ class EasyTests:
             percent_surface = (
                 sum(
                     sum((link.end - link.start) for link in tbl.links.get((ri, ci), []))
-                    / max(0.1, len(tbl.rows[ri].cells[ci].value.strip()))
+                    / max(0.1, tbl.table.get_cell(ri, ci).value.len())
                     for ri in range(1, nrows + 1)
                 )
                 / nrows
@@ -107,8 +120,9 @@ class EasyTests:
 
     @staticmethod
     def min_links_all_columns(tbl: LinkedHTMLTable) -> bool:
-        nrows = len(tbl.rows) - 1  # not counting the header
-        ncols = len(tbl.rows[0].cells)
+        n_headers = get_n_headers(tbl)
+        nrows, ncols = tbl.table.shape()
+        nrows -= n_headers
 
         if nrows == 0:
             return False
@@ -123,8 +137,9 @@ class EasyTests:
 
     @staticmethod
     def single_links_all_columns(tbl: LinkedHTMLTable) -> bool:
-        nrows = len(tbl.rows) - 1  # not counting the header
-        ncols = len(tbl.rows[0].cells)
+        n_headers = get_n_headers(tbl)
+        nrows, ncols = tbl.table.shape()
+        nrows -= n_headers
 
         for ci in range(ncols):
             count = 0
@@ -144,8 +159,9 @@ class EasyTests:
 
     @staticmethod
     def min_existing_links_all_columns(tbl: LinkedHTMLTable) -> bool:
-        nrows = len(tbl.rows) - 1  # not counting the header
-        ncols = len(tbl.rows[0].cells)
+        n_headers = get_n_headers(tbl)
+        nrows, ncols = tbl.table.shape()
+        nrows -= n_headers
 
         for ci in range(ncols):
             n_existing_links = 0

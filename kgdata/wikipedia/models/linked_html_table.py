@@ -16,7 +16,7 @@ class LinkedHTMLTable:
             [ri, ci, [l.to_dict() for l in links]]
             for (ri, ci), links in self.links.items()
         ]
-        return orjson.dumps([self.table.to_json(), links])
+        return orjson.dumps([self.table.to_base64(), links])
 
     @staticmethod
     def from_json(s: Union[str, bytes]) -> LinkedHTMLTable:
@@ -25,7 +25,7 @@ class LinkedHTMLTable:
             (ri, ci): [WikiLink.from_dict(l) for l in links] for ri, ci, links in links
         }
         return LinkedHTMLTable(
-            table=Table.from_json(tbl),
+            table=Table.from_base64(tbl),
             links=links,
         )
 
