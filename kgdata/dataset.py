@@ -73,6 +73,9 @@ class Dataset(Generic[V]):
                     output[k] = v
         return output
 
+    def does_exist(self) -> bool:
+        return len(self.get_files()) > 0
+
     def map(self, func: Callable[[V], V2]) -> Dataset[V2]:
         """Transform record from its origin type to another type.
 

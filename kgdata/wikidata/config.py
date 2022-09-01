@@ -28,6 +28,7 @@ class WDDataDirCfg:
         self.entities = datadir / "entities"
 
         self.classes = datadir / "classes"
+        self.class_count = datadir / "class_count"
         self.properties = datadir / "properties"
         self.property_domains = datadir / "property_domains"
         self.property_ranges = datadir / "property_ranges"

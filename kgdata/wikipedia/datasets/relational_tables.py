@@ -33,11 +33,18 @@ def is_relational_table(tbl: Table) -> bool:
         return False
 
     rows = tbl.rows
-    if not all(c.is_header for c in rows[0].cells):
+    n_headers = 0
+    for i in range(len(rows) - 1):
+        if not all(c.is_header for c in rows[i].cells):
+            break
+        n_headers += 1
+
+    if n_headers == 0:
         return False
 
-    if not all(not c.is_header for r in rows[1:] for c in r.cells):
-        return False
+    for i in range(n_headers, len(rows)):
+        if not all(not c.is_header for c in rows[i].cells):
+            return False
 
     return True
 
