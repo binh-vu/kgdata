@@ -2,7 +2,7 @@
 
 from functools import partial
 from pathlib import Path
-from typing import Dict, Union, TypeVar, Optional, Callable, Set, List, Type
+from typing import Dict, Union, TypeVar, Optional, Callable, Set, List, Type, cast
 
 from hugedict.types import HugeMutableMapping
 from kgdata.wikidata.models.wdentity import WDEntity
@@ -23,40 +23,14 @@ V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel)
 
 
 class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
-    def __init__(
-        self,
-        EntClass,
-        dbpath: Union[Path, str],
-        dboptions: Optional[RocksDBOptions] = None,
-        compression: bool = False,
-        create_if_missing=True,
-        readonly=False,
-    ):
-        super().__init__(
-            path=str(dbpath),
-            options=RocksDBOptions(create_if_missing=create_if_missing)
-            if dboptions is None
-            else dboptions,
-            readonly=readonly,
-            deser_key=partial(str, encoding="utf-8"),
-            deser_value=zstd_decompress_custom(partial(deserialize, EntClass))
-            if compression
-            else partial(deserialize, EntClass),
-            ser_value=zstd6_compress_custom(serialize) if compression else serialize,
-        )
-
-        if not hasattr(EntClass, "from_entity"):
-            self.extract_ent_from_entity: Callable[[WDEntity], V] = identity
-        else:
-            self.extract_ent_from_entity: Callable[[WDEntity], V] = getattr(
-                EntClass, "from_entity"
-            )
+    def set_extract_ent_from_entity(self, func: Callable[[WDEntity], V]):
+        self.extract_ent_from_entity = func
+        return self
 
     def __getitem__(self, key: str):
-        item = self.get(key)
-        if item == b"\x00":
-            raise KeyError(key)
-        elif item is None:
+        try:
+            item = self._get(key.encode())
+        except KeyError:
             qnodes = query_wikidata_entities([key])
             if len(qnodes) == 0:
                 # no entity
@@ -65,9 +39,11 @@ class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
             else:
                 ent = self.extract_ent_from_entity(qnodes[key])
                 self._put(key.encode(), self.ser_value(ent))
-
             return ent
-        return self.deser_value(item)
+
+        if item == b"\x00":
+            raise KeyError(key)
+        return self.deser_value(item)  # type: ignore
 
     def get(self, key: str, default: Optional[V] = None):
         try:
@@ -76,10 +52,9 @@ class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
             return default
 
     def __contains__(self, key):
-        item = self.get(key)
-        if item == b"\x00":
-            return False
-        if item is None:
+        try:
+            item = self._get(key)
+        except KeyError:
             qnodes = query_wikidata_entities([key])
             if len(qnodes) == 0:
                 # no entity
@@ -88,10 +63,18 @@ class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
 
             ent = self.extract_ent_from_entity(qnodes[key])
             self._put(key.encode(), self.ser_value(ent))
+            return True
+
+        if item == b"\x00":
+            return False
+
         return True
 
     def does_not_exist_locally(self, key):
-        item = self.get(key)
+        try:
+            item = self._get(key)
+        except KeyError:
+            return True
         return item == b"\x00"
 
 
@@ -158,28 +141,27 @@ def get_wdclass_db(
         version.parent.mkdir(parents=True, exist_ok=True)
         version.write_text("1")
 
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-        bottommost_compression_type="zstd",
-    )
     if proxy:
-        db = WDProxyDB(
-            WDClass,
-            dbpath=dbfile,
-            dboptions=dboptions,
-            compression=False,
-            readonly=read_only,
-        )
+        constructor = WDProxyDB
+        create_if_missing = True
     else:
-        db = RocksDBDict(
-            path=str(dbfile),
-            options=dboptions,
-            readonly=read_only,
-            deser_key=partial(str, encoding="utf-8"),
-            deser_value=partial(deserialize, WDClass),
-            ser_value=serialize,
-        )
+        constructor = RocksDBDict
+
+    db = constructor(
+        path=str(dbfile),
+        options=RocksDBOptions(
+            create_if_missing=create_if_missing,
+            compression_type="lz4",
+            bottommost_compression_type="zstd",
+        ),
+        readonly=read_only,
+        deser_key=partial(str, encoding="utf-8"),
+        deser_value=partial(deserialize, WDClass),
+        ser_value=serialize,
+    )
+
+    if proxy:
+        return cast(WDProxyDB, db).set_extract_ent_from_entity(WDClass.from_entity)
     return db
 
 
@@ -197,27 +179,26 @@ def get_wdprop_db(
         version.parent.mkdir(parents=True, exist_ok=True)
         version.write_text("1")
 
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-    )
     if proxy:
-        db = WDProxyDB(
-            WDProperty,
-            dbfile,
-            dboptions=dboptions,
-            compression=False,
-            readonly=read_only,
-        )
+        constructor = WDProxyDB
+        create_if_missing = True
     else:
-        db = RocksDBDict(
-            path=str(dbfile),
-            options=dboptions,
-            readonly=read_only,
-            deser_key=partial(str, encoding="utf-8"),
-            deser_value=partial(deserialize, WDProperty),
-            ser_value=serialize,
-        )
+        constructor = RocksDBDict
+
+    db = constructor(
+        path=str(dbfile),
+        options=RocksDBOptions(
+            create_if_missing=create_if_missing,
+            compression_type="lz4",
+        ),
+        readonly=read_only,
+        deser_key=partial(str, encoding="utf-8"),
+        deser_value=partial(deserialize, WDProperty),
+        ser_value=serialize,
+    )
+
+    if proxy:
+        return cast(WDProxyDB, db).set_extract_ent_from_entity(WDProperty.from_entity)
     return db
 
 
@@ -235,32 +216,31 @@ def get_entity_db(
         version.parent.mkdir(parents=True, exist_ok=True)
         version.write_text("2")
 
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="zstd",
-        compression_opts=RocksDBCompressionOptions(
-            window_bits=-14, level=6, strategy=0, max_dict_bytes=16 * 1024
+    if proxy:
+        constructor = WDProxyDB
+        create_if_missing = True
+    else:
+        constructor = RocksDBDict
+
+    db = constructor(
+        path=str(dbfile),
+        options=RocksDBOptions(
+            create_if_missing=create_if_missing,
+            compression_type="zstd",
+            compression_opts=RocksDBCompressionOptions(
+                window_bits=-14, level=6, strategy=0, max_dict_bytes=16 * 1024
+            ),
+            zstd_max_train_bytes=100 * 16 * 1024,
         ),
-        zstd_max_train_bytes=100 * 16 * 1024,
+        readonly=read_only,
+        deser_key=partial(str, encoding="utf-8"),
+        deser_value=partial(deserialize, WDEntity),
+        ser_value=serialize,
     )
 
     if proxy:
-        db: RocksDBDict[str, WDEntity] = WDProxyDB(
-            WDEntity,
-            dbfile,
-            compression=False,
-            readonly=read_only,
-            dboptions=dboptions,
-        )
-    else:
-        db = RocksDBDict(
-            path=str(dbfile),
-            options=dboptions,
-            readonly=read_only,
-            deser_key=partial(str, encoding="utf-8"),
-            deser_value=partial(deserialize, WDEntity),
-            ser_value=serialize,
-        )
+        return cast(WDProxyDB, db).set_extract_ent_from_entity(identity)
+
     return db
 
 

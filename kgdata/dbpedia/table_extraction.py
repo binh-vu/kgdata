@@ -6,6 +6,7 @@ import warnings
 from operator import attrgetter
 from pathlib import Path
 from typing import List
+from kgdata.wikipedia.datasets.grouped_articles import grouped_articles
 
 import numpy as np
 from bs4 import Tag, NavigableString
@@ -29,8 +30,7 @@ from kgdata.spark import (
     left_outer_join,
     does_result_dir_exist,
 )
-from kgdata.wikidata.deprecated.rdd_datasets import wikidata_wikipedia_links
-from kgdata.wikipedia.prelude import get_title_from_url, title2groups
+from kgdata.wikipedia.prelude import get_title_from_url
 from sm.misc.deser import get_open_fn
 
 """This module provides functions to extract tables from DBPedia raw table dumps.
@@ -552,11 +552,17 @@ def wikipedia_links_in_relational_tables_en(
 
         tables_rdd = tables_rdd or relational_tables_en()
 
+        title2groups = (
+            grouped_articles()
+            .get_rdd()
+            .flatMap(lambda x: [(title, x) for title, id in x["group"]])
+        )
         # (title, url)
         links_rdd = (
             tables_rdd.flatMap(p_0_get_article_urls).distinct().map(p_1_add_title)
         )
-        links_rdd.join(title2groups()).map(p_2_resolve_article_id).map(
+
+        links_rdd.join(title2groups).map(p_2_resolve_article_id).map(
             orjson.dumps
         ).saveAsTextFile(
             outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"

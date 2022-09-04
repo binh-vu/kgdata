@@ -18,11 +18,16 @@ class WPDataDirConfig:
         # directorys contain dumps and their splitted files
         # for the name of the dumps, see the corresponding function `self.get_X_file` in this class
         self.dumps = datadir / "dumps"
+        self.articles = datadir / "articles"
+        self.grouped_articles = datadir / "grouped_articles"
         self.html_articles = datadir / "html_articles"
         self.html_tables = datadir / "html_tables"
         self.relational_tables = datadir / "relational_tables"
         self.linked_relational_tables = datadir / "linked_relational_tables"
         self.easy_tables = datadir / "easy_tables"
+
+    def get_article_file(self):
+        return self._get_file(self.dumps / "*page-articles*.xml.bz2")
 
     def get_html_article_file(self):
         return self._get_file(self.dumps / "*NS0-*ENTERPRISE-HTML.json.tar.gz")
