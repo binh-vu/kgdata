@@ -1,3 +1,4 @@
+from kgdata.wikipedia.datasets.grouped_articles import grouped_articles
 import orjson
 import os
 from operator import itemgetter
@@ -8,7 +9,6 @@ from rdflib import Literal, URIRef
 from kgdata.config import DBPEDIA_DIR
 from kgdata.misc.ntriples_parser import ntriple_loads, ignore_comment
 from kgdata.spark import get_spark_context, ensure_unique_records
-from kgdata.wikipedia.deprecated.rdd_datasets import id2groups
 
 Triple = Tuple[str, str, str]
 
@@ -370,7 +370,11 @@ def merged_instances_fixed_wiki_id_en(
     sc = get_spark_context()
     if not os.path.exists(outfile):
         merge_instances_rdd = merge_instances_rdd or merge_instances_en()
-        id2groups_rdd = id2groups_rdd or id2groups()
+        id2groups_rdd = id2groups_rdd or (
+            grouped_articles()
+            .get_rdd()
+            .flatMap(lambda x: [(id, x) for title, id in x["group"]])
+        )
 
         def get_wiki_page_ids(x):
             if isinstance(x["http://dbpedia.org/ontology/wikiPageID"], list):
