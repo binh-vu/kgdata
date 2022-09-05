@@ -51,9 +51,9 @@ class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
         except KeyError:
             return default
 
-    def __contains__(self, key):
+    def __contains__(self, key: str):
         try:
-            item = self._get(key)
+            item = self._get(key.encode())
         except KeyError:
             qnodes = query_wikidata_entities([key])
             if len(qnodes) == 0:
@@ -70,9 +70,9 @@ class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
 
         return True
 
-    def does_not_exist_locally(self, key):
+    def does_not_exist_locally(self, key: str):
         try:
-            item = self._get(key)
+            item = self._get(key.encode())
         except KeyError:
             return True
         return item == b"\x00"
