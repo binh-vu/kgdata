@@ -27,7 +27,7 @@ class WPDataDirConfig:
         self.easy_tables = datadir / "easy_tables"
 
     def get_article_file(self):
-        return self._get_file(self.dumps / "*page-articles*.xml.bz2")
+        return self._get_file(self.dumps / "*pages-articles*.xml.bz2")
 
     def get_html_article_file(self):
         return self._get_file(self.dumps / "*NS0-*ENTERPRISE-HTML.json.tar.gz")

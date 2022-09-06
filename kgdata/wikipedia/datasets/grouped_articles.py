@@ -18,16 +18,7 @@ class GroupedArticles(TypedDict):
 
 
 def grouped_articles() -> Dataset[GroupedArticles]:
-    """Group wikipedia pages/articles that are belong to the same entity
-    Parameters
-    ----------
-    infile : str
-        patterns to find extracted pages
-    outdir : str
-        output directory
-    batch_size: int
-        number of records per file
-    """
+    """Group wikipedia pages/articles that are belong to the same entity"""
     cfg = WPDataDirConfig.get_instance()
     batch_size = 64000
 

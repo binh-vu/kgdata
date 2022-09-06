@@ -88,7 +88,7 @@ def build_index(
         index_parent_dir = cfg.search
     else:
         index_parent_dir = Path(index_parent_dir)
-    index_dir = index_parent_dir / f"{name}_{settings.analyzer}"
+    index_dir = index_parent_dir / f"{name}_{settings.analyzer.value}"
 
     if name == "entities":
         dataset = entities(lang=lang)
