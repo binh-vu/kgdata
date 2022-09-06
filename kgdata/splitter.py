@@ -28,7 +28,7 @@ def default_currentbyte_constructor(
 ) -> Callable[[], int]:
     """Get a function that returns the current byte position that the file reader is currently at."""
     if isinstance(file_object, BZ2File):
-        return file_object.buffer._buffer.raw._fp.tell  # type: ignore
+        return file_object._buffer.raw._fp.tell  # type: ignore
 
     if isinstance(file_object, GzipFile):
         return file_object.fileobj.tell  # type: ignore
@@ -106,6 +106,7 @@ def split_a_file(
         file_size = 1
 
     data_size_file_size = datasize(file_size)
+    success = True
     try:
         with file_object as f, tqdm(
             total=file_size,
@@ -114,7 +115,11 @@ def split_a_file(
             unit_scale=True,
         ) as pbar:
             last_bytes = 0
-            tell = currentbyte_constructor(f)
+            try:
+                tell = currentbyte_constructor(f)
+            except:
+                success = False
+                raise
             for i, line in enumerate(record_iter(f)):
                 queues[i % n_writers].put(line)
                 current_bytes = tell()
@@ -125,7 +130,6 @@ def split_a_file(
         for q in queues:
             q.put(None)
 
-        success = True
         for p in writers:
             p.join()
             success = success and (p.exitcode == 0)
