@@ -1,12 +1,14 @@
 """Utility functions for Apache Spark."""
 
+import math
+import random
 import glob
 import orjson
 import os
 import shutil
 from operator import add, itemgetter
 from pathlib import Path
-from typing import Any, TypeVar, Callable, List, Union, Tuple, Optional
+from typing import Any, Iterable, TypeVar, Callable, List, Union, Tuple, Optional
 from pyspark import RDD, SparkContext, SparkConf
 from loguru import logger
 
@@ -90,7 +92,11 @@ def close_spark_context():
         _sc = None
 
 
-def does_result_dir_exist(dpath: Union[str, Path], allow_override=True) -> bool:
+def does_result_dir_exist(
+    dpath: Union[str, Path],
+    allow_override: bool = True,
+    create_if_not_exist: bool = False,
+) -> bool:
     """Check if the result directory exists
 
     Args:
@@ -99,10 +105,14 @@ def does_result_dir_exist(dpath: Union[str, Path], allow_override=True) -> bool:
     """
     dpath = str(dpath)
     if not os.path.exists(dpath):
+        if create_if_not_exist:
+            Path(dpath).mkdir(parents=True)
         return False
     if not os.path.exists(os.path.join(dpath, "_SUCCESS")):
         if allow_override:
             shutil.rmtree(dpath)
+            if create_if_not_exist:
+                Path(dpath).mkdir(parents=True)
             return False
         raise Exception(
             "Result directory exists. However, it is not a successful attempt."
@@ -149,6 +159,60 @@ R1 = TypeVar("R1")
 R2 = TypeVar("R2")
 K1 = TypeVar("K1")
 K2 = TypeVar("K2")
+K = TypeVar("K")
+V = TypeVar("V")
+V2 = TypeVar("V2")
+
+
+def left_outer_join_repartition(
+    rdd1: RDD[Tuple[K, V]],
+    rdd2: RDD[Tuple[K, V2]],
+    threshold: int = 10000,
+    batch_size: int = 1000,
+    num_partitions: Optional[int] = None,
+):
+    """This join is useful in the following scenario:
+
+    1. rdd1 contains duplicated keys, and potentially high cardinality keys
+    2. rdd2 contains **unique** keys
+
+    To avoid high cardinality keys, we artificially generate new keys that have the following format (key, category)
+    where category is a number between [1, n], then perform the join.
+    """
+    # finding the keys that have high cardinality
+    sc = get_spark_context()
+
+    keys_freq = (
+        rdd1.map(lambda x: (x[0], 1))
+        .reduceByKey(add)
+        .filter(lambda x: x[1] > threshold)
+        .collect()
+    )
+    logger.info("Number of keys with high cardinality: {}", len(keys_freq))
+    keys_freq = sc.broadcast(dict(keys_freq))
+
+    def rdd1_gen_key(value: Tuple[K, V]) -> Tuple[Tuple[K, int], V]:
+        key = value[0]
+        if key not in keys_freq.value:
+            return (key, 0), value[1]
+        freq = keys_freq.value[key]
+        n = math.ceil(freq / batch_size)
+        return (key, random.randint(1, n)), value[1]
+
+    def rdd2_gen_key(value: Tuple[K, V2]) -> List[Tuple[Tuple[K, int], V2]]:
+        key = value[0]
+        if key not in keys_freq.value:
+            return [((key, 0), value[1])]
+        freq = keys_freq.value[key]
+        n = math.ceil(freq / batch_size)
+        return [((key, i), value[1]) for i in range(1, n + 1)]
+
+    return (
+        rdd1.map(rdd1_gen_key)
+        .groupByKey(numPartitions=num_partitions)
+        .leftOuterJoin(rdd2.flatMap(rdd2_gen_key))
+        .map(lambda x: (x[0][0], x[1]))
+    )
 
 
 def left_outer_join(

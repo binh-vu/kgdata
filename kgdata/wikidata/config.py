@@ -24,6 +24,7 @@ class WDDataDirCfg:
         self.entity_ids = datadir / "entity_ids"
         self.entity_types = datadir / "entity_types"
         self.entity_metadata = datadir / "entity_metadata"
+        self.entity_pagerank = datadir / "entity_pagerank"
         self.page_ids = datadir / "page_ids"
         self.entities = datadir / "entities"
 

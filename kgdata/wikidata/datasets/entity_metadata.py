@@ -31,6 +31,7 @@ def entity_metadata(lang: str = "en") -> Dataset[WDEntity]:
             .get_rdd()
             .map(empty_ent_props)
             .map(ser_entity)
+            .coalesce(1024, shuffle=True)
             .saveAsTextFile(
                 str(outdir),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",

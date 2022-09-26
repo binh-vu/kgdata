@@ -17,6 +17,7 @@ import orjson
 from pyserini.analysis import Analyzer as PyseriniAnalyzer, get_lucene_analyzer
 from kgdata.wikidata.datasets.properties import properties
 from pyserini.index.lucene import IndexReader
+from pyspark import RDD
 from sm.misc.deser import deserialize_json, serialize_json
 from sm.misc.funcs import identity_func
 
@@ -91,15 +92,18 @@ class TrigramAnalyzer:
 class PyseriniDoc(TypedDict):
     id: str
     contents: str
+    aliases: str
+    pagerank: float
 
 
 def retokenize(doc: PyseriniDoc, analyzer: Callable[[str], str]):
     doc["contents"] = analyzer(doc["contents"])
+    doc["aliases"] = analyzer(doc["aliases"])
     return doc
 
 
 def build_pyserini_index(
-    dataset: Dataset[PyseriniDoc],
+    dataset: RDD[PyseriniDoc],
     data_dir: Union[str, Path],
     index_dir: Union[str, Path],
     settings: IndexSettings,
@@ -120,10 +124,8 @@ def build_pyserini_index(
     index_dir = Path(index_dir)
 
     if not does_result_dir_exist(data_dir):
-        rdd = (
-            dataset.get_rdd()
-            .map(partial(retokenize, analyzer=settings.get_analyzer()))
-            .map(orjson.dumps)
+        rdd = dataset.map(partial(retokenize, analyzer=settings.get_analyzer())).map(
+            orjson.dumps
         )
 
         if n_files > 0:
@@ -164,10 +166,14 @@ def build_pyserini_index(
                 "-generator",
                 "DefaultLuceneDocumentGenerator",
                 "-storePositions",
+                "-storeDocvectors",
+                "-storeRaw",
                 "-threads",
                 str(os.cpu_count()),
                 "-memorybuffer",
                 "8192",
+                "-fields",
+                "aliases",
             ]
             + extra_args
         )
