@@ -17,7 +17,7 @@ jobs:
           pip install poetry
           poetry install
       - name: run test
-        run: poetry run pytest
+        run: poetry run pytest -xs tests/
       - name: build wheels
         run: poetry build
       - name: upload wheels
