@@ -19,3 +19,31 @@ from .wdvalue import (
     ValueWikibaseEntityId,
 )
 from .wdentitylabel import WDEntityLabel
+from .wdentitymetadata import WDEntityMetadata
+
+
+__all__ = [
+    "WDClass",
+    "WDProperty",
+    "WDPropertyDomains",
+    "WDPropertyRanges",
+    "WDQuantityPropertyStats",
+    "QuantityStats",
+    "WDEntity",
+    "WDValue",
+    "WDValueKind",
+    "WDValueType",
+    "WDValueQuantity",
+    "WDValueMonolingualText",
+    "WDValueEntityId",
+    "WDValueGlobeCoordinate",
+    "WDValueString",
+    "WDValueTime",
+    "ValueGlobeCoordinate",
+    "ValueMonolingualText",
+    "ValueQuantity",
+    "ValueTime",
+    "ValueWikibaseEntityId",
+    "WDEntityLabel",
+    "WDEntityMetadata",
+]

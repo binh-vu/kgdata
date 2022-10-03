@@ -7,6 +7,7 @@ from typing import Dict, Union, TypeVar, Optional, Callable, Set, List, Type, ca
 from hugedict.types import HugeMutableMapping
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
+from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 import orjson
 from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identity
 import requests
@@ -242,6 +243,15 @@ def get_entity_db(
         return cast(WDProxyDB, db).set_extract_ent_from_entity(identity)
 
     return db
+
+
+def get_entity_metadata_db(
+    dbfile: Union[Path, str],
+    create_if_missing=True,
+    read_only=False,
+    proxy: bool = False,
+) -> HugeMutableMapping[str, WDEntityMetadata]:
+    return get_entity_db(dbfile, create_if_missing, read_only, proxy)  # type: ignore
 
 
 def get_entity_redirection_db(

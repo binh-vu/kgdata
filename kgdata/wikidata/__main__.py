@@ -14,6 +14,7 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
 )
 from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.datasets.entity_metadata import entity_metadata
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.datasets.properties import properties
 from kgdata.wikidata.datasets.entities import entities
@@ -24,6 +25,7 @@ from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.db import (
     get_entity_db,
+    get_entity_metadata_db,
     get_entity_label_db,
     get_entity_redirection_db,
     get_wdprop_domain_db,
@@ -71,7 +73,40 @@ def db_entities(directory: str, output: str, compact: bool, lang: str):
             "is_sorted": False,
         },
         verbose=True,
-        compact=True,
+        compact=compact,
+    )
+
+
+@click.command(name="entity_metadata")
+@click.option("-d", "--directory", default="", help="Wikidata directory")
+@click.option("-o", "--output", help="Output directory")
+@click.option(
+    "-c",
+    "--compact",
+    is_flag=True,
+    help="Whether to compact the results. May take a very very long time",
+)
+@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
+def db_entity_metadata(directory: str, output: str, compact: bool, lang: str):
+    """Build a key-value database of Wikidata entities"""
+    WDDataDirCfg.init(directory)
+
+    dbpath = Path(output) / "wdentity_metadata.db"
+    dbpath.mkdir(exist_ok=True, parents=True)
+
+    options = cast(RocksDBDict, get_entity_metadata_db(dbpath)).options
+    gc.collect()
+
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=options,
+        files=entity_metadata(lang=lang).get_files(),
+        format={
+            "record_type": {"type": "ndjson", "key": "id", "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=compact,
     )
 
 
@@ -367,6 +402,7 @@ def wikidata():
 
 
 wikidata.add_command(db_entities)
+wikidata.add_command(db_entity_metadata)
 wikidata.add_command(db_entity_labels)
 wikidata.add_command(db_entity_redirections)
 wikidata.add_command(db_classes)
