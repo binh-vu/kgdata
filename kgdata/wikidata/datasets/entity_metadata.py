@@ -6,7 +6,7 @@ from typing import Union, cast, Set, Dict
 from kgdata.config import WIKIDATA_DIR
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.entities import deser_entity, entities, ser_entity
+from kgdata.wikidata.datasets.entities import deser_entity, entities
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
@@ -30,8 +30,8 @@ def entity_metadata(lang: str = "en") -> Dataset[WDEntityMetadata]:
         (
             entities()
             .get_rdd()
-            .map(clean_ent_props)
-            .map(ser_entity)
+            .map(convert_to_entity_metadata)
+            .map(ser_entity_metadata)
             .coalesce(1024, shuffle=True)
             .saveAsTextFile(
                 str(outdir),
@@ -39,14 +39,33 @@ def entity_metadata(lang: str = "en") -> Dataset[WDEntityMetadata]:
             )
         )
 
-    return Dataset(file_pattern=outdir / "*.gz", deserialize=deser_entity)
+    return Dataset(file_pattern=outdir / "*.gz", deserialize=deser_entity_metadata)
 
 
-def clean_ent_props(ent: WDEntity) -> WDEntityMetadata:
+def deser_entity_metadata(b: str) -> WDEntityMetadata:
+    return WDEntityMetadata.from_tuple(orjson.loads(b))
+
+
+def ser_entity_metadata(ent: WDEntityMetadata) -> bytes:
+    return orjson.dumps(ent.to_tuple())
+
+
+def convert_to_entity_metadata(ent: WDEntity) -> WDEntityMetadata:
     props = {}
-    for k, v in ent.props.items():
-        if k in {"P31", "P279", "P1647"}:
-            props[k] = v
-    ent.props = props
-    ent.sitelinks = {}
-    return ent
+    for pid in ["P31", "P279", "P1647"]:
+        props[pid] = []
+        for stmt in ent.props.get(pid, []):
+            if stmt.rank == "deprecated":
+                continue
+            if stmt.value.is_entity_id(stmt.value):
+                props[pid].append(stmt.value.as_entity_id())
+
+    return WDEntityMetadata(
+        id=ent.id,
+        label=ent.label,
+        description=ent.description,
+        aliases=ent.aliases,
+        instanceof=props["P31"],
+        subclassof=props["P279"],
+        subpropertyof=props["P1647"],
+    )

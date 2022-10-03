@@ -1,5 +1,4 @@
 from __future__ import annotations
-import orjson
 from dataclasses import dataclass
 from typing import Dict, List, Literal, Optional
 from kgdata.wikidata.models.multilingual import (
@@ -73,6 +72,30 @@ class WDEntity:
         o["description"] = MultiLingualString(**o["description"])
         o["aliases"] = MultiLingualStringList(**o["aliases"])
         return WDEntity(**o)
+
+    def to_tuple(self):
+        return (
+            self.id,
+            self.type,
+            self.label.to_tuple(),
+            self.datatype,
+            self.description.to_tuple(),
+            self.aliases.to_tuple(),
+            {k: [v.to_tuple() for v in stmts] for k, stmts in self.props.items()},
+            {k: v.to_tuple() for k, v in self.sitelinks.items()},
+        )
+
+    @staticmethod
+    def from_tuple(t):
+        t[2] = MultiLingualString(t[2][0], t[2][1])
+        t[4] = MultiLingualString(t[4][0], t[4][1])
+        t[5] = MultiLingualStringList(t[5][0], t[5][1])
+        for stmts in t[6].values():
+            for i, stmt in enumerate(stmts):
+                stmts[i] = WDStatement.from_tuple(stmt)
+        for k, v in t[7].items():
+            t[7][k] = SiteLink(v[0], v[1], v[2], v[3])
+        return WDEntity(t[0], t[1], t[2], t[3], t[4], t[5], t[6], t[7])
 
     @staticmethod
     def from_wikidump(entity: dict, lang: str = "en") -> WDEntity:
@@ -195,3 +218,6 @@ class SiteLink:
             "badges": self.badges,
             "url": self.url,
         }
+
+    def to_tuple(self):
+        return (self.site, self.title, self.badges, self.url)

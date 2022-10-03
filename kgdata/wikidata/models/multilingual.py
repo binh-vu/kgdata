@@ -28,8 +28,11 @@ class MultiLingualString(str):
     def to_dict(self):
         return {"lang2value": self.lang2value, "lang": self.lang}
 
+    def to_tuple(self):
+        return self.lang2value, self.lang
+
     def __getnewargs__(self) -> Tuple[Dict[str, str], str]:
-        return (self.lang2value, self.lang)
+        return self.lang2value, self.lang
 
 
 class MultiLingualStringList(List[str]):
@@ -40,3 +43,6 @@ class MultiLingualStringList(List[str]):
 
     def to_dict(self):
         return {"lang2values": self.lang2values, "lang": self.lang}
+
+    def to_tuple(self):
+        return self.lang2values, self.lang

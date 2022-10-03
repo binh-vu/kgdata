@@ -29,9 +29,9 @@ def set_dumps(row):
     return orjson.dumps(list(row))
 
 
-def reformat_ntriples_file(infile: str, outdir: str, report: bool=False):
+def reformat_ntriples_file(infile: str, outdir: str, report: bool = False):
     """Reformat an N-triples file to a json file
-    
+
     Parameters
     ----------
     infile : str
@@ -44,9 +44,10 @@ def reformat_ntriples_file(infile: str, outdir: str, report: bool=False):
     assert os.path.exists(outdir), f"Output directory {outdir} does not exist"
     outfile = os.path.join(outdir, Path(infile).name)
 
-    with get_open_fn(infile)(infile, "rb") as f, \
-        gzip.open(outfile, "wb") as g:
-        for line in (tqdm(f, desc=f"reformat file: {Path(infile).name}") if report else f):
+    with get_open_fn(infile)(infile, "rb") as f, gzip.open(outfile, "wb") as g:
+        for line in (
+            tqdm(f, desc=f"reformat file: {Path(infile).name}") if report else f
+        ):
             parser = NTriplesParser()
             s, p, o = parser.parseline(line.decode())
             s, p, o = str(s), str(p), str(o)
@@ -54,4 +55,3 @@ def reformat_ntriples_file(infile: str, outdir: str, report: bool=False):
             # g.write(ujson.dumps([s, p, o]).encode())
             g.write(orjson.dumps([s, p, o]))
             g.write(b"\n")
-

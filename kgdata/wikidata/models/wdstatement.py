@@ -16,14 +16,6 @@ class WDStatement:
     # rank of a statement
     rank: Literal["normal", "deprecated", "preferred"]
 
-    @staticmethod
-    def from_dict(o):
-        o["qualifiers"] = {
-            k: [WDValue(**v) for v in vals] for k, vals in o["qualifiers"].items()
-        }
-        o["value"] = WDValue(**o["value"])
-        return WDStatement(**o)
-
     def to_dict(self):
         return {
             "value": self.value.to_dict(),
@@ -33,3 +25,27 @@ class WDStatement:
             "qualifiers_order": self.qualifiers_order,
             "rank": self.rank,
         }
+
+    @staticmethod
+    def from_dict(o):
+        o["qualifiers"] = {
+            k: [WDValue(**v) for v in vals] for k, vals in o["qualifiers"].items()
+        }
+        o["value"] = WDValue(**o["value"])
+        return WDStatement(**o)
+
+    def to_tuple(self):
+        return [
+            self.value.to_tuple(),
+            {k: [v.to_tuple() for v in vals] for k, vals in self.qualifiers.items()},
+            self.qualifiers_order,
+            self.rank,
+        ]
+
+    @staticmethod
+    def from_tuple(o):
+        o[0] = WDValue(o[0][0], o[0][1])
+        for vals in o[1].values():
+            for i, v in enumerate(vals):
+                vals[i] = WDValue(v[0], v[1])
+        return WDStatement(o[0], o[1], o[2], o[3])

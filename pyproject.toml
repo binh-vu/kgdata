@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kgdata"
-version = "3.0.5"
+version = "3.1.0"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 authors = ["Binh Vu <binh@toan2.com>"]
 license = "MIT"
@@ -13,7 +13,7 @@ python = "^3.8"
 orjson = "^3.8.0"
 tqdm = "^4.64.0"
 beautifulsoup4 = "^4.9.3"
-cityhash = "^0.2.3"
+cityhash = ">=0.4.2"
 pyspark = "3.3.0"
 loguru = "^0.6.0"
 rdflib = "^6.1.1"

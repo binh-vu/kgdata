@@ -149,6 +149,9 @@ class WDValue(Generic[T, V]):
             "value": self.value,
         }
 
+    def to_tuple(self):
+        return (self.type, self.value)
+
     def to_string_repr(self) -> str:
         return orjson.dumps(self.to_dict()).decode()
 
