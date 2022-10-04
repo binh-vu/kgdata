@@ -13,6 +13,7 @@ from hugedict.prelude import (
     rocksdb_build_sst_file,
     rocksdb_ingest_sst_files,
 )
+from hugedict.ray_parallel import ray_map
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_metadata import entity_metadata
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
@@ -94,20 +95,54 @@ def db_entity_metadata(directory: str, output: str, compact: bool, lang: str):
     dbpath = Path(output) / "wdentity_metadata.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
+    temp_dir = dbpath / "_temporary"
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir()
+
     options = cast(RocksDBDict, get_entity_metadata_db(dbpath)).options
     gc.collect()
 
-    rocksdb_load(
-        dbpath=str(dbpath),
-        dbopts=options,
-        files=entity_metadata(lang=lang).get_files(),
-        format={
-            "record_type": {"type": "ndjson", "key": "id", "value": None},
-            "is_sorted": False,
-        },
-        verbose=True,
-        compact=compact,
-    )
+    ray.init()
+
+    @ray.remote
+    def _build_sst_file(infile: str, temp_dir: str, options: RocksDBOptions):
+        kvs = sorted(
+            [
+                (
+                    obj[0].encode(),
+                    orjson.dumps(obj),
+                )
+                for obj in deserialize_jl(infile)
+            ],
+            key=itemgetter(0),
+        )
+        tmp = {"counter": 0}
+
+        def input_gen():
+            if tmp["counter"] == len(kvs):
+                return None
+            obj = kvs[tmp["counter"]]
+            tmp["counter"] += 1
+            return obj
+
+        outfile = os.path.join(temp_dir, Path(infile).stem + ".sst")
+        rocksdb_build_sst_file(options, outfile, input_gen)
+        return outfile
+
+    ray_opts = ray.put(options)
+    with Timer().watch_and_report("Creating SST files"):
+        sst_files = ray_map(
+            _build_sst_file.remote,
+            [
+                (file, str(temp_dir), ray_opts)
+                for file in entity_metadata(lang=lang).get_files()
+            ],
+            verbose=True,
+        )
+
+    with Timer().watch_and_report("Ingesting SST files"):
+        rocksdb_ingest_sst_files(str(dbpath), options, sst_files, compact=True)
 
 
 @click.command(name="entity_labels")
@@ -167,10 +202,14 @@ def db_entity_labels(directory: str, output: str, compact: bool, lang: str):
 
     ray_opts = ray.put(options)
     with Timer().watch_and_report("Creating SST files"):
-        refs = []
-        for file in entities(lang=lang).get_files():
-            refs.append(_build_sst_file.remote(file, str(temp_dir), ray_opts))
-        sst_files = ray.get(refs)
+        sst_files = ray_map(
+            _build_sst_file.remote,
+            [
+                (file, str(temp_dir), ray_opts)
+                for file in entities(lang=lang).get_files()
+            ],
+            verbose=True,
+        )
 
     with Timer().watch_and_report("Ingesting SST files"):
         rocksdb_ingest_sst_files(str(dbpath), options, sst_files, True)
