@@ -2,7 +2,7 @@ import glob
 import gc
 from pathlib import Path
 import shutil
-from typing import List, cast
+from typing import List, cast, get_args
 import click, os
 from click.types import Choice
 from hugedict.prelude import (
@@ -26,7 +26,6 @@ from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.db import (
     get_entity_db,
-    get_entity_metadata_db,
     get_entity_label_db,
     get_entity_redirection_db,
     get_wdprop_domain_db,
@@ -35,6 +34,7 @@ from kgdata.wikidata.db import (
     get_wdclass_db,
     get_wdprop_db,
 )
+from kgdata.wikidata.extra_ent_db import build_extra_ent_db, EntAttr
 from loguru import logger
 import orjson
 from operator import itemgetter
@@ -78,8 +78,9 @@ def db_entities(directory: str, output: str, compact: bool, lang: str):
     )
 
 
-@click.command(name="entity_metadata")
+@click.command(name="entity_attr")
 @click.option("-d", "--directory", default="", help="Wikidata directory")
+@click.option("-a", "--attr", choices=get_args(EntAttr), help="Entity's attribute")
 @click.option("-o", "--output", help="Output directory")
 @click.option(
     "-c",
@@ -88,61 +89,14 @@ def db_entities(directory: str, output: str, compact: bool, lang: str):
     help="Whether to compact the results. May take a very very long time",
 )
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def db_entity_metadata(directory: str, output: str, compact: bool, lang: str):
+def db_entities_attr(
+    directory: str, attr: EntAttr, output: str, compact: bool, lang: str
+):
     """Build a key-value database of Wikidata entities"""
     WDDataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdentity_metadata.db"
-    dbpath.mkdir(exist_ok=True, parents=True)
-
-    temp_dir = dbpath / "_temporary"
-    if temp_dir.exists():
-        shutil.rmtree(temp_dir)
-    temp_dir.mkdir()
-
-    options = cast(RocksDBDict, get_entity_metadata_db(dbpath)).options
-    gc.collect()
-
-    ray.init()
-
-    @ray.remote
-    def _build_sst_file(infile: str, temp_dir: str, options: RocksDBOptions):
-        kvs = sorted(
-            [
-                (
-                    obj[0].encode(),
-                    orjson.dumps(obj),
-                )
-                for obj in deserialize_jl(infile)
-            ],
-            key=itemgetter(0),
-        )
-        tmp = {"counter": 0}
-
-        def input_gen():
-            if tmp["counter"] == len(kvs):
-                return None
-            obj = kvs[tmp["counter"]]
-            tmp["counter"] += 1
-            return obj
-
-        outfile = os.path.join(temp_dir, Path(infile).stem + ".sst")
-        rocksdb_build_sst_file(options, outfile, input_gen)
-        return outfile
-
-    ray_opts = ray.put(options)
-    with Timer().watch_and_report("Creating SST files"):
-        sst_files = ray_map(
-            _build_sst_file.remote,
-            [
-                (file, str(temp_dir), ray_opts)
-                for file in entity_metadata(lang=lang).get_files()
-            ],
-            verbose=True,
-        )
-
-    with Timer().watch_and_report("Ingesting SST files"):
-        rocksdb_ingest_sst_files(str(dbpath), options, sst_files, compact=True)
+    dbpath = Path(output) / "wdentities_attr.db"
+    build_extra_ent_db(dbpath, attr, lang=lang, compact=compact)
 
 
 @click.command(name="entity_labels")
@@ -206,7 +160,7 @@ def db_entity_labels(directory: str, output: str, compact: bool, lang: str):
             _build_sst_file.remote,
             [
                 (file, str(temp_dir), ray_opts)
-                for file in entities(lang=lang).get_files()
+                for file in entity_metadata(lang=lang).get_files()
             ],
             verbose=True,
         )
@@ -441,7 +395,7 @@ def wikidata():
 
 
 wikidata.add_command(db_entities)
-wikidata.add_command(db_entity_metadata)
+wikidata.add_command(db_entities_attr)
 wikidata.add_command(db_entity_labels)
 wikidata.add_command(db_entity_redirections)
 wikidata.add_command(db_classes)

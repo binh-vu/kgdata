@@ -2,9 +2,25 @@
 
 from functools import partial
 from pathlib import Path
-from typing import Dict, Union, TypeVar, Optional, Callable, Set, List, Type, cast
+from typing import (
+    Dict,
+    Literal,
+    Union,
+    TypeVar,
+    Optional,
+    Callable,
+    Set,
+    List,
+    Type,
+    cast,
+)
 
 from hugedict.types import HugeMutableMapping
+from kgdata.wikidata.datasets.entity_metadata import (
+    convert_to_entity_metadata,
+    deser_entity_metadata,
+    ser_entity_metadata,
+)
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
@@ -243,15 +259,6 @@ def get_entity_db(
         return cast(WDProxyDB, db).set_extract_ent_from_entity(identity)
 
     return db
-
-
-def get_entity_metadata_db(
-    dbfile: Union[Path, str],
-    create_if_missing=True,
-    read_only=False,
-    proxy: bool = False,
-) -> HugeMutableMapping[str, WDEntityMetadata]:
-    return get_entity_db(dbfile, create_if_missing, read_only, proxy)  # type: ignore
 
 
 def get_entity_redirection_db(
