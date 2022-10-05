@@ -80,7 +80,9 @@ def db_entities(directory: str, output: str, compact: bool, lang: str):
 
 @click.command(name="entity_attr")
 @click.option("-d", "--directory", default="", help="Wikidata directory")
-@click.option("-a", "--attr", choices=get_args(EntAttr), help="Entity's attribute")
+@click.option(
+    "-a", "--attr", type=click.Choice(get_args(EntAttr)), help="Entity's attribute"
+)
 @click.option("-o", "--output", help="Output directory")
 @click.option(
     "-c",

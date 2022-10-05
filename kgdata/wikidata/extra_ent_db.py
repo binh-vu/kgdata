@@ -1,60 +1,26 @@
 """Wikidata embedded key-value databases for each entity's attribute."""
 
-from functools import partial
-import gc, struct
-from operator import itemgetter
+import gc
 import os
-from pathlib import Path
 import shutil
-from typing import (
-    Dict,
-    Literal,
-    Union,
-    TypeVar,
-    Optional,
-    Callable,
-    Set,
-    List,
-    Type,
-    cast,
-    overload,
-)
+import struct
+from functools import partial
+from operator import itemgetter
+from pathlib import Path
+from typing import List, Literal, Union, cast, overload
+
+import orjson
 from hugedict.prelude import (
+    RocksDBCompressionOptions,
     RocksDBDict,
     RocksDBOptions,
-    rocksdb_load,
-    init_env_logger,
     rocksdb_build_sst_file,
     rocksdb_ingest_sst_files,
 )
-from hugedict.ray_parallel import ray_map
 from hugedict.types import HugeMutableMapping
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.entity_metadata import (
-    convert_to_entity_metadata,
-    deser_entity_metadata,
-    entity_metadata,
-    ser_entity_metadata,
-)
-from kgdata.wikidata.datasets.entity_pagerank import entity_pagerank
-from kgdata.wikidata.models.wdentity import WDEntity
-from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
-from numpy import str0
-import orjson
-from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identity
-import requests
-
-from hugedict.prelude import RocksDBDict, RocksDBOptions, RocksDBCompressionOptions
-from kgdata.wikidata.models import (
-    WDClass,
-    WDProperty,
-    WDPropertyRanges,
-    WDPropertyDomains,
-)
-from sm.misc.deser import deserialize_byte_lines, deserialize_jl, deserialize_lines
+from sm.misc.deser import deserialize_jl
 from sm.misc.timer import Timer
-
 
 EntAttr = Literal["label", "description", "aliases", "instanceof", "pagerank"]
 
@@ -67,8 +33,8 @@ def get_multilingual_key(id: str, lang: str) -> str:
 def get_entity_attr_db(
     dbfile: Union[Path, str],
     attr: Literal["label", "description"],
-    create_if_missing=True,
-    read_only=False,
+    create_if_missing=False,
+    read_only=True,
 ) -> HugeMutableMapping[str, str]:
     ...
 
@@ -77,8 +43,8 @@ def get_entity_attr_db(
 def get_entity_attr_db(
     dbfile: Union[Path, str],
     attr: Literal["aliases", "instanceof"],
-    create_if_missing=True,
-    read_only=False,
+    create_if_missing=False,
+    read_only=True,
 ) -> HugeMutableMapping[str, List[str]]:
     ...
 
@@ -87,8 +53,8 @@ def get_entity_attr_db(
 def get_entity_attr_db(
     dbfile: Union[Path, str],
     attr: Literal["pagerank"],
-    create_if_missing=True,
-    read_only=False,
+    create_if_missing=False,
+    read_only=True,
 ) -> HugeMutableMapping[str, float]:
     ...
 
@@ -96,8 +62,8 @@ def get_entity_attr_db(
 def get_entity_attr_db(
     dbfile: Union[Path, str],
     attr: EntAttr,
-    create_if_missing=True,
-    read_only=False,
+    create_if_missing=False,
+    read_only=True,
 ) -> Union[
     HugeMutableMapping[str, str],
     HugeMutableMapping[str, float],
@@ -152,10 +118,16 @@ def build_extra_ent_db(
         shutil.rmtree(temp_dir)
     temp_dir.mkdir(parents=True)
 
-    options = cast(RocksDBDict, get_entity_attr_db(dbpath, attr)).options
+    options = cast(
+        RocksDBDict,
+        get_entity_attr_db(dbpath, attr, create_if_missing=True, read_only=False),
+    ).options
     gc.collect()
 
     import ray
+    from hugedict.ray_parallel import ray_map
+    from kgdata.wikidata.datasets.entity_metadata import entity_metadata
+    from kgdata.wikidata.datasets.entity_pagerank import entity_pagerank
 
     ray.init()
 
@@ -164,35 +136,34 @@ def build_extra_ent_db(
         infile: str, temp_dir: str, attr: EntAttr, options: RocksDBOptions
     ):
         kvs = []
-        if attr == "pagerank":
-            for line in deserialize_lines(infile):
-                ent_id, rank = line.split("\t")
-                # double little-endian
+        for obj in deserialize_jl(infile):
+            if attr == "pagerank":
+                ent_id, rank = obj
                 rank = struct.pack("<d", float(rank))
                 kvs.append((ent_id.encode(), rank))
-        else:
-            for obj in deserialize_jl(infile):
-                ent = WDEntityMetadata.from_tuple(obj)
-                if attr == "label" or attr == "description":
-                    for lang, value in getattr(ent, attr).lang2value.items():
-                        kvs.append(
-                            (
-                                get_multilingual_key(ent.id, lang).encode(),
-                                value.encode(),
-                            )
+                continue
+
+            ent = WDEntityMetadata.from_tuple(obj)
+            if attr == "label" or attr == "description":
+                for lang, value in getattr(ent, attr).lang2value.items():
+                    kvs.append(
+                        (
+                            get_multilingual_key(ent.id, lang).encode(),
+                            value.encode(),
                         )
-                elif attr == "aliases":
-                    for lang, values in getattr(ent, attr).lang2values.items():
-                        kvs.append(
-                            (
-                                get_multilingual_key(ent.id, lang).encode(),
-                                orjson.dumps(values),
-                            )
+                    )
+            elif attr == "aliases":
+                for lang, values in getattr(ent, attr).lang2values.items():
+                    kvs.append(
+                        (
+                            get_multilingual_key(ent.id, lang).encode(),
+                            orjson.dumps(values),
                         )
-                elif attr == "instanceof":
-                    kvs.append((ent.id.encode(), orjson.dumps(ent.instanceof)))
-                else:
-                    raise NotImplementedError(attr)
+                    )
+            elif attr == "instanceof":
+                kvs.append((ent.id.encode(), orjson.dumps(ent.instanceof)))
+            else:
+                raise NotImplementedError(attr)
         kvs.sort(key=itemgetter(0))
         tmp = {"counter": 0}
 
