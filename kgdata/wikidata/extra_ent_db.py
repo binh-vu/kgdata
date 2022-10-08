@@ -29,6 +29,14 @@ def get_multilingual_key(id: str, lang: str) -> str:
     return f"{id}_{lang}"
 
 
+def pack_float(v: float) -> bytes:
+    return struct.pack("<d", v)
+
+
+def unpack_float(v: bytes) -> float:
+    return struct.unpack("<d", v)[0]
+
+
 @overload
 def get_entity_attr_db(
     dbfile: Union[Path, str],
@@ -84,8 +92,8 @@ def get_entity_attr_db(
         deser_value = orjson.loads
         ser_value = orjson.dumps
     elif attr == "pagerank":
-        deser_value = partial(struct.unpack, "<d")
-        ser_value = partial(struct.pack, "<d")
+        deser_value = unpack_float
+        ser_value = pack_float
     else:
         deser_value = partial(str, encoding="utf-8")
         ser_value = str.encode
