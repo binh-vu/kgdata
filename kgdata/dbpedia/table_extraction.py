@@ -92,7 +92,7 @@ class InvalidCellSpanException(Exception):
 
 
 class HTMLTableExtractor:
-    NUM_REGEX = re.compile("(\d+)")
+    NUM_REGEX = re.compile(r"(\d+)")
 
     """Extract tables from an html table, which may contains multiple nested tables. I assume that the outer tables are used for
     formatting and the inner tables are the interested ones. So this extractor will discard the outer tables and only keep

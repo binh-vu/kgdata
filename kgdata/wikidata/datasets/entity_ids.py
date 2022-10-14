@@ -56,15 +56,12 @@ def entity_ids() -> Dataset[str]:
         seen_prefixes = set()
 
         # open in bytes mode to use .tell to get the current byte position
-        with (
-            open(str(cfg.entity_ids / "identifiers.txt"), "rb") as f,
-            tqdm(
-                total=(cfg.entity_ids / "identifiers.txt").stat().st_size,
-                unit="B",
-                unit_scale=True,
-                desc="verifying entity ids",
-            ) as pbar,
-        ):
+        with open(str(cfg.entity_ids / "identifiers.txt"), "rb") as f, tqdm(
+            total=(cfg.entity_ids / "identifiers.txt").stat().st_size,
+            unit="B",
+            unit_scale=True,
+            desc="verifying entity ids",
+        ) as pbar:
             n_ids = 0
             last_bytes = 0
             prev_id = ""
