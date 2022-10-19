@@ -238,7 +238,8 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
                     "max": max_pagerank,
                     "min": min_pagerank,
                     "std": std_pagerank,
-                }
+                },
+                option=orjson.OPT_INDENT_2 | orjson.OPT_SERIALIZE_NUMPY,
             )
         )
 
