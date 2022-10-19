@@ -31,7 +31,7 @@ from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
 from loguru import logger
 import orjson, ray, numpy as np
-from sm.misc.deser import deserialize_byte_lines, deserialize_lines
+from sm.misc.deser import deserialize_lines
 from tqdm import tqdm
 
 
@@ -232,7 +232,7 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
         pagerank_stat_outfile.write_bytes(
             orjson.dumps(
                 {
-                    "total": total,
+                    "sum": total,
                     "len": size,
                     "mean": mean_pagerank,
                     "max": max_pagerank,

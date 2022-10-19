@@ -7,7 +7,7 @@ import struct
 from functools import partial
 from operator import itemgetter
 from pathlib import Path
-from typing import List, Literal, Union, cast, overload
+from typing import List, Literal, Union, cast, overload, TypedDict
 
 import orjson
 from hugedict.prelude import (
@@ -23,6 +23,10 @@ from sm.misc.deser import deserialize_jl
 from sm.misc.timer import Timer
 
 EntAttr = Literal["label", "description", "aliases", "instanceof", "pagerank"]
+PageRankStats = TypedDict(
+    "PageRankStats",
+    {"min": float, "max": float, "mean": float, "std": float, "sum": float, "len": int},
+)
 
 
 def get_multilingual_key(id: str, lang: str) -> str:
@@ -117,6 +121,14 @@ def get_entity_attr_db(
     return db
 
 
+def get_pagerank_stats(
+    dbfile: Union[Path, str],
+) -> PageRankStats:
+    dbpath = Path(dbfile)
+    realdbpath = dbpath.parent / dbpath.stem / f"pagerank.db"
+    return orjson.loads((realdbpath / "pagerank_stats.json").read_bytes())
+
+
 def build_extra_ent_db(
     dbpath: Path, attr: EntAttr, lang: str = "en", compact: bool = True
 ):
@@ -190,6 +202,12 @@ def build_extra_ent_db(
     with Timer().watch_and_report("Creating SST files"):
         if attr == "pagerank":
             dataset = entity_pagerank(lang=lang)
+            # copy the statistics file to the temporary directory
+            dataset_dir = Path(dataset.file_pattern).parent
+            assert dataset_dir.exists()
+            statsfile = dataset_dir.parent / f"{dataset_dir.name}.json"
+            assert statsfile.exists()
+            shutil.copy2(statsfile, realdbpath / "pagerank_stats.json")
         else:
             dataset = entity_metadata(lang=lang)
 
