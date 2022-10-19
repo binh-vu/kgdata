@@ -199,6 +199,49 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
             )
         )
 
+    pagerank_stat_outfile = cfg.entity_pagerank / f"pagerank_{lang}.json"
+    if not pagerank_stat_outfile.exists():
+        n_files = len(
+            glob(str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"))
+        )
+
+        def deserialize_np2(dat: bytes) -> np.ndarray:
+            f = BytesIO(dat)
+            array = np.load(f)
+            return array["data"]
+
+        rdd = (
+            get_spark_context()
+            .binaryFiles(
+                str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"),
+            )
+            .repartition(n_files)
+            .map(lambda x: deserialize_np2(x[1]))
+        )
+
+        total = rdd.map(lambda x: np.sum(x)).sum()
+        size = rdd.map(lambda x: len(x)).sum()
+        mean_pagerank = total / size
+
+        std_pagerank = np.sqrt(
+            rdd.map(lambda x: np.sum(np.square(x - mean_pagerank))).sum() / size
+        )
+        max_pagerank = rdd.map(lambda x: np.max(x)).max()
+        min_pagerank = rdd.map(lambda x: np.min(x)).min()
+
+        pagerank_stat_outfile.write_bytes(
+            orjson.dumps(
+                {
+                    "total": total,
+                    "len": size,
+                    "mean": mean_pagerank,
+                    "max": max_pagerank,
+                    "min": min_pagerank,
+                    "std": std_pagerank,
+                }
+            )
+        )
+
     return Dataset(pagerank_outdir / "*.gz", deserialize=orjson.loads)
 
 
