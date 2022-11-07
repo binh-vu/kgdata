@@ -7,6 +7,8 @@ from kgdata.wikidata.models import WDEntity
 from kgdata.wikidata.models.multilingual import MultiLingualString
 from hugedict.hugedict.rocksdb import deserent, serent
 from dataclasses import dataclass
+import serde.jl
+from timer import Timer
 
 
 @dataclass
@@ -45,22 +47,22 @@ data_dir = Path(__file__).parent.parent / "data"
 data_dir / "entities"
 file = list((data_dir / "entities").glob("*.gz"))[0]
 
-obj = M.deserialize_jl(file, n_lines=1)[0]
+obj = serde.jl.deser(file, n_lines=1)[0]
 ent = WDEntity.from_dict(copy.deepcopy(obj))
 test_ent = TestEnt.from_dict(
     {k: obj[k] for k in ["id", "type", "datatype", "label", "description"]}
 )
 
-with M.Timer().watch_and_report("rust dumps", precision=7):
+with Timer().watch_and_report("rust dumps", precision=7):
     bin = serent(ent)
 
-with M.Timer().watch_and_report("rust loads", precision=7):
+with Timer().watch_and_report("rust loads", precision=7):
     ent2 = deserent(bin)
 
-with M.Timer().watch_and_report("orjson dumps", precision=7):
+with Timer().watch_and_report("orjson dumps", precision=7):
     bjson = orjson.dumps(test_ent.to_dict())
 
-with M.Timer().watch_and_report("orjson loads", precision=7):
+with Timer().watch_and_report("orjson loads", precision=7):
     test_ent2 = orjson.loads(bjson)
 
 print(">>>", M.percentage(len(bin), len(bjson)))

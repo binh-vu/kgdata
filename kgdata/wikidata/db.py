@@ -1,40 +1,45 @@
 """Wikidata embedded key-value databases."""
 
+from __future__ import annotations
+
 from functools import partial
+import functools
 from pathlib import Path
 from typing import (
-    Dict,
-    Literal,
-    Union,
-    TypeVar,
-    Optional,
     Callable,
-    Set,
+    Dict,
     List,
+    Literal,
+    Optional,
+    Set,
     Type,
+    TypeVar,
+    Union,
     cast,
+    overload,
 )
 
-from hugedict.types import HugeMutableMapping
-from kgdata.wikidata.datasets.entity_metadata import (
-    convert_to_entity_metadata,
-    deser_entity_metadata,
-    ser_entity_metadata,
-)
-from kgdata.wikidata.models.wdentity import WDEntity
-from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
-from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 import orjson
-from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom, identity
 import requests
+import serde.jl as jl
+from hugedict.misc import identity
+from hugedict.prelude import (
+    CacheDict,
+    RocksDBCompressionOptions,
+    RocksDBDict,
+    RocksDBOptions,
+)
+from hugedict.types import HugeMutableMapping
 
-from hugedict.prelude import RocksDBDict, RocksDBOptions, RocksDBCompressionOptions
+from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
 from kgdata.wikidata.models import (
     WDClass,
     WDProperty,
-    WDPropertyRanges,
     WDPropertyDomains,
+    WDPropertyRanges,
 )
+from kgdata.wikidata.models.wdentity import WDEntity
+from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel)
 
@@ -320,7 +325,7 @@ def get_wp2wd_db(
     create_if_missing=False,
     read_only=True,
 ) -> HugeMutableMapping[str, str]:
-    """Mapping from wikipedia article to wikidata id"""
+    """Mapping from wikipedia article's title to wikidata id"""
     version = Path(dbpath) / "_VERSION"
     if version.exists():
         ver = version.read_text()
@@ -395,3 +400,96 @@ def get_wdprop_domain_db(
         deser_value=orjson.loads,
         ser_value=orjson.dumps,
     )
+
+
+class WikidataDB:
+    """Helper class to make it easier to load all Wikidata databases stored in a directory.
+    The Wikidata database is expected to be stored in the directory under specific names.
+
+    It makes use of the `functools.cached_property` decorator to cache the database objects
+    as attributes of the class after the first access.
+    """
+
+    instance = None
+
+    def __init__(self, database_dir: Union[str, Path]):
+        self.database_dir = Path(database_dir)
+
+    @functools.cached_property
+    def wdentities(self):
+        return get_entity_db(self.database_dir / "wdentities.db", read_only=True)
+
+    @functools.cached_property
+    def wdclasses(self):
+        wdclasses = get_wdclass_db(self.database_dir / "wdclasses.db", read_only=True)
+        if (self.database_dir / "wdclasses.fixed.jl").exists():
+            wdclasses = self.wdclasses.cache()
+            assert isinstance(self.wdclasses, CacheDict)
+            for record in jl.deser(self.database_dir / "wdclasses.fixed.jl"):
+                cls = WDClass.from_dict(record)
+                wdclasses._cache[cls.id] = cls
+        return wdclasses
+
+    @functools.cached_property
+    def wdprops(self):
+        return get_wdprop_db(self.database_dir / "wdprops.db", read_only=True)
+
+    @functools.cached_property
+    def wdprop_domains(self):
+        return get_wdprop_domain_db(
+            self.database_dir / "wdprop_domains.db", read_only=True
+        )
+
+    @functools.cached_property
+    def wdprop_ranges(self):
+        return get_wdprop_range_db(
+            self.database_dir / "wdprop_ranges.db", read_only=True
+        )
+
+    @functools.cached_property
+    def wdredirections(self):
+        return get_entity_redirection_db(
+            self.database_dir / "wdentity_redirections.db", read_only=True
+        )
+
+    @functools.cached_property
+    def wp2wd(self):
+        return get_wp2wd_db(self.database_dir / "wd2wp.db", read_only=True)
+
+    @functools.cached_property
+    def wdpagerank(self):
+        return get_entity_attr_db(
+            self.database_dir / "wdentities_attr.db",
+            "pagerank",
+            read_only=True,
+        )
+
+    @overload
+    def wdattr(
+        self, attr: Literal["aliases", "instanceof"]
+    ) -> HugeMutableMapping[str, list[str]]:
+        ...
+
+    @overload
+    def wdattr(
+        self, attr: Literal["label", "description"]
+    ) -> HugeMutableMapping[str, str]:
+        ...
+
+    def wdattr(self, attr: EntAttr):
+        return get_entity_attr_db(
+            self.database_dir / "wdentities_attr.db",
+            attr,
+            read_only=True,
+        )
+
+    @staticmethod
+    def init(database_dir: Union[str, Path]) -> "WikidataDB":
+        assert WikidataDB.instance is None
+        WikidataDB.instance = WikidataDB(database_dir)
+        return WikidataDB.instance
+
+    @staticmethod
+    def get_instance() -> "WikidataDB":
+        assert WikidataDB.instance is not None
+        return WikidataDB.instance

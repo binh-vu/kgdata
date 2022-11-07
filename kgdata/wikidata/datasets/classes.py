@@ -11,6 +11,7 @@ from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entities import entities, ser_entity
 from kgdata.splitter import split_a_list
 from kgdata.wikidata.models.wdentity import WDEntity
+import serde.jl
 
 
 def classes(lang: str = "en") -> Dataset[WDClass]:
@@ -58,7 +59,7 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
 
         id2parents = {
             k: v
-            for k, v in M.deserialize_jl(cfg.classes / "ancestors/id2parents.ndjson.gz")
+            for k, v in serde.jl.deser(cfg.classes / "ancestors/id2parents.ndjson.gz")
         }
 
         id2ancestors = build_ancestors(id2parents)

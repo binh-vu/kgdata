@@ -1,26 +1,17 @@
 from __future__ import annotations
-from dataclasses import dataclass
+
 import glob
+from dataclasses import dataclass
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    List,
-    Literal,
-    Tuple,
-    TypeVar,
-    Union,
-    Optional,
-    cast,
-)
+from typing import Any, Callable, Generic, Literal, Optional, TypeVar, Union, cast
+
+import serde.byteline
+import serde.textline
+from hugedict.misc import Chain2, identity
+from pyspark import RDD
+from tqdm import tqdm
 
 from kgdata.spark import get_spark_context
-from pyspark import RDD
-from sm.misc import deserialize_lines
-from hugedict.misc import identity, Chain2
-from sm.misc.deser import serialize_byte_lines, serialize_lines
-from tqdm import tqdm
 
 V = TypeVar("V")
 V2 = TypeVar("V2")
@@ -53,7 +44,7 @@ class Dataset(Generic[V]):
 
     def get_files(
         self, sorted_order: Optional[Literal["asc", "desc"]] = None
-    ) -> List[str]:
+    ) -> list[str]:
         files = glob.glob(str(self.file_pattern))
         if sorted_order is not None:
             files.sort(reverse=sorted_order == "desc")
@@ -74,36 +65,36 @@ class Dataset(Generic[V]):
 
         return rdd
 
-    def get_dict(self: Dataset[Tuple[str, str]], rstrip: bool = True):
+    def get_dict(self: Dataset[tuple[str, str]], rstrip: bool = True):
         assert (
             self.prefilter is None and self.postfilter is None
         ), "Does not support filtering for non-rdd usage yet."
         output = {}
         if rstrip:
             for file in tqdm(self.get_files(), desc="read dataset"):
-                for line in deserialize_lines(file):
+                for line in serde.textline.deser(file):
                     k, v = self.deserialize(line.rstrip())
                     output[k] = v
         else:
             for file in tqdm(self.get_files(), desc="read dataset"):
-                for line in deserialize_lines(file):
+                for line in serde.textline.deser(file):
                     k, v = self.deserialize(line)
                     output[k] = v
         return output
 
-    def get_dict_items(self: Dataset[Tuple[str, str]], rstrip: bool = True):
+    def get_dict_items(self: Dataset[tuple[str, str]], rstrip: bool = True):
         assert (
             self.prefilter is None and self.postfilter is None
         ), "Does not support filtering for non-rdd usage yet."
         output = []
         if rstrip:
             for file in tqdm(self.get_files(), desc="read dataset"):
-                for line in deserialize_lines(file):
+                for line in serde.textline.deser(file):
                     k, v = self.deserialize(line.rstrip())
                     output.append((k, v))
         else:
             for file in tqdm(self.get_files(), desc="read dataset"):
-                for line in deserialize_lines(file):
+                for line in serde.textline.deser(file):
                     k, v = self.deserialize(line)
                     output.append((k, v))
         return output
@@ -126,7 +117,7 @@ class Dataset(Generic[V]):
 
     @staticmethod
     def save_to_files(
-        records: Union[List[str], List[bytes]],
+        records: Union[list[str], list[bytes]],
         outdir: Path,
         n_records_per_file: int = 10000,
         verbose: bool = False,
@@ -138,7 +129,7 @@ class Dataset(Generic[V]):
             outdir.mkdir(parents=True)
 
         serialize_fn = (
-            serialize_byte_lines if isinstance(records[0], bytes) else serialize_lines
+            serde.byteline.ser if isinstance(records[0], bytes) else serde.textline.ser
         )
 
         for no, i in tqdm(

@@ -2,14 +2,11 @@ from dataclasses import dataclass
 from typing import List, Literal, Mapping, Set
 from kgdata.wikidata.models.wdentity import WDEntity
 
-import orjson
 
-from kgdata.config import WIKIDATA_DIR
 from kgdata.wikidata.models.multilingual import (
     MultiLingualString,
     MultiLingualStringList,
 )
-from sm.misc.deser import deserialize_jl, deserialize_json
 
 
 @dataclass

@@ -1,5 +1,6 @@
 """Wikidata embedded key-value databases for each entity's attribute."""
 
+from __future__ import annotations
 import gc
 import os
 import shutil
@@ -7,9 +8,10 @@ import struct
 from functools import partial
 from operator import itemgetter
 from pathlib import Path
-from typing import List, Literal, Union, cast, overload, TypedDict
+from typing import Literal, TypedDict, cast, overload
 
 import orjson
+import serde.jl
 from hugedict.prelude import (
     RocksDBCompressionOptions,
     RocksDBDict,
@@ -18,9 +20,9 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
 )
 from hugedict.types import HugeMutableMapping
+from timer import Timer
+
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
-from sm.misc.deser import deserialize_jl
-from sm.misc.timer import Timer
 
 EntAttr = Literal["label", "description", "aliases", "instanceof", "pagerank"]
 PageRankStats = TypedDict(
@@ -43,7 +45,7 @@ def unpack_float(v: bytes) -> float:
 
 @overload
 def get_entity_attr_db(
-    dbfile: Union[Path, str],
+    dbfile: Path | str,
     attr: Literal["label", "description"],
     create_if_missing=False,
     read_only=True,
@@ -53,17 +55,17 @@ def get_entity_attr_db(
 
 @overload
 def get_entity_attr_db(
-    dbfile: Union[Path, str],
+    dbfile: Path | str,
     attr: Literal["aliases", "instanceof"],
     create_if_missing=False,
     read_only=True,
-) -> HugeMutableMapping[str, List[str]]:
+) -> HugeMutableMapping[str, list[str]]:
     ...
 
 
 @overload
 def get_entity_attr_db(
-    dbfile: Union[Path, str],
+    dbfile: Path | str,
     attr: Literal["pagerank"],
     create_if_missing=False,
     read_only=True,
@@ -72,15 +74,15 @@ def get_entity_attr_db(
 
 
 def get_entity_attr_db(
-    dbfile: Union[Path, str],
+    dbfile: Path | str,
     attr: EntAttr,
     create_if_missing=False,
     read_only=True,
-) -> Union[
-    HugeMutableMapping[str, str],
-    HugeMutableMapping[str, float],
-    HugeMutableMapping[str, List[str]],
-]:
+) -> (
+    HugeMutableMapping[str, str]
+    | HugeMutableMapping[str, float]
+    | HugeMutableMapping[str, list[str]]
+):
     dbpath = Path(dbfile)
     realdbpath = dbpath.parent / dbpath.stem / f"{attr}.db"
     version = realdbpath / "_VERSION"
@@ -122,7 +124,7 @@ def get_entity_attr_db(
 
 
 def get_pagerank_stats(
-    dbfile: Union[Path, str],
+    dbfile: Path | str,
 ) -> PageRankStats:
     dbpath = Path(dbfile)
     realdbpath = dbpath.parent / dbpath.stem / f"pagerank.db"
@@ -146,6 +148,7 @@ def build_extra_ent_db(
 
     import ray
     from hugedict.ray_parallel import ray_map
+
     from kgdata.wikidata.datasets.entity_metadata import entity_metadata
     from kgdata.wikidata.datasets.entity_pagerank import entity_pagerank
 
@@ -156,7 +159,7 @@ def build_extra_ent_db(
         infile: str, temp_dir: str, attr: EntAttr, options: RocksDBOptions
     ):
         kvs = []
-        for obj in deserialize_jl(infile):
+        for obj in serde.jl.deser(infile):
             if attr == "pagerank":
                 ent_id, rank = obj
                 rank = struct.pack("<d", float(rank))

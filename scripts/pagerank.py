@@ -1,7 +1,7 @@
 import os, glob, numpy as np
 from pathlib import Path
 
-from sm.misc.deser import deserialize_lines
+import serde.textline
 from graph_tool.all import *
 from tqdm import tqdm
 from loguru import logger
@@ -21,7 +21,7 @@ else:
     n_vertices = int((working_dir / "idmap_en.txt").read_text())
     edges = []
     for file in tqdm(edge_files):
-        for line in deserialize_lines(file, trim=True):
+        for line in serde.textline.deser(file, trim=True):
             edges.append([int(x) for x in line.split("\t")])
     logger.info("Loading graph data... done!")
 

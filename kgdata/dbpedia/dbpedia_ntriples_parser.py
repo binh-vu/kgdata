@@ -3,7 +3,8 @@ import gzip
 from cityhash import CityHash64
 
 from kgdata.dbpedia.table_extraction import *
-from kgdata.misc import NTriplesParser, get_open_fn
+from kgdata.misc import NTriplesParser
+from serde.helper import get_open_fn
 
 """
 This module provides functions to work with DBPedia raw html dumps

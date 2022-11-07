@@ -1,48 +1,47 @@
-import glob
 import gc
-from pathlib import Path
+import os
 import shutil
+from operator import itemgetter
+from pathlib import Path
 from typing import List, cast, get_args
-import click, os
+
+import click
+import orjson
+import ray
+import serde.jl
 from click.types import Choice
 from hugedict.prelude import (
     RocksDBDict,
     RocksDBOptions,
-    rocksdb_load,
     init_env_logger,
     rocksdb_build_sst_file,
     rocksdb_ingest_sst_files,
+    rocksdb_load,
 )
 from hugedict.ray_parallel import ray_map
+from timer import Timer
+
 from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.datasets.classes import classes
+from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_metadata import entity_metadata
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.datasets.properties import properties
-from kgdata.wikidata.datasets.entities import entities
-from kgdata.wikidata.datasets.classes import classes
 from kgdata.wikidata.datasets.property_domains import property_domains
 from kgdata.wikidata.datasets.property_ranges import property_ranges
 from kgdata.wikidata.datasets.wp2wd import wp2wd
-from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.db import (
     get_entity_db,
     get_entity_label_db,
     get_entity_redirection_db,
+    get_wdclass_db,
+    get_wdprop_db,
     get_wdprop_domain_db,
     get_wdprop_range_db,
     get_wp2wd_db,
-    get_wdclass_db,
-    get_wdprop_db,
 )
-from kgdata.wikidata.extra_ent_db import build_extra_ent_db, EntAttr
-from loguru import logger
-import orjson
-from operator import itemgetter
-
-from sm.misc.funcs import identity_func
-from sm.misc.deser import deserialize_jl
-from sm.misc.timer import Timer
-import ray
+from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
+from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 
 
 @click.command(name="entities")
@@ -139,7 +138,7 @@ def db_entity_labels(directory: str, output: str, compact: bool, lang: str):
                     obj["id"].encode(),
                     orjson.dumps(WDEntityLabel.from_wdentity_raw(obj).to_dict()),
                 )
-                for obj in deserialize_jl(infile)
+                for obj in serde.jl.deser(infile)
             ],
             key=itemgetter(0),
         )

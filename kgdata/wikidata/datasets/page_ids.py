@@ -1,15 +1,12 @@
 import csv
 import os
 from operator import itemgetter
-from typing import Dict, Tuple, Union
+from typing import Tuple
 from kgdata.spark import does_result_dir_exist, get_spark_context, ensure_unique_records
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_ids import is_entity_id
 from kgdata.dataset import Dataset
 from kgdata.wikidata.datasets.page_dump import page_dump
-from pyspark.rdd import RDD
-from sm.misc import deserialize_byte_lines
-from tqdm import tqdm
 
 
 def page_ids() -> Dataset[Tuple[str, str]]:

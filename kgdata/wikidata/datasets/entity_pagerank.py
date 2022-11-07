@@ -3,10 +3,8 @@ from dataclasses import dataclass
 from glob import glob
 from io import BytesIO
 from pathlib import Path
-import shutil
 from typing import (
     Callable,
-    Dict,
     Generic,
     Iterable,
     List,
@@ -14,25 +12,19 @@ from typing import (
     Sequence,
     Tuple,
     TypeVar,
-    Union,
-    cast,
 )
-from hugedict.misc import identity
 from hugedict.ray_parallel import ray_map
 from kgdata.dataset import Dataset
 from kgdata.spark import (
     does_result_dir_exist,
     left_outer_join_repartition,
     get_spark_context,
-    left_outer_join,
 )
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
-from loguru import logger
 import orjson, ray, numpy as np
-from sm.misc.deser import deserialize_lines
-from tqdm import tqdm
+import serde.textline
 
 
 KeyType = TypeVar("KeyType")
@@ -134,7 +126,7 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
             edges = []
             eprops = []
             for infile in infiles:
-                for x in deserialize_lines(infile, trim=True):
+                for x in serde.textline.deser(infile, trim=True):
                     edge = Edge.deserialize_int(x)
                     edges.append((edge.source, edge.target))
                     eprops.append(edge.weight)

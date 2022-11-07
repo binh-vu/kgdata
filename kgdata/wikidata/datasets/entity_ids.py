@@ -11,7 +11,7 @@ from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.dataset import Dataset
 from kgdata.wikidata.models.wdentity import WDEntity
-from sm.misc import identity_func
+from sm.misc.funcs import identity_func
 from tqdm import tqdm
 
 

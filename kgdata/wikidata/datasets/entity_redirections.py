@@ -17,8 +17,8 @@ from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.datasets.page_ids import page_ids, parse_sql_values
 import orjson
 from pyspark.rdd import RDD
-from sm.misc import identity_func, deserialize_jl, deserialize_csv, serialize_csv
-from sm.misc.deser import deserialize_lines
+import serde.csv
+import serde.textline
 from tqdm import tqdm
 
 
@@ -50,7 +50,7 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
 
     if not (cfg.entity_redirections / "redirections.tsv").exists():
         page2ent = page_ids().get_dict()
-        raw_redirections = deserialize_csv(
+        raw_redirections = serde.csv.deser(
             cfg.entity_redirections / "raw_redirections.tsv", delimiter="\t"
         )
 
@@ -100,7 +100,7 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
                     stack.append(next_item)
             refined_redirections[before_item] = final_item
 
-        serialize_csv(
+        serde.csv.ser(
             [
                 [before, after]
                 for before, after in sorted(refined_redirections.items())
@@ -111,7 +111,7 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
         )
 
     if not (cfg.entity_redirections / "fixed_redirections.tsv").exists():
-        lst = deserialize_csv(
+        lst = serde.csv.deser(
             cfg.entity_redirections / "redirections.tsv", delimiter="\t"
         )
 
@@ -123,13 +123,13 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
         )
 
         unknown_ents = set(
-            deserialize_lines(
+            serde.textline.deser(
                 cfg.entity_redirections / "unknown_target_entities.txt", trim=True
             )
         )
 
         if len(unknown_ents) > 0:
-            serialize_csv(
+            serde.csv.ser(
                 [[before, after] for before, after in lst if after not in unknown_ents],
                 cfg.entity_redirections / "fixed_redirections.tsv",
                 delimiter="\t",

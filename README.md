@@ -9,7 +9,7 @@ KGData is a library to process dumps of Wikipedia, Wikidata. What it can do:
 - Create Pyserini indices to search Wikidata’s entities.
 - and more
 
-For a full documentation, please see[the website](https://kgdata.readthedocs.io/).
+For a full documentation, please see [the website](https://kgdata.readthedocs.io/).
 
 ## Installation
 

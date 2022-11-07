@@ -14,13 +14,17 @@ from typing import (
     List,
     Tuple,
     Union,
-    cast,
 )
+from serde.helper import get_open_fn
 
-from sm.misc import get_open_fn, datasize, identity_func, import_func, percentage
-from sm.misc.deser import serialize_byte_lines
+from sm.misc.prelude import (
+    datasize,
+    identity_func,
+    import_func,
+)
 from tqdm import tqdm
 from multiprocessing import Process, Queue
+import serde.byteline
 
 
 def default_currentbyte_constructor(
@@ -200,7 +204,7 @@ def split_a_list(
     counter = 0
 
     for i in tqdm(range(0, len(lst), n_records_per_file), desc="splitting"):
-        serialize_byte_lines(
+        serde.byteline.ser(
             lst[i : i + n_records_per_file], name_template.format(auto=counter)
         )
         counter += 1

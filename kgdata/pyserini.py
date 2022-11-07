@@ -1,25 +1,19 @@
 """Utilities for Pyserini."""
 
 from __future__ import annotations
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 import os
 from pathlib import Path
 from typing import Callable, TypedDict, Union
-from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.db import get_wdprop_db
-from pyserini.search.lucene import LuceneSearcher
 import orjson
 
 from pyserini.analysis import Analyzer as PyseriniAnalyzer, get_lucene_analyzer
-from kgdata.wikidata.datasets.properties import properties
-from pyserini.index.lucene import IndexReader
 from pyspark import RDD
-from sm.misc.deser import deserialize_json, serialize_json
 from sm.misc.funcs import identity_func
+import serde.json
 
 
 class AnalyzerType(str, Enum):
@@ -137,10 +131,10 @@ def build_pyserini_index(
             if file.name.startswith("part-"):
                 file.rename(file.parent / f"{file.name}.jsonl")
 
-        serialize_json(settings.to_dict(), data_dir / "_SUCCESS", indent=4)
+        serde.json.ser(settings.to_dict(), data_dir / "_SUCCESS", indent=4)
     else:
         assert (
-            IndexSettings.from_dict(deserialize_json(data_dir / "_SUCCESS")) == settings
+            IndexSettings.from_dict(serde.json.deser(data_dir / "_SUCCESS")) == settings
         )
 
     if not does_result_dir_exist(index_dir):
@@ -178,9 +172,9 @@ def build_pyserini_index(
             + extra_args
         )
         (index_dir / "_SUCCESS").touch()
-        serialize_json(settings.to_dict(), index_dir / "_SUCCESS", indent=4)
+        serde.json.ser(settings.to_dict(), index_dir / "_SUCCESS", indent=4)
     else:
         assert (
-            IndexSettings.from_dict(deserialize_json(index_dir / "_SUCCESS"))
+            IndexSettings.from_dict(serde.json.deser(index_dir / "_SUCCESS"))
             == settings
         )

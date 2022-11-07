@@ -1,21 +1,17 @@
-import os
 from functools import partial
-from pathlib import Path
-from typing import Union, cast, Set, Dict
+from typing import Union, Set, Dict
 
-from kgdata.config import WIKIDATA_DIR
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
-from kgdata.wikidata.models.wdentity import WDEntity, WDValue
+from kgdata.wikidata.models.wdentity import WDEntity
 from loguru import logger
 import orjson
-import sm.misc as M
-from pyspark.rdd import RDD
 from pyspark import Broadcast
 from kgdata.dataset import Dataset
+import serde.textline
 
 
 def entities(lang: str = "en") -> Dataset[WDEntity]:
@@ -77,14 +73,14 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
 
         sc = get_spark_context()
         unknown_entities = sc.broadcast(
-            set(M.deserialize_lines(outdir / "unknown_entities.txt", trim=True))
+            set(serde.textline.deser(outdir / "unknown_entities.txt", trim=True))
         )
         redirected_entities = sc.broadcast(
             {
                 k: v
                 for k, v in (
                     line.split("\t")
-                    for line in M.deserialize_lines(
+                    for line in serde.textline.deser(
                         outdir / "redirected_entities.tsv", trim=True
                     )
                 )

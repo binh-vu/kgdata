@@ -1,13 +1,11 @@
-from dataclasses import dataclass
 import gzip
-import os
 from typing import TypedDict, Tuple, List
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WPDataDirConfig
 from kgdata.wikipedia.datasets.articles import articles
 import orjson
-from sm.misc.deser import get_open_fn
+from serde.helper import get_open_fn
 from tqdm import tqdm
 
 

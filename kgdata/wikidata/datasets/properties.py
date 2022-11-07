@@ -7,10 +7,11 @@ from typing import List
 from kgdata.wikidata.models import WDProperty
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.entities import entities, ser_entity
+from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.classes import build_ancestors
-import sm.misc as M
 from kgdata.wikidata.models.wdentity import WDEntity
+
+import serde.jl
 
 
 def properties(lang="en") -> Dataset[WDProperty]:
@@ -71,7 +72,7 @@ def properties(lang="en") -> Dataset[WDProperty]:
 
         id2parents = {
             k: v
-            for k, v in M.deserialize_jl(
+            for k, v in serde.jl.deser(
                 cfg.properties / "ancestors/id2parents.ndjson.gz"
             )
         }

@@ -4,10 +4,13 @@ import random
 import orjson
 import ray
 from sm.prelude import M
+from timer import Timer
 from tap import Tap
 from hugedict.misc import zstd6_compress_custom, zstd_decompress_custom
 from hugedict.prelude import RocksDBDict
 from wdentity.load_db import db_options
+
+import serde.textline
 
 
 class ReadSpeedArgs(Tap):
@@ -60,8 +63,8 @@ def test_runtime(name: str, option: str):
         deser_value=deser_value,
         ser_value=ser_value,
     )
-    timer = M.Timer()
-    keys = M.deserialize_lines(data_dir / "keys.txt", trim=True, n_lines=10000)
+    timer = Timer()
+    keys = serde.textline.deser(data_dir / "keys.txt", trim=True, n_lines=10000)
     with timer.watch():
         count = 0
         for key in keys:

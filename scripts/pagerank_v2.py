@@ -3,7 +3,6 @@ import os, glob, numpy as np
 import shutil
 from pathlib import Path
 
-from sm.misc.deser import deserialize_lines
 from graph_tool.all import *
 from tqdm import tqdm
 from loguru import logger

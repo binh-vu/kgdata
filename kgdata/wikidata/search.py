@@ -4,21 +4,15 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.wikidata.datasets.classes import classes
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_pagerank import entity_pagerank
-from kgdata.wikidata.db import get_wdprop_db
 from kgdata.wikidata.models import WDClass, WDEntity, WDProperty
 from pyserini.search.lucene import LuceneSearcher
-import orjson
-from tqdm import tqdm
 
 from kgdata.wikidata.datasets.properties import properties
-from pyserini.index.lucene import IndexReader
-from sm.misc.deser import deserialize_json
-from sm.misc.funcs import identity_func
+import serde.json
 from kgdata.pyserini import (
     AnalyzerType,
     PyseriniDoc,
@@ -45,7 +39,7 @@ class WDSearch:
         self.index_dir = Path(index)
         self.searcher = LuceneSearcher(str(index))
         self.settings = IndexSettings.from_dict(
-            deserialize_json(self.index_dir / "_SUCCESS")
+            serde.json.deser(self.index_dir / "_SUCCESS")
         )
         # set bm25 parameters to the one people usually use
         # b = 0.75 and k1 = 1.2 because in entity linking,
