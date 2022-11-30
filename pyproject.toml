@@ -10,7 +10,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.8"
-orjson = "^3.8.0"
+orjson = "^3.8.2"
 tqdm = "^4.64.0"
 beautifulsoup4 = "^4.9.3"
 cityhash = ">=0.4.2"
