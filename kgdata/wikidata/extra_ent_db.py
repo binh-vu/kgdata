@@ -147,7 +147,7 @@ def build_extra_ent_db(
     gc.collect()
 
     import ray
-    from hugedict.ray_parallel import ray_map
+    from sm.misc.ray_helper import ray_map
 
     from kgdata.wikidata.datasets.entity_metadata import entity_metadata
     from kgdata.wikidata.datasets.entity_pagerank import entity_pagerank

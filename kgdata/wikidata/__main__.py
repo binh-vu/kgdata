@@ -18,7 +18,7 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
     rocksdb_load,
 )
-from hugedict.ray_parallel import ray_map
+from sm.misc.ray_helper import ray_map
 from timer import Timer
 
 from kgdata.wikidata.config import WDDataDirCfg
@@ -347,7 +347,7 @@ def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
     rocksdb_load(
         dbpath=str(dbpath),
         dbopts=options,
-        files=wp2wd(lang=lang).get_files(),
+        files=wp2wd(lang=lang).get_files("asc")[:3],
         format={
             "record_type": {"type": "tuple2", "key": None, "value": None},
             "is_sorted": False,

@@ -13,7 +13,7 @@ from typing import (
     Tuple,
     TypeVar,
 )
-from hugedict.ray_parallel import ray_map
+from sm.misc.ray_helper import ray_map
 from kgdata.dataset import Dataset
 from kgdata.spark import (
     does_result_dir_exist,

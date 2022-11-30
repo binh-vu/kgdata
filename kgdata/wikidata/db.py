@@ -423,8 +423,8 @@ class WikidataDB:
     def wdclasses(self):
         wdclasses = get_wdclass_db(self.database_dir / "wdclasses.db", read_only=True)
         if (self.database_dir / "wdclasses.fixed.jl").exists():
-            wdclasses = self.wdclasses.cache()
-            assert isinstance(self.wdclasses, CacheDict)
+            wdclasses = wdclasses.cache()
+            assert isinstance(wdclasses, CacheDict)
             for record in jl.deser(self.database_dir / "wdclasses.fixed.jl"):
                 cls = WDClass.from_dict(record)
                 wdclasses._cache[cls.id] = cls
