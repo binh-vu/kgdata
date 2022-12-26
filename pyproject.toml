@@ -31,7 +31,6 @@ parsimonious = "^0.8.1"
 hugedict = "^2.8.0"
 rsoup = "^2.5.1"
 lxml = "^4.9.0"
-pyserini = "^0.17.0"
 ray = "^2.0.1"
 
 [tool.poetry.dev-dependencies]
