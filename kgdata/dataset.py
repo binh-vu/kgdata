@@ -4,6 +4,7 @@ import glob
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Optional, TypeVar, Union, cast
+from loguru import logger
 
 import serde.byteline
 import serde.textline
@@ -48,6 +49,9 @@ class Dataset(Generic[V]):
         files = glob.glob(str(self.file_pattern))
         if sorted_order is not None:
             files.sort(reverse=sorted_order == "desc")
+
+        if len(files) == 0:
+            logger.warning(f"No files found for {self.file_pattern}")
         return files
 
     def get_rdd(self) -> RDD[V]:

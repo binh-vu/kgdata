@@ -1,14 +1,10 @@
 from kgdata.dataset import Dataset
 import orjson
-from typing import List, Tuple
-from kgdata.wikidata.models import WDProperty
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from typing import Tuple
+from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.entities import entities, ser_entity
-from kgdata.wikidata.datasets.classes import build_ancestors
-import sm.misc as M
+from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
-from functools import partial
 
 
 def wp2wd(lang="en") -> Dataset[Tuple[str, str]]:

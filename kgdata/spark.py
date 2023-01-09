@@ -222,10 +222,10 @@ def left_outer_join(
     rdd1_fk_fn: Callable[[R1], List[K2]],
     rdd2_keyfn: Callable[[R2], K2],
     join_fn: Callable[[R1, List[Tuple[K2, Optional[R2]]]], Optional[R1]],
-    ser_fn: Callable[[R1], Union[str, bytes]],
-    outfile: str,
+    ser_fn: Optional[Callable[[R1], Union[str, bytes]]] = None,
+    outfile: Optional[str] = None,
     compression: bool = True,
-):
+) -> RDD[R1]:
     """Join two RDDs (left outer join) by non primary key in RDD1.
 
     RDD1: contains records of (x, Y, x_data) where x is the id of the record, Y are list of ids of records in RDD2.
@@ -245,12 +245,16 @@ def left_outer_join(
         function that extract id of a record (y) of RDD2
     rdd1_join_fn : Callable[[R1, List[Tuple[K2, Optional[R2]]]], Optional[None]]
         function that merge list of Y into record R1, if its return not None, we use that value
-    rdd1_serfn : Callable[[R1], Union[str, bytes]]
+    rdd1_serfn : Optional[Callable[[R1], Union[str, bytes]]]
         function that serialize records of RDD1 to save to file
-    outfile : str
-        output file
+    outfile : Optional[str]
+        output file -- save the result to file if request
     compression : bool, optional
         whether we should compress the result, by default True
+
+    Returns
+    -------
+    RDD[R1] the merged records
     """
     sc = get_spark_context()
 
@@ -277,21 +281,27 @@ def left_outer_join(
         return record1
 
     # converts to (y => record2)
-    rdd2 = rdd2.map(lambda x: (rdd2_keyfn(x), x))
+    rdd2_v2: RDD[tuple[K2, R2]] = rdd2.map(lambda x: (rdd2_keyfn(x), x))
     # get (y => List[record1 ids])
-    rdd3 = rdd1.flatMap(p_1_swap_keys).groupByKey()
+    rdd3: RDD[tuple[K2, Iterable[K1]]] = rdd1.flatMap(p_1_swap_keys).groupByKey()
     # join with rdd2 and swap the key, to get: (xid => List[(y, record2)])
-    rdd4 = rdd3.leftOuterJoin(rdd2).flatMap(p_2_process_join).groupByKey()
+    rdd4: RDD[tuple[K1, Iterable[tuple[K2, R2]]]] = (
+        rdd3.leftOuterJoin(rdd2_v2).flatMap(p_2_process_join).groupByKey()
+    )
     # join with rdd1 to merge and join the result
-    rdd1 = rdd1.map(lambda x: (rdd1_keyfn(x), x))
-    rdd1 = rdd1.leftOuterJoin(rdd4).map(p_3_process_join).map(ser_fn)
+    rdd1_v2: RDD[tuple[K1, R1]] = rdd1.map(lambda x: (rdd1_keyfn(x), x))
+    rdd1_v3 = rdd1_v2.leftOuterJoin(rdd4).map(p_3_process_join)
 
-    if compression:
-        rdd1.saveAsTextFile(
-            outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
-        )
-    else:
-        rdd1.saveAsTextFile(outfile)
+    if outfile is not None:
+        assert ser_fn is not None
+        if compression:
+            rdd1_v3.map(ser_fn).saveAsTextFile(
+                outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
+            )
+        else:
+            rdd1_v3.map(ser_fn).saveAsTextFile(outfile)
+
+    return rdd1_v3
 
 
 def left_outer_join_broadcast(

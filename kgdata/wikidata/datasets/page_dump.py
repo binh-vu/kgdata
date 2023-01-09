@@ -11,7 +11,7 @@ from kgdata.dataset import Dataset
 
 
 def page_dump() -> Dataset[str]:
-    """Wikidata entity redirections"""
+    """mapping from Wikidata internal page id and Wikidata entity id (possible old id)"""
     cfg = WDDataDirCfg.get_instance()
 
     split_a_file(

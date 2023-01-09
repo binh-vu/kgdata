@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, cast, get_args
 
 import click
+from kgdata.wikidata.datasets.entity_wikilinks import entity_wikilinks
 import orjson
 import ray
 import serde.jl
@@ -34,6 +35,7 @@ from kgdata.wikidata.db import (
     get_entity_db,
     get_entity_label_db,
     get_entity_redirection_db,
+    get_entity_wikilinks_db,
     get_wdclass_db,
     get_wdprop_db,
     get_wdprop_domain_db,
@@ -42,6 +44,7 @@ from kgdata.wikidata.db import (
 )
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
+from kgdata.dbpedia.config import DBpediaDataDirCfg
 
 
 @click.command(name="entities")
@@ -205,6 +208,43 @@ def db_entity_redirections(directory: str, output: str, compact: bool):
     )
 
 
+@click.command(name="entity_wikilinks")
+@click.option("-d", "--directory", default="", help="Wikidata directory")
+@click.option("--dbpedia", default="", help="DBpedia directory")
+@click.option("-o", "--output", help="Output directory")
+@click.option(
+    "-c",
+    "--compact",
+    is_flag=True,
+    help="Whether to compact the results. May take a very very long time",
+)
+def db_entity_wikilinks(directory: str, dbpedia: str, output: str, compact: bool):
+    """Wikidata entity redirections"""
+    WDDataDirCfg.init(directory)
+    DBpediaDataDirCfg.init(dbpedia)
+
+    dbpath = Path(output) / "wdentity_wikilinks.db"
+    dbpath.mkdir(exist_ok=True, parents=True)
+
+    options = cast(
+        RocksDBDict,
+        get_entity_wikilinks_db(dbpath, create_if_missing=True, read_only=False),
+    ).options
+    gc.collect()
+
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=options,
+        files=entity_wikilinks().get_files(),
+        format={
+            "record_type": {"type": "ndjson", "key": "source", "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=compact,
+    )
+
+
 @click.command(name="classes")
 @click.option("-d", "--directory", default="", help="Wikidata directory")
 @click.option("-o", "--output", help="Output directory")
@@ -347,7 +387,7 @@ def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
     rocksdb_load(
         dbpath=str(dbpath),
         dbopts=options,
-        files=wp2wd(lang=lang).get_files("asc")[:3],
+        files=wp2wd(lang=lang).get_files(),
         format={
             "record_type": {"type": "tuple2", "key": None, "value": None},
             "is_sorted": False,
@@ -355,39 +395,6 @@ def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
         verbose=True,
         compact=True,
     )
-
-
-@click.command(name="search.entities")
-@click.option("-d", "--directory", default="", help="Wikidata directory")
-@click.option("-o", "--output", help="Output directory")
-@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def search_entities(directory: str, output: str, lang: str):
-    from kgdata.wikidata.search import build_index
-
-    WDDataDirCfg.init(directory)
-    build_index(name="entities", index_parent_dir=Path(output), lang=lang)
-
-
-@click.command(name="search.properties")
-@click.option("-d", "--directory", default="", help="Wikidata directory")
-@click.option("-o", "--output", help="Output directory")
-@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def search_props(directory: str, output: str, lang: str):
-    from kgdata.wikidata.search import build_index
-
-    WDDataDirCfg.init(directory)
-    build_index(name="props", index_parent_dir=Path(output), lang=lang)
-
-
-@click.command(name="search.classes")
-@click.option("-d", "--directory", default="", help="Wikidata directory")
-@click.option("-o", "--output", help="Output directory")
-@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def search_classes(directory: str, output: str, lang: str):
-    from kgdata.wikidata.search import build_index
-
-    WDDataDirCfg.init(directory)
-    build_index(name="classes", index_parent_dir=Path(output), lang=lang)
 
 
 @click.group()
@@ -402,9 +409,7 @@ wikidata.add_command(db_entity_redirections)
 wikidata.add_command(db_classes)
 wikidata.add_command(db_properties)
 wikidata.add_command(db_wp2wd)
-wikidata.add_command(search_entities)
-wikidata.add_command(search_props)
-wikidata.add_command(search_classes)
+wikidata.add_command(db_entity_wikilinks)
 
 
 if __name__ == "__main__":

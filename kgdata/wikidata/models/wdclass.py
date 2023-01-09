@@ -33,13 +33,13 @@ class WDClass:
     equivalent_classes: List[str]
     ancestors: Set[str]
 
-    @staticmethod
-    def from_dict(o):
-        o["label"] = MultiLingualString(**o["label"])
-        o["description"] = MultiLingualString(**o["description"])
-        o["aliases"] = MultiLingualStringList(**o["aliases"])
-        o["ancestors"] = set(o["ancestors"])
-        return WDClass(**o)
+    @classmethod
+    def from_dict(cls, obj):
+        obj["label"] = MultiLingualString(**obj["label"])
+        obj["description"] = MultiLingualString(**obj["description"])
+        obj["aliases"] = MultiLingualStringList(**obj["aliases"])
+        obj["ancestors"] = set(obj["ancestors"])
+        return cls(**obj)
 
     def to_dict(self):
         return {

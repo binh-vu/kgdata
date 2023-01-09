@@ -1,5 +1,5 @@
 from typing import Optional
-from urllib.parse import unquote_plus, urlparse
+from urllib.parse import unquote, urlparse
 
 
 def get_title_from_url(url: str) -> str:
@@ -11,13 +11,23 @@ def get_title_from_url(url: str) -> str:
     Returns:
         A wikipedia page/article's title.
     """
-    path = urlparse(url).path
+    if ";" in url:
+        # ; is old standard to split the parameter (similar to &) and is obsolete.
+        # python 3.9, however, is still splitting it under this scheme http:// or https://
+        # therefore, we need to address this special case by replacing the scheme.
+        if url.startswith("http://") or url.startswith("https://"):
+            url = "scheme" + url[4:]
+        path = urlparse(url).path
+        assert ";" in path
+    else:
+        path = urlparse(url).path
+
     if not path.startswith("/wiki/"):
         return ""
 
     assert path.startswith("/wiki/"), path
     path = path[6:]
-    title = unquote_plus(path).replace("_", " ")
+    title = unquote(path).replace("_", " ")
     return title.strip()
 
 

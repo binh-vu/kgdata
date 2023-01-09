@@ -1,18 +1,12 @@
 from kgdata.wikidata.datasets.wp2wd import wp2wd
-from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_table
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable, WikiLink
-import orjson, ujson
-from typing import Dict, Iterable, List, Literal, Tuple, TypedDict, Union
-from loguru import logger
+from typing import Dict, Iterable, List, Literal, Tuple, Union
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, left_outer_join
-from kgdata.wikipedia.datasets.html_articles import html_articles
+from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WPDataDirConfig
-from kgdata.wikipedia.models.html_article import HTMLArticle
 
 from rsoup.rsoup import Table, Cell
-import sm.misc as M
 from importlib import import_module
 
 

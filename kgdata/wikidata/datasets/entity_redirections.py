@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections import defaultdict
 from operator import itemgetter
 import shutil
@@ -146,7 +147,7 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
     )
 
 
-def extract_id(row: list):
+def extract_id(row: list) -> tuple[str, str] | None:
     # the dumps contain other pages such as user pages, etc.
     page_id, entity_id = row[0], row[2]
     if is_entity_id(entity_id):

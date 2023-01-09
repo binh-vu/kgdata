@@ -18,6 +18,7 @@ from typing import (
     cast,
     overload,
 )
+from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
 
 import orjson
 import requests
@@ -41,7 +42,7 @@ from kgdata.wikidata.models import (
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 
-V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel)
+V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel, WDEntityWikiLink)
 
 
 class WDProxyDB(RocksDBDict, HugeMutableMapping[str, V]):
@@ -316,6 +317,33 @@ def get_entity_label_db(
         options=dboptions,
         deser_key=partial(str, encoding="utf-8"),
         deser_value=partial(deserialize, WDEntityLabel),
+        ser_value=serialize,
+    )
+
+
+def get_entity_wikilinks_db(
+    dbfile: Union[Path, str],
+    create_if_missing=False,
+    read_only=True,
+) -> HugeMutableMapping[str, WDEntityWikiLink]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
+    dboptions = RocksDBOptions(
+        create_if_missing=create_if_missing,
+        compression_type="lz4",
+    )
+    return RocksDBDict(
+        str(dbfile),
+        readonly=read_only,
+        options=dboptions,
+        deser_key=partial(str, encoding="utf-8"),
+        deser_value=partial(deserialize, WDEntityWikiLink),
         ser_value=serialize,
     )
 
