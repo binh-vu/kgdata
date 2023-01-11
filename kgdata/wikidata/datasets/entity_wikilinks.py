@@ -68,4 +68,4 @@ def merge_link_and_wp2wd(
 
 
 def reformat_wikilink(r1: WikiLink) -> WDEntityWikiLink:
-    return WDEntityWikiLink(r1.source, [t for t in r1.targets if t != ""])
+    return WDEntityWikiLink(r1.source, {t for t in r1.targets if t != ""})

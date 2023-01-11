@@ -492,6 +492,12 @@ class WikidataDB:
             read_only=True,
         )
 
+    @functools.cached_property
+    def wdentity_wikilinks(self):
+        return get_entity_wikilinks_db(
+            self.database_dir / "wdentity_wikilinks.db", read_only=True
+        )
+
     @overload
     def wdattr(
         self, attr: Literal["aliases", "instanceof"]
