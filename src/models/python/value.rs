@@ -2,6 +2,7 @@ use crate::models::{EntityId, GlobeCoordinate, MonolingualText, Quantity, Time, 
 use pyo3::prelude::*;
 
 /// Python wrapper for Value struct.
+#[derive(Clone, Debug)]
 #[pyclass(name = "ValueView")]
 pub struct PyValueView {
     pub value: &'static Value,

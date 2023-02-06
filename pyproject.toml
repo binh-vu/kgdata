@@ -15,28 +15,28 @@ classifiers = [
 requires-python = ">=3.8"
 
 dependencies = [
-    "orjson >= 3.8.2, < 4.0.0",
-    "tqdm >= 4.64.0, < 5.0.0",
-    "beautifulsoup4 >= 4.9.3, < 5.0.0",
-    "cityhash >= 0.4.2, < 0.5.0",
-    "pyspark >= 3.3.0, < 4.0.0",
-    "loguru >= 0.6.0, < 0.7.0",
-    "rdflib >= 6.1.1, < 7.0.0",
-    "six >= 1.16.0, < 2.0.0",
-    "ruamel.yaml >= 0.17.21, < 1.0.0",
-    "chardet >= 5.0.0, < 6.0.0",
-    "ujson >= 5.5.0, < 6.0.0",
-    "redis >= 3.5.3, < 4.0.0",
-    "numpy >= 1.22.3, < 2.0.0",
-    "fastnumbers >= 3.2.1, < 4.0.0",
-    "requests >= 2.28.0, < 3.0.0",
-    "sem-desc >= 4.1.6, < 5.0.0",
-    "click >= 8.0.0, <= 8.0.4",
-    "parsimonious >= 0.8.1, < 0.9.0",
-    "hugedict >= 2.8.1, < 3.0.0",
-    "rsoup >= 2.5.1, < 3.0.0",
-    "lxml >= 4.9.0, < 5.0.0",
-    "ray >= 2.0.1, < 3.0.0",
+    'orjson >= 3.8.2, < 4.0.0',
+    'tqdm >= 4.64.0, < 5.0.0',
+    'beautifulsoup4 >= 4.9.3, < 5.0.0',
+    'cityhash >= 0.4.2, < 0.5.0',
+    'pyspark >= 3.3.0, < 4.0.0',
+    'loguru >= 0.6.0, < 0.7.0',
+    'rdflib >= 6.1.1, < 7.0.0',
+    'six >= 1.16.0, < 2.0.0',
+    'ruamel.yaml >= 0.17.21, < 0.18.0',
+    'chardet >= 5.0.0, < 6.0.0',
+    'ujson >= 5.5.0, < 6.0.0',
+    'redis >= 3.5.3, < 4.0.0',
+    'numpy >= 1.22.3, < 2.0.0',
+    'fastnumbers >= 3.2.1, < 4.0.0',
+    'requests >= 2.28.0, < 3.0.0',
+    'sem-desc >= 4.1.6, < 5.0.0',
+    'click >= 8.0.0, <= 8.0.4',
+    'parsimonious >= 0.8.1, < 0.9.0',
+    'hugedict >= 2.8.1, < 3.0.0',
+    'rsoup >= 2.5.1, < 3.0.0',
+    'lxml >= 4.9.0, < 5.0.0',
+    'ray >= 2.0.1, < 3.0.0',
 ]
 
 [project.urls]
@@ -45,9 +45,9 @@ repository = "https://github.com/binh-vu/kgdata"
 
 [project.optional-dependencies]
 dev = [
-    "python-dotenv >= 0.19.0, < 0.20.0",
-    "pytest >= 7.1.3, < 8.0.0",
-    "black >= 22.10.0, < 23.0.0",
+    'python-dotenv >= 0.19.0, < 0.20.0',
+    'pytest >= 7.1.3, < 8.0.0',
+    'black >= 22.10.0, < 23.0.0',
 ]
 
 [build-system]

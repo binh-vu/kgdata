@@ -11,7 +11,6 @@ use crate::error::into_pyerr;
 use crate::models::Statement;
 use pyo3::prelude::*;
 use pyo3::types::PyString;
-use std::sync::Arc;
 
 /// A Python wrapper for the Entity struct.
 ///
@@ -22,7 +21,7 @@ use std::sync::Arc;
 /// On the other hand, property getters are safe to use and store because they return a copy of the data.
 #[pyclass(name = "Entity")]
 pub struct PyEntity {
-    pub entity: Arc<Entity>,
+    pub entity: Entity,
     pub label: Option<Py<PyString>>,
 }
 
@@ -35,7 +34,7 @@ impl PyEntity {
             .map_err(into_pyerr)?
             .0;
         return Ok(PyEntity {
-            entity: Arc::new(ent),
+            entity: ent,
             label: None,
         });
     }
