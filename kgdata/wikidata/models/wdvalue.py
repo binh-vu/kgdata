@@ -37,7 +37,7 @@ ValueWikibaseEntityId = TypedDict(
         "entity-type": Literal["item", "property"],
         "id": str,
         # WARNING: not all entity IDs have a numeric ID – using the full ID is highly recommended.
-        "numeric-id": str,
+        "numeric-id": int,
     },
 )
 ValueGlobeCoordinate = TypedDict(
