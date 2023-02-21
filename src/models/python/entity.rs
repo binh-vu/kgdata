@@ -19,7 +19,7 @@ use pyo3::types::PyString;
 /// (e.g., resize vector, hashmap) rendering the pointer invalid.
 ///
 /// On the other hand, property getters are safe to use and store because they return a copy of the data.
-#[pyclass(name = "Entity")]
+#[pyclass(module = "kgdata.core.models", name = "Entity")]
 pub struct PyEntity {
     pub entity: Entity,
     pub label: Option<Py<PyString>>,
@@ -167,7 +167,7 @@ impl PyEntity {
     }
 }
 
-#[pyclass(name = "StatementView")]
+#[pyclass(module = "kgdata.core.models", name = "StatementView")]
 pub struct PyStatementView {
     pub statement: &'static Statement,
 }

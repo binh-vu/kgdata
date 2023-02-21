@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyString;
 use std::rc::Rc;
 
-#[pyclass(unsendable, name = "MultiLingualString")]
+#[pyclass(module = "kgdata.core.models", unsendable, name = "MultiLingualString")]
 pub struct PyEntMultiLingualString {
     _container: Rc<Entity>,
     value: Py<PyString>,

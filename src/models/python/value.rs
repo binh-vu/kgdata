@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 
 /// Python wrapper for Value struct.
 #[derive(Clone, Debug)]
-#[pyclass(name = "ValueView")]
+#[pyclass(module = "kgdata.core.models", name = "ValueView")]
 pub struct PyValueView {
     pub value: &'static Value,
 }
@@ -139,7 +139,7 @@ impl PyValueView {
     }
 }
 
-#[pyclass(name = "EntityId")]
+#[pyclass(module = "kgdata.core.models", name = "EntityId")]
 pub struct PyEntityId {
     #[pyo3(get, set)]
     id: PyObject,
@@ -159,7 +159,7 @@ impl PyEntityId {
     }
 }
 
-#[pyclass(name = "Time")]
+#[pyclass(module = "kgdata.core.models", name = "Time")]
 pub struct PyTime {
     #[pyo3(get, set)]
     time: PyObject,
@@ -188,7 +188,7 @@ impl PyTime {
     }
 }
 
-#[pyclass(name = "Quantity")]
+#[pyclass(module = "kgdata.core.models", name = "Quantity")]
 pub struct PyQuantity {
     #[pyo3(get, set)]
     amount: PyObject,
@@ -211,7 +211,7 @@ impl PyQuantity {
     }
 }
 
-#[pyclass(name = "GlobeCoordinate")]
+#[pyclass(module = "kgdata.core.models", name = "GlobeCoordinate")]
 pub struct PyGlobeCoordinate {
     #[pyo3(get, set)]
     latitude: PyObject,
@@ -237,7 +237,7 @@ impl PyGlobeCoordinate {
     }
 }
 
-#[pyclass(name = "MonolingualText")]
+#[pyclass(module = "kgdata.core.models", name = "MonolingualText")]
 pub struct PyMonolingualText {
     #[pyo3(get, set)]
     text: PyObject,

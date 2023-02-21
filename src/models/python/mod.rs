@@ -12,7 +12,7 @@ fn unsafe_update_view_lifetime_signature<T>(val: &T) -> &'static T {
 }
 
 pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    let submodule = PyModule::new(py, "kgmodels")?;
+    let submodule = PyModule::new(py, "models")?;
 
     m.add_submodule(submodule)?;
 
@@ -27,7 +27,7 @@ pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     py.import("sys")?
         .getattr("modules")?
-        .set_item("kgdata.kgdata.kgmodels", submodule)?;
+        .set_item("kgdata.core.models", submodule)?;
 
     Ok(())
 }
