@@ -1,3 +1,4 @@
+from __future__ import annotations
 from kgdata.spark import does_result_dir_exist, ensure_unique_records
 import orjson
 from kgdata.dataset import Dataset
