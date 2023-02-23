@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyString;
 use serde::{Deserialize, Serialize};
 
-#[pyclass]
+#[pyclass(module = "kgdata.core.bench")]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EntityDesign1 {
     pub id: String,
@@ -33,7 +33,7 @@ impl EntityDesign1 {
     }
 }
 
-#[pyclass]
+#[pyclass(module = "kgdata.core.bench")]
 #[derive(Debug, Clone)]
 pub struct EntityDesign2 {
     pub id: Py<PyString>,

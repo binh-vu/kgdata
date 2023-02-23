@@ -8,7 +8,7 @@ use super::value::PyValueView;
 use hashbrown::hash_map;
 use pyo3::prelude::*;
 
-#[pyclass(name = "EntityPropsKeysView")]
+#[pyclass(module = "kgdata.core.models", name = "EntityPropsKeysView")]
 pub struct PyEntityPropsKeysView {
     iter: hash_map::Keys<'static, String, Vec<Statement>>,
 }
@@ -31,7 +31,7 @@ impl PyEntityPropsKeysView {
     }
 }
 
-#[pyclass(name = "EntityPropsValuesView")]
+#[pyclass(module = "kgdata.core.models", name = "EntityPropsValuesView")]
 pub struct PyEntityPropsValuesView {
     iter: hash_map::Values<'static, String, Vec<Statement>>,
 }
@@ -58,7 +58,7 @@ impl PyEntityPropsValuesView {
     }
 }
 
-#[pyclass(name = "EntityPropsItemsView")]
+#[pyclass(module = "kgdata.core.models", name = "EntityPropsItemsView")]
 pub struct PyEntityPropsItemsView {
     iter: hash_map::Iter<'static, String, Vec<Statement>>,
 }
@@ -85,7 +85,7 @@ impl PyEntityPropsItemsView {
     }
 }
 
-#[pyclass(name = "StatementsView")]
+#[pyclass(module = "kgdata.core.models", name = "StatementsView")]
 pub struct PyStatementsView {
     lst: &'static Vec<Statement>,
     iter: std::slice::Iter<'static, Statement>,
@@ -129,7 +129,7 @@ impl PyStatementsView {
     }
 }
 
-#[pyclass(name = "QualifiersKeysView")]
+#[pyclass(module = "kgdata.core.models", name = "QualifiersKeysView")]
 pub struct PyQualifiersKeysView {
     iter: hash_map::Keys<'static, String, Vec<Value>>,
 }
@@ -152,7 +152,7 @@ impl PyQualifiersKeysView {
     }
 }
 
-#[pyclass(name = "QualifiersValuesView")]
+#[pyclass(module = "kgdata.core.models", name = "QualifiersValuesView")]
 pub struct PyQualifiersValuesView {
     iter: hash_map::Values<'static, String, Vec<Value>>,
 }
@@ -179,7 +179,7 @@ impl PyQualifiersValuesView {
     }
 }
 
-#[pyclass(name = "QualifiersItemsView")]
+#[pyclass(module = "kgdata.core.models", name = "QualifiersItemsView")]
 pub struct PyQualifiersItemsView {
     iter: hash_map::Iter<'static, String, Vec<Value>>,
 }
@@ -206,7 +206,7 @@ impl PyQualifiersItemsView {
     }
 }
 
-#[pyclass(name = "ValuesView")]
+#[pyclass(module = "kgdata.core.models", name = "ValuesView")]
 pub struct PyValuesView {
     lst: &'static Vec<Value>,
     iter: std::slice::Iter<'static, Value>,
@@ -249,7 +249,7 @@ impl PyValuesView {
     }
 }
 
-#[pyclass(name = "StringsView")]
+#[pyclass(module = "kgdata.core.models", name = "StringsView")]
 pub struct PyStringsView {
     lst: &'static Vec<String>,
     iter: std::slice::Iter<'static, String>,
@@ -292,7 +292,7 @@ impl PyStringsView {
     }
 }
 
-#[pyclass(name = "StringKeysView")]
+#[pyclass(module = "kgdata.core.models", name = "StringKeysView")]
 pub struct PyStringKeysView {
     iter: hash_map::Keys<'static, String, String>,
 }
@@ -315,7 +315,7 @@ impl PyStringKeysView {
     }
 }
 
-#[pyclass(name = "StringValuesView")]
+#[pyclass(module = "kgdata.core.models", name = "StringValuesView")]
 pub struct PyStringValuesView {
     iter: hash_map::Values<'static, String, String>,
 }
@@ -338,7 +338,7 @@ impl PyStringValuesView {
     }
 }
 
-#[pyclass(name = "StringItemsView")]
+#[pyclass(module = "kgdata.core.models", name = "StringItemsView")]
 pub struct PyStringItemsView {
     iter: hash_map::Iter<'static, String, String>,
 }
@@ -361,7 +361,7 @@ impl PyStringItemsView {
     }
 }
 
-#[pyclass(name = "StringsKeysView")]
+#[pyclass(module = "kgdata.core.models", name = "StringsKeysView")]
 pub struct PyStringsKeysView {
     iter: hash_map::Keys<'static, String, Vec<String>>,
 }
@@ -384,7 +384,7 @@ impl PyStringsKeysView {
     }
 }
 
-#[pyclass(name = "StringsValuesView")]
+#[pyclass(module = "kgdata.core.models", name = "StringsValuesView")]
 pub struct PyStringsValuesView {
     iter: hash_map::Values<'static, String, Vec<String>>,
 }
@@ -411,7 +411,7 @@ impl PyStringsValuesView {
     }
 }
 
-#[pyclass(name = "StringsItemsView")]
+#[pyclass(module = "kgdata.core.models", name = "StringsItemsView")]
 pub struct PyStringsItemsView {
     iter: hash_map::Iter<'static, String, Vec<String>>,
 }

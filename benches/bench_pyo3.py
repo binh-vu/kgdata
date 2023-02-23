@@ -10,7 +10,7 @@ from typing import Iterator, Literal
 from pybench.helper import get_module
 from pybench.base import BenchSetup
 from pathlib import Path
-from kgdata.kgdata.bench import EntityDesign1, EntityDesign2
+from kgdata.core.bench import EntityDesign1, EntityDesign2
 
 # fmt: off
 infile = Path(__file__).parent / "resources" / "wdentities.jl.gz"

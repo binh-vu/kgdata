@@ -12,7 +12,7 @@ pub fn init_env_logger() -> PyResult<()> {
 }
 
 #[pymodule]
-fn kgdata(py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.setattr("__path__", PyList::empty(py))?;
 
