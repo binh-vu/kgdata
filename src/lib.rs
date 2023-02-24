@@ -3,7 +3,7 @@ pub mod db;
 pub mod error;
 pub mod models;
 
-use pyo3::{prelude::*, types::PyList};
+use pyo3::prelude::*;
 
 #[pyfunction]
 pub fn init_env_logger() -> PyResult<()> {
@@ -11,6 +11,7 @@ pub fn init_env_logger() -> PyResult<()> {
     Ok(())
 }
 
+#[cfg(feature = "extension-module")]
 #[pymodule]
 fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

@@ -5,9 +5,11 @@
 /// Entity in Knowledge Graph.
 pub mod entity;
 pub mod multilingual;
-pub mod python;
 pub mod value;
 
 pub use self::entity::*;
 pub use self::multilingual::*;
 pub use self::value::*;
+
+#[cfg(feature = "extension-module")]
+pub mod python;
