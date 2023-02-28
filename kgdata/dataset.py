@@ -69,6 +69,21 @@ class Dataset(Generic[V]):
 
         return rdd
 
+    def get_list(self, rstrip: bool = True):
+        assert (
+            self.prefilter is None and self.postfilter is None
+        ), "Does not support filtering for non-rdd usage yet."
+        output = []
+        if rstrip:
+            for file in tqdm(self.get_files(), desc="read dataset"):
+                for line in serde.textline.deser(file):
+                    output.append(self.deserialize(line.rstrip()))
+        else:
+            for file in tqdm(self.get_files(), desc="read dataset"):
+                for line in serde.textline.deser(file):
+                    output.append(self.deserialize(line))
+        return output
+
     def get_dict(self: Dataset[tuple[str, str]], rstrip: bool = True):
         assert (
             self.prefilter is None and self.postfilter is None

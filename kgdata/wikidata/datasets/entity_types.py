@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Sequence, Set, Tuple, Union
 from kgdata.wikidata.datasets.property_domains import merge_counters
 
 import orjson

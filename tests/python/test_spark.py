@@ -42,6 +42,7 @@ def test_left_outer_join():
             r["employees"] = [
                 v[eid]["name"] for eid in r["employees"] if v[eid] is not None
             ]
+            return r
 
         rdd1_serfn = orjson.dumps
         left_outer_join(

@@ -8,13 +8,33 @@ import os
 import shutil
 from operator import add, itemgetter
 from pathlib import Path
-from typing import Any, Iterable, TypeVar, Callable, List, Union, Tuple, Optional
+from typing import (
+    Any,
+    Iterable,
+    Sequence,
+    TypeVar,
+    Callable,
+    List,
+    Union,
+    Tuple,
+    Optional,
+)
 from pyspark import RDD, SparkContext, SparkConf
 from loguru import logger
 
 
 # SparkContext singleton
 _sc = None
+
+
+R1 = TypeVar("R1")
+R2 = TypeVar("R2")
+R3 = TypeVar("R3")
+K1 = TypeVar("K1")
+K2 = TypeVar("K2")
+K = TypeVar("K")
+V = TypeVar("V")
+V2 = TypeVar("V2")
 
 
 def get_spark_context():
@@ -120,7 +140,9 @@ def does_result_dir_exist(
     return True
 
 
-def ensure_unique_records(rdd, keyfn, print_error: bool = True):
+def ensure_unique_records(
+    rdd: RDD[R1], keyfn: Callable[[R1], Union[str, int]], print_error: bool = True
+):
     """Make sure that RDDs contain unique records
 
     Parameters
@@ -153,15 +175,6 @@ def ensure_unique_records(rdd, keyfn, print_error: bool = True):
             print(">>", r)
         return False
     return True
-
-
-R1 = TypeVar("R1")
-R2 = TypeVar("R2")
-K1 = TypeVar("K1")
-K2 = TypeVar("K2")
-K = TypeVar("K")
-V = TypeVar("V")
-V2 = TypeVar("V2")
 
 
 def left_outer_join_repartition(
@@ -219,13 +232,13 @@ def left_outer_join(
     rdd1: RDD[R1],
     rdd2: RDD[R2],
     rdd1_keyfn: Callable[[R1], K1],
-    rdd1_fk_fn: Callable[[R1], List[K2]],
+    rdd1_fk_fn: Callable[[R1], Sequence[K2]],
     rdd2_keyfn: Callable[[R2], K2],
-    join_fn: Callable[[R1, List[Tuple[K2, Optional[R2]]]], Optional[R1]],
-    ser_fn: Optional[Callable[[R1], Union[str, bytes]]] = None,
+    join_fn: Callable[[R1, List[Tuple[K2, Optional[R2]]]], R3],
+    ser_fn: Optional[Callable[[R3], Union[str, bytes]]] = None,
     outfile: Optional[str] = None,
     compression: bool = True,
-) -> RDD[R1]:
+) -> RDD[R3]:
     """Join two RDDs (left outer join) by non primary key in RDD1.
 
     RDD1: contains records of (x, Y, x_data) where x is the id of the record, Y are list of ids of records in RDD2.
@@ -243,9 +256,9 @@ def left_outer_join(
         function that extract Y from a record of RDD1
     rdd2_keyfn : Callable[[R2], K2]
         function that extract id of a record (y) of RDD2
-    rdd1_join_fn : Callable[[R1, List[Tuple[K2, Optional[R2]]]], Optional[None]]
-        function that merge list of Y into record R1, if its return not None, we use that value
-    rdd1_serfn : Optional[Callable[[R1], Union[str, bytes]]]
+    rdd1_join_fn : Callable[[R1, List[Tuple[K2, Optional[R2]]]], R3]
+        function that merge list of Y into record R1
+    rdd1_serfn : Optional[Callable[[R3], Union[str, bytes]]]
         function that serialize records of RDD1 to save to file
     outfile : Optional[str]
         output file -- save the result to file if request
@@ -254,7 +267,7 @@ def left_outer_join(
 
     Returns
     -------
-    RDD[R1] the merged records
+    RDD[R3] the merged records
     """
     sc = get_spark_context()
 
@@ -275,10 +288,7 @@ def left_outer_join(
         else:
             # convert to list because group by key return resultiterable
             record2_lst_with_ids = list(record2_lst_with_ids)
-        resp = join_fn(record1, record2_lst_with_ids)
-        if resp is not None:
-            return resp
-        return record1
+        return join_fn(record1, record2_lst_with_ids)
 
     # converts to (y => record2)
     rdd2_v2: RDD[tuple[K2, R2]] = rdd2.map(lambda x: (rdd2_keyfn(x), x))

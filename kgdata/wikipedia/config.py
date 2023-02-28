@@ -25,6 +25,7 @@ class WPDataDirConfig:
         self.relational_tables = datadir / "relational_tables"
         self.linked_relational_tables = datadir / "linked_relational_tables"
         self.easy_tables = datadir / "easy_tables"
+        self.easy_tables_metadata = datadir / "easy_tables_metadata"
 
     def get_article_file(self):
         return self._get_file(self.dumps / "*pages-articles*.xml.bz2")

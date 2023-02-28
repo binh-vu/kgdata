@@ -17,8 +17,17 @@ def get_title_from_url(url: str) -> str:
         # therefore, we need to address this special case by replacing the scheme.
         if url.startswith("http://") or url.startswith("https://"):
             url = "scheme" + url[4:]
-        path = urlparse(url).path
-        assert ";" in path
+        parsed_url = urlparse(url)
+        path = parsed_url.path
+        if ";" not in path:
+            # if ";" not in path, it must be preserved in params, query or fragment
+            n_semicolon = url.count(";")
+            assert (
+                parsed_url.params.count(";")
+                + parsed_url.query.count(";")
+                + parsed_url.fragment.count(";")
+                == n_semicolon
+            ), (url, path)
     else:
         path = urlparse(url).path
 

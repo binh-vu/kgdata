@@ -65,6 +65,7 @@ def merge_link_and_wp2wd(
             r1.targets[i] = target_map[1]
         else:
             r1.targets[i] = ""
+    return r1
 
 
 def reformat_wikilink(r1: WikiLink) -> WDEntityWikiLink:

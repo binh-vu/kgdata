@@ -448,6 +448,12 @@ class WikidataDB:
         return get_entity_db(self.database_dir / "wdentities.db", read_only=True)
 
     @functools.cached_property
+    def wdentity_labels(self):
+        return get_entity_label_db(
+            self.database_dir / "wdentity_labels.db", read_only=True
+        )
+
+    @functools.cached_property
     def wdclasses(self):
         wdclasses = get_wdclass_db(self.database_dir / "wdclasses.db", read_only=True)
         if (self.database_dir / "wdclasses.fixed.jl").exists():
@@ -460,7 +466,14 @@ class WikidataDB:
 
     @functools.cached_property
     def wdprops(self):
-        return get_wdprop_db(self.database_dir / "wdprops.db", read_only=True)
+        wdprops = get_wdprop_db(self.database_dir / "wdprops.db", read_only=True)
+        if (self.database_dir / "wdprops.fixed.jl").exists():
+            wdprops = wdprops.cache()
+            assert isinstance(wdprops, CacheDict)
+            for record in jl.deser(self.database_dir / "wdprops.fixed.jl"):
+                prop = WDProperty.from_dict(record)
+                wdprops._cache[prop.id] = prop
+        return wdprops
 
     @functools.cached_property
     def wdprop_domains(self):

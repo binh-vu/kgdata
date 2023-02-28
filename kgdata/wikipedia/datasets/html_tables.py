@@ -1,5 +1,5 @@
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
+from kgdata.spark import does_result_dir_exist, ensure_unique_records
 from kgdata.wikipedia.config import WPDataDirConfig
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle
@@ -12,6 +12,8 @@ def html_tables() -> Dataset[Table]:
 
     cfg = WPDataDirConfig.get_instance()
 
+    need_double_check = False
+
     if not does_result_dir_exist(cfg.html_tables):
         (
             html_articles()
@@ -23,13 +25,17 @@ def html_tables() -> Dataset[Table]:
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
             )
         )
+        need_double_check = True
 
-    return Dataset(
+    ds = Dataset(
         file_pattern=cfg.html_tables / "*.gz",
         deserialize=deser_table,
         # can be json object, or string. it is string when we fail to extract tables from the articles
         prefilter=lambda x: x[0] == "{",
     )
+    if need_double_check:
+        ensure_unique_records(ds.get_rdd(), lambda tbl: tbl.id)
+    return ds
 
 
 def deser_table(x: str) -> Table:
@@ -68,7 +74,7 @@ def extract_tables(article: HTMLArticle):
                     and value.get_element_attr_by_id(uid, "href") is None
                 ):
                     cls = value.get_element_attr_by_id(uid, "class")
-                    assert "selflink" in cls, cls
+                    assert cls is not None and "selflink" in cls, cls
                     value.set_element_attr_by_id(uid, "href", article.url)
 
     return [tbl.to_json() for tbl in tables]

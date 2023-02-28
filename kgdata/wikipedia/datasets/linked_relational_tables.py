@@ -75,7 +75,10 @@ def ser_linked_tables(tbl: LinkedHTMLTable) -> bytes:
 
 def extract_title_to_tables(tbl: Table) -> List[Tuple[str, str]]:
     """Extract (link, table id) in a table"""
+    assert is_wikipedia_url(tbl.url), tbl.url
+
     urls = set()
+    urls.add(tbl.url)
     for ri, row in enumerate(tbl.rows):
         for ci, cell in enumerate(row.cells):
             urls = urls.union((x.wikipedia_url for x in extract_cell_links(cell)))
@@ -87,27 +90,29 @@ def merge_link_to_table(
 ) -> LinkedHTMLTable:
     tbl_id, (tbl, title_and_wd) = x
     if title_and_wd is None:
-        # happen when the table has no links
+        # happen when the table has no links and url is not linked to any Wikidata entity
         title2wd = {}
     else:
         title2wd = dict(title_and_wd)
 
+    assert is_wikipedia_url(tbl.url), tbl.url
+    page_wikidata_id = title2wd.get(get_title_from_url(tbl.url), None)
     links: Dict[Tuple[int, int], List[WikiLink]] = {}
 
-    if title_and_wd is not None:
-        for ri, ci, cell in tbl.enumerate_cells():
-            cell_links = extract_cell_links(cell)
-            if len(cell_links) > 0:
-                links[ri, ci] = []
+    for ri, ci, cell in tbl.enumerate_cells():
+        cell_links = extract_cell_links(cell)
+        if len(cell_links) > 0:
+            links[ri, ci] = []
 
-            for link in cell_links:
-                title = get_title_from_url(link.wikipedia_url)
-                link.wikidata_id = title2wd[title]
-                links[ri, ci].append(link)
+        for link in cell_links:
+            title = get_title_from_url(link.wikipedia_url)
+            link.wikidata_id = title2wd[title]
+            links[ri, ci].append(link)
 
     return LinkedHTMLTable(
         table=tbl,
         links=links,
+        page_wikidata_id=page_wikidata_id,
     )
 
 
