@@ -15,7 +15,7 @@ pub fn init_env_logger() -> PyResult<()> {
 #[pymodule]
 fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
-    m.setattr("__path__", PyList::empty(py))?;
+    m.setattr("__path__", pyo3::types::PyList::empty(py))?;
 
     m.add_function(wrap_pyfunction!(init_env_logger, m)?)?;
     models::python::register(py, m)?;
