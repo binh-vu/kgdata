@@ -37,6 +37,20 @@ class WDEntity:
     props: Dict[str, List[WDStatement]]
     sitelinks: Dict[str, SiteLink]
 
+    def instance_of(self) -> list[str]:
+        instanceof = []
+        for stmt in self.props.get("P31", []):
+            if WDValue.is_entity_id(stmt.value):
+                instanceof.append(stmt.value.as_entity_id())
+        return instanceof
+
+    def get_object_prop_value(self, prop: str) -> list[str]:
+        lst = []
+        for stmt in self.props.get(prop, []):
+            if WDValue.is_entity_id(stmt.value):
+                lst.append(stmt.value.as_entity_id())
+        return lst
+
     def shallow_clone(self):
         return WDEntity(
             id=self.id,
