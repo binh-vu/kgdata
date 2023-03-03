@@ -1,5 +1,6 @@
 """Utility functions for Apache Spark."""
 
+from dataclasses import dataclass
 import math
 import random
 import glob
@@ -10,6 +11,7 @@ from operator import add, itemgetter
 from pathlib import Path
 from typing import (
     Any,
+    Generic,
     Iterable,
     Sequence,
     TypeVar,
@@ -427,6 +429,11 @@ def fix_rdd():
     )
     os.rename(infile, infile + "_old")
     os.rename(newfile, infile)
+
+
+@dataclass
+class EmptyBroadcast(Generic[V]):
+    value: V
 
 
 if __name__ == "__main__":
