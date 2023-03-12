@@ -44,11 +44,11 @@ class Dataset(Generic[V]):
         )
 
     def get_files(
-        self, sorted_order: Optional[Literal["asc", "desc"]] = None
+        self, file_order: Optional[Literal["asc", "desc"]] = None
     ) -> list[str]:
         files = glob.glob(str(self.file_pattern))
-        if sorted_order is not None:
-            files.sort(reverse=sorted_order == "desc")
+        if file_order is not None:
+            files.sort(reverse=file_order == "desc")
 
         if len(files) == 0:
             logger.warning(f"No files found for {self.file_pattern}")
@@ -69,50 +69,60 @@ class Dataset(Generic[V]):
 
         return rdd
 
-    def get_list(self, rstrip: bool = True):
+    def get_list(
+        self, rstrip: bool = True, file_order: Optional[Literal["asc", "desc"]] = None
+    ):
         assert (
             self.prefilter is None and self.postfilter is None
         ), "Does not support filtering for non-rdd usage yet."
         output = []
         if rstrip:
-            for file in tqdm(self.get_files(), desc="read dataset"):
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
                 for line in serde.textline.deser(file):
                     output.append(self.deserialize(line.rstrip()))
         else:
-            for file in tqdm(self.get_files(), desc="read dataset"):
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
                 for line in serde.textline.deser(file):
                     output.append(self.deserialize(line))
         return output
 
-    def get_dict(self: Dataset[tuple[str, str]], rstrip: bool = True):
+    def get_dict(
+        self: Dataset[tuple[str, str]],
+        rstrip: bool = True,
+        file_order: Optional[Literal["asc", "desc"]] = None,
+    ):
         assert (
             self.prefilter is None and self.postfilter is None
         ), "Does not support filtering for non-rdd usage yet."
         output = {}
         if rstrip:
-            for file in tqdm(self.get_files(), desc="read dataset"):
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
                 for line in serde.textline.deser(file):
                     k, v = self.deserialize(line.rstrip())
                     output[k] = v
         else:
-            for file in tqdm(self.get_files(), desc="read dataset"):
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
                 for line in serde.textline.deser(file):
                     k, v = self.deserialize(line)
                     output[k] = v
         return output
 
-    def get_dict_items(self: Dataset[tuple[str, str]], rstrip: bool = True):
+    def get_dict_items(
+        self: Dataset[tuple[str, str]],
+        rstrip: bool = True,
+        file_order: Optional[Literal["asc", "desc"]] = None,
+    ):
         assert (
             self.prefilter is None and self.postfilter is None
         ), "Does not support filtering for non-rdd usage yet."
         output = []
         if rstrip:
-            for file in tqdm(self.get_files(), desc="read dataset"):
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
                 for line in serde.textline.deser(file):
                     k, v = self.deserialize(line.rstrip())
                     output.append((k, v))
         else:
-            for file in tqdm(self.get_files(), desc="read dataset"):
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
                 for line in serde.textline.deser(file):
                     k, v = self.deserialize(line)
                     output.append((k, v))
