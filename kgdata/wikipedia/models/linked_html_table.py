@@ -49,7 +49,7 @@ class LinkedHTMLTable:
         n_headers = self.table.shape()[0] - table.shape()[0]
         links = Matrix.default(table.shape(), list)
         for (ri, ci), lst in self.links.items():
-            if ri <= n_headers:
+            if ri < n_headers:
                 continue
             links[ri - n_headers, ci] = [
                 Link(

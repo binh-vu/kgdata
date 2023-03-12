@@ -49,3 +49,30 @@ def is_wikipedia_url(url: str, lang: Optional[str] = None) -> bool:
     """
     host = "wikipedia.org" if lang is None else f"{lang}.wikipedia.org"
     return urlparse(url).netloc.endswith(host)
+
+
+def get_path(url: str) -> str:
+    """This function returns the path of a URL.
+
+    Args:
+        url: A URL.
+    """
+    if ";" in url:
+        # ; is old standard to split the parameter (similar to &) and is obsolete.
+        # python 3.9, however, is still splitting it under this scheme http:// or https://
+        # therefore, we need to address this special case by replacing the scheme.
+        if url.startswith("http://") or url.startswith("https://"):
+            url = "scheme" + url[4:]
+        parsed_url = urlparse(url)
+        path = parsed_url.path
+        if ";" not in path:
+            # if ";" not in path, it must be preserved in params, query or fragment
+            n_semicolon = url.count(";")
+            assert (
+                parsed_url.params.count(";")
+                + parsed_url.query.count(";")
+                + parsed_url.fragment.count(";")
+                == n_semicolon
+            ), (url, path)
+    else:
+        path = urlparse(url).path

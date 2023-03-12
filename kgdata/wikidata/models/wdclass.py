@@ -89,3 +89,6 @@ class WDClass:
             equivalent_classes=sorted(equivalent_classes),
             ancestors=set(),
         )
+
+    def __str__(self):
+        return f"{self.label} ({self.id})"
