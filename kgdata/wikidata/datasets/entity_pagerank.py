@@ -25,6 +25,7 @@ from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
 import orjson, ray, numpy as np
 import serde.textline
+import serde.pickle
 
 
 KeyType = TypeVar("KeyType")
@@ -191,7 +192,7 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
             )
         )
 
-    pagerank_stat_outfile = cfg.entity_pagerank / f"pagerank_{lang}.json"
+    pagerank_stat_outfile = cfg.entity_pagerank / f"pagerank_{lang}.pkl"
     if not pagerank_stat_outfile.exists():
         n_files = len(
             glob(str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"))
@@ -214,25 +215,30 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
         total = rdd.map(lambda x: np.sum(x)).sum()
         size = rdd.map(lambda x: len(x)).sum()
         mean_pagerank = total / size
-
         std_pagerank = np.sqrt(
             rdd.map(lambda x: np.sum(np.square(x - mean_pagerank))).sum() / size
         )
         max_pagerank = rdd.map(lambda x: np.max(x)).max()
         min_pagerank = rdd.map(lambda x: np.min(x)).min()
 
-        pagerank_stat_outfile.write_bytes(
-            orjson.dumps(
-                {
-                    "sum": total,
-                    "len": size,
-                    "mean": mean_pagerank,
-                    "max": max_pagerank,
-                    "min": min_pagerank,
-                    "std": std_pagerank,
-                },
-                option=orjson.OPT_INDENT_2 | orjson.OPT_SERIALIZE_NUMPY,
-            )
+        sumlog = rdd.map(lambda x: np.sum(np.log(x))).sum()
+        meanlog = sumlog / size
+        stdlog = np.sqrt(
+            rdd.map(lambda x: np.sum(np.square(np.log(x) - meanlog))).sum() / size
+        )
+
+        serde.pickle.ser(
+            {
+                "sum": float(total),
+                "len": int(size),
+                "mean": float(mean_pagerank),
+                "max": float(max_pagerank),
+                "min": float(min_pagerank),
+                "std": float(std_pagerank),
+                "meanlog": float(meanlog),
+                "stdlog": float(stdlog),
+            },
+            pagerank_stat_outfile,
         )
 
     return Dataset(pagerank_outdir / "*.gz", deserialize=orjson.loads)
