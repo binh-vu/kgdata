@@ -1,7 +1,7 @@
+from __future__ import annotations
 from dataclasses import dataclass
-from typing import List, Set
 from kgdata.wikidata.models.wdentity import WDEntity
-
+from typing import Mapping
 
 from kgdata.wikidata.models.multilingual import (
     MultiLingualString,
@@ -26,12 +26,12 @@ class WDClass:
     label: MultiLingualString
     description: MultiLingualString
     aliases: MultiLingualStringList
-    parents: List[str]
+    parents: list[str]
     # properties of a type, "P1963"
-    properties: List[str]
-    different_froms: List[str]
-    equivalent_classes: List[str]
-    ancestors: Set[str]
+    properties: list[str]
+    different_froms: list[str]
+    equivalent_classes: list[str]
+    ancestors: set[str]
 
     @classmethod
     def from_dict(cls, obj):
@@ -53,6 +53,29 @@ class WDClass:
             "equivalent_classes": self.equivalent_classes,
             "ancestors": list(self.ancestors),
         }
+
+    def get_ancestors(self, distance: int, classes: Mapping[str, WDClass]) -> set[str]:
+        """Retrieve all ancestors of this class within a given distance"""
+        output = set(self.parents)
+        if distance == 1:
+            return output
+        for parent in self.parents:
+            output.update(classes[parent].get_ancestors(distance - 1, classes))
+        return output
+
+    def get_distance(self, ancestor: str, classes: Mapping[str, WDClass]) -> int:
+        """Get distance from this class to its ancestor class. Return -1 if ancestor is not an ancestor of this class."""
+        if ancestor not in self.ancestors:
+            return -1
+
+        if ancestor in self.parents:
+            return 1
+
+        return 1 + min(
+            d
+            for parent in self.parents
+            if (d := classes[parent].get_distance(ancestor, classes)) != -1
+        )
 
     @staticmethod
     def from_entity(ent: WDEntity):

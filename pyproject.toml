@@ -1,6 +1,6 @@
 [project]
 name = "kgdata"
-version = "3.6.1"
+version = "3.7.0"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 readme = "README.md"
 authors = [

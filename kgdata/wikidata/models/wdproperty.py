@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Literal, Mapping, Set
 from kgdata.wikidata.models.wdentity import WDEntity
@@ -117,6 +118,28 @@ class WDProperty:
             inverse_properties=sorted(inverse_properties),
             instanceof=sorted(instanceof),
             ancestors=set(),
+        )
+
+    def get_ancestors(self, distance: int, props: Mapping[str, WDProperty]) -> set[str]:
+        output = set(self.parents)
+        if distance == 1:
+            return output
+        for parent in self.parents:
+            output.update(props[parent].get_ancestors(distance - 1, props))
+        return output
+
+    def get_distance(self, ancestor: str, props: Mapping[str, WDProperty]) -> int:
+        """Get distance from this property to its ancestor property. Return -1 if ancestor is not an ancestor of this property."""
+        if ancestor not in self.ancestors:
+            return -1
+
+        if ancestor in self.parents:
+            return 1
+
+        return 1 + min(
+            d
+            for parent in self.parents
+            if (d := props[parent].get_distance(ancestor, props)) != -1
         )
 
     def to_dict(self):
