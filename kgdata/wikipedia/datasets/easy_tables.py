@@ -25,6 +25,7 @@ def easy_tables() -> Dataset[LinkedHTMLTable]:
     if not does_result_dir_exist(cfg.easy_tables):
         tests = [
             EasyTests.only_first_row_header,
+            EasyTests.no_spanning_header_columns,
             EasyTests.min_rows,
             EasyTests.has_link,
             EasyTests.min_links_all_columns,
@@ -93,6 +94,36 @@ class EasyTests:
         """Determine if a table has only one row of headers."""
         n_headers = get_n_headers(tbl.table)
         return n_headers == 1
+
+    @staticmethod
+    def no_spanning_header_columns(tbl: LinkedHTMLTable) -> bool:
+        """Determine if a table has no spanning columns."""
+        n_headers = get_n_headers(tbl.table)
+        nrows, ncols = tbl.table.shape()
+
+        for ri in range(n_headers):
+            row = tbl.table.get_row(ri)
+            for ci in range(ncols):
+                header = row.get_cell(ci)
+                thels = []
+                for eid in header.value.iter_element_id():
+                    tag = header.value.get_element_tag_by_id(eid)
+                    if tag == "th":
+                        thels.append(eid)
+
+                if len(thels) == 0:
+                    # happens when the table is irregular table (e.g., missing columns) and additional columns are added so we can't find the header
+                    assert header.value.text == ""
+                    return False
+
+                assert (
+                    len(thels) == 1
+                ), f"Table {tbl.table.id} must have exactly one <th> element."
+                thel = thels[0]
+                colspan = header.value.get_element_attr_by_id(thel, "colspan")
+                if colspan is not None and colspan != '' and int(colspan) > 1:
+                    return False
+        return True
 
     @staticmethod
     def has_link(tbl: LinkedHTMLTable) -> bool:
