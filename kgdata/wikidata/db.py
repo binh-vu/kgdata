@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from functools import partial
 import functools
+from functools import partial
 from pathlib import Path
 from typing import (
     Callable,
@@ -18,7 +18,6 @@ from typing import (
     cast,
     overload,
 )
-from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
 
 import orjson
 import requests
@@ -32,6 +31,10 @@ from hugedict.prelude import (
 )
 from hugedict.types import HugeMutableMapping
 
+from kgdata.wikidata.datasets.entity_metadata import (
+    deser_entity_metadata,
+    ser_entity_metadata,
+)
 from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
 from kgdata.wikidata.models import (
     WDClass,
@@ -41,6 +44,8 @@ from kgdata.wikidata.models import (
 )
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
+from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
+from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel, WDEntityWikiLink)
 
@@ -267,6 +272,36 @@ def get_entity_db(
     return db
 
 
+def get_entity_metadata_db(
+    dbfile: Union[Path, str],
+    create_if_missing=True,
+    read_only=False,
+) -> HugeMutableMapping[str, WDEntityMetadata]:
+    version = Path(dbfile) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "2", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("2")
+
+    return RocksDBDict(
+        path=str(dbfile),
+        options=RocksDBOptions(
+            create_if_missing=create_if_missing,
+            compression_type="zstd",
+            compression_opts=RocksDBCompressionOptions(
+                window_bits=-14, level=6, strategy=0, max_dict_bytes=16 * 1024
+            ),
+            zstd_max_train_bytes=100 * 16 * 1024,
+        ),
+        readonly=read_only,
+        deser_key=partial(str, encoding="utf-8"),
+        deser_value=deser_entity_metadata,
+        ser_value=ser_entity_metadata,
+    )
+
+
 def get_entity_redirection_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
@@ -446,6 +481,12 @@ class WikidataDB:
     @functools.cached_property
     def wdentities(self):
         return get_entity_db(self.database_dir / "wdentities.db", read_only=True)
+
+    @functools.cached_property
+    def wdentity_metadata(self):
+        return get_entity_metadata_db(
+            self.database_dir / "wdentity_metadata.db", read_only=True
+        )
 
     @functools.cached_property
     def wdentity_labels(self):

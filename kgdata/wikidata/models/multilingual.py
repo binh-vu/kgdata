@@ -1,5 +1,7 @@
 from typing import Dict, List, Tuple
 
+from sm.misc.funcs import filter_duplication
+
 
 class MultiLingualString(str):
     # two characters language code: en, th, de, fr, etc.
@@ -46,3 +48,9 @@ class MultiLingualStringList(List[str]):
 
     def to_tuple(self):
         return self.lang2values, self.lang
+
+    def flatten(self) -> list[str]:
+        """Flatten multilingual lists of strings into a single list of strings. This will lose the language information"""
+        return filter_duplication(
+            value for values in self.lang2values.values() for value in values
+        )

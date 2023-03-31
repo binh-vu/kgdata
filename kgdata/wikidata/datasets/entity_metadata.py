@@ -42,7 +42,7 @@ def entity_metadata(lang: str = "en") -> Dataset[WDEntityMetadata]:
     return Dataset(file_pattern=outdir / "*.gz", deserialize=deser_entity_metadata)
 
 
-def deser_entity_metadata(b: str) -> WDEntityMetadata:
+def deser_entity_metadata(b: Union[str, bytes]) -> WDEntityMetadata:
     return WDEntityMetadata.from_tuple(orjson.loads(b))
 
 

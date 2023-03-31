@@ -33,6 +33,7 @@ from kgdata.wikidata.datasets.property_ranges import property_ranges
 from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikidata.db import (
     get_entity_db,
+    get_entity_metadata_db,
     get_entity_label_db,
     get_entity_redirection_db,
     get_entity_wikilinks_db,
@@ -73,6 +74,39 @@ def db_entities(directory: str, output: str, compact: bool, lang: str):
         files=entities(lang=lang).get_files(),
         format={
             "record_type": {"type": "ndjson", "key": "id", "value": None},
+            "is_sorted": False,
+        },
+        verbose=True,
+        compact=compact,
+    )
+
+
+@click.command(name="entity_metadata")
+@click.option("-d", "--directory", default="", help="Wikidata directory")
+@click.option("-o", "--output", help="Output directory")
+@click.option(
+    "-c",
+    "--compact",
+    is_flag=True,
+    help="Whether to compact the results. May take a very very long time",
+)
+@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
+def db_entity_metadata(directory: str, output: str, compact: bool, lang: str):
+    """Build a key-value database of Wikidata entities"""
+    WDDataDirCfg.init(directory)
+
+    dbpath = Path(output) / "wdentity_metadata.db"
+    dbpath.mkdir(exist_ok=True, parents=True)
+
+    options = cast(RocksDBDict, get_entity_metadata_db(dbpath)).options
+    gc.collect()
+
+    rocksdb_load(
+        dbpath=str(dbpath),
+        dbopts=options,
+        files=entity_metadata(lang=lang).get_files(),
+        format={
+            "record_type": {"type": "ndjson", "key": "0", "value": None},
             "is_sorted": False,
         },
         verbose=True,
@@ -403,6 +437,7 @@ def wikidata():
 
 
 wikidata.add_command(db_entities)
+wikidata.add_command(db_entity_metadata)
 wikidata.add_command(db_entities_attr)
 wikidata.add_command(db_entity_labels)
 wikidata.add_command(db_entity_redirections)
