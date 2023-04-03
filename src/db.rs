@@ -1,7 +1,8 @@
 use std::ffi::OsStr;
 use std::marker::PhantomData;
 
-use crate::models::Entity;
+use crate::conversions::WDEntityMetadata;
+use crate::models::{Entity, EntityMetadata};
 use crate::{conversions::WDEntity, error::KGDataError};
 use rocksdb::{DBCompressionType, Options};
 use serde_json;
@@ -45,6 +46,32 @@ pub fn open_entity_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Enti
     })
 }
 
+pub fn open_entity_metadata_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, EntityMetadata>, KGDataError> {
+    let mut options = Options::default();
+    options.create_if_missing(false);
+    options.set_compression_type(DBCompressionType::Zstd);
+    options.set_compression_options(
+        -14,       // window_bits
+        6,         // level
+        0,         // strategy
+        16 * 1024, // max_dict_bytes
+    );
+    options.set_zstd_max_train_bytes(100 * 16 * 1024);
+
+    let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
+    Ok(ReadonlyRocksDBDict {
+        db,
+        deser_value: Box::new(deser_entity_metadata),
+        deser_key: PhantomData,
+    })
+}
+
 fn deser_entity(v: &[u8]) -> Result<Entity, KGDataError> {
     Ok(serde_json::from_slice::<WDEntity>(v)?.0)
+}
+
+fn deser_entity_metadata(v: &[u8]) -> Result<EntityMetadata, KGDataError> {
+    Ok(serde_json::from_slice::<WDEntityMetadata>(v)?.0)
 }

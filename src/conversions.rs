@@ -1,10 +1,13 @@
 use crate::models::entity::{Entity, Statement};
+use crate::models::entity_metadata::EntityMetadata;
 use crate::models::value::Value;
+use crate::models::{MultiLingualString, MultiLingualStringList};
 use hashbrown::HashMap;
 use serde::de::{Deserialize, Deserializer, Error, MapAccess, SeqAccess, Visitor};
 use std::fmt;
 
 pub struct WDEntity(pub Entity);
+pub struct WDEntityMetadata(pub EntityMetadata);
 pub struct WDStatement(pub Statement);
 pub struct WDValue(pub Value);
 pub struct WDEntityProps(HashMap<String, Vec<Statement>>);
@@ -125,6 +128,65 @@ impl<'de> Deserialize<'de> for WDEntity {
         }
 
         deserializer.deserialize_map(WDEntityVisitor {})
+    }
+}
+
+impl<'de> Deserialize<'de> for WDEntityMetadata {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct WDEntityMetadataVisitor;
+
+        impl<'de> Visitor<'de> for WDEntityMetadataVisitor {
+            type Value = WDEntityMetadata;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter
+                    .write_str("a JSON string contains a serialized WDEntityMetadata as a tuple")
+            }
+
+            fn visit_seq<S>(self, mut seq: S) -> Result<WDEntityMetadata, S::Error>
+            where
+                S: SeqAccess<'de>,
+            {
+                let id = seq.next_element::<String>()?;
+                let label = seq
+                    .next_element::<(HashMap<String, String>, String)>()?
+                    .ok_or_else(|| Error::missing_field("label"))?;
+                let description = seq
+                    .next_element::<(HashMap<String, String>, String)>()?
+                    .ok_or_else(|| Error::missing_field("description"))?;
+                let aliases = seq
+                    .next_element::<(HashMap<String, Vec<String>>, String)>()?
+                    .ok_or_else(|| Error::missing_field("aliases"))?;
+                let instanceof = seq.next_element::<Vec<String>>()?;
+                let subclassof = seq.next_element::<Vec<String>>()?;
+                let subpropertyof = seq.next_element::<Vec<String>>()?;
+
+                Ok(WDEntityMetadata(EntityMetadata {
+                    id: id.ok_or_else(|| Error::missing_field("id"))?,
+                    label: MultiLingualString {
+                        lang2value: label.0,
+                        lang: label.1,
+                    },
+                    description: MultiLingualString {
+                        lang2value: description.0,
+                        lang: description.1,
+                    },
+                    aliases: MultiLingualStringList {
+                        lang2values: aliases.0,
+                        lang: aliases.1,
+                    },
+                    instanceof: instanceof.ok_or_else(|| Error::missing_field("instanceof"))?,
+                    subclassof: subclassof.ok_or_else(|| Error::missing_field("subclassof"))?,
+                    subpropertyof: subpropertyof
+                        .ok_or_else(|| Error::missing_field("subpropertyof"))?,
+                }))
+            }
+        }
+
+        deserializer.deserialize_seq(WDEntityMetadataVisitor {})
     }
 }
 

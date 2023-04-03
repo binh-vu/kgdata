@@ -4,10 +4,12 @@
 
 /// Entity in Knowledge Graph.
 pub mod entity;
+pub mod entity_metadata;
 pub mod multilingual;
 pub mod value;
 
 pub use self::entity::*;
+pub use self::entity_metadata::*;
 pub use self::multilingual::*;
 pub use self::value::*;
 
