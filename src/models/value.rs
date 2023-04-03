@@ -66,3 +66,47 @@ pub enum Value {
     #[serde(rename = "globecoordinate")]
     GlobeCoordinate(GlobeCoordinate),
 }
+
+impl Value {
+    pub fn as_string(&self) -> Option<&String> {
+        match self {
+            Value::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn as_entity_id(&self) -> Option<&EntityId> {
+        match self {
+            Value::EntityId(e) => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn as_time(&self) -> Option<&Time> {
+        match self {
+            Value::Time(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn as_quantity(&self) -> Option<&Quantity> {
+        match self {
+            Value::Quantity(q) => Some(q),
+            _ => None,
+        }
+    }
+
+    pub fn as_monolingual_text(&self) -> Option<&MonolingualText> {
+        match self {
+            Value::MonolingualText(m) => Some(m),
+            _ => None,
+        }
+    }
+
+    pub fn as_globe_coordinate(&self) -> Option<&GlobeCoordinate> {
+        match self {
+            Value::GlobeCoordinate(g) => Some(g),
+            _ => None,
+        }
+    }
+}
