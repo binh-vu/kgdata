@@ -1,6 +1,4 @@
 use super::multilingual::{MultiLingualString, MultiLingualStringList};
-use super::value::Value;
-use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
