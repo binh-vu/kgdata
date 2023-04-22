@@ -11,6 +11,7 @@ pub fn init_env_logger() -> PyResult<()> {
     Ok(())
 }
 
+#[cfg(feature = "extension-module")]
 #[pymodule]
 fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
