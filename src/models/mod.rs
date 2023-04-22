@@ -20,5 +20,4 @@ pub use self::multilingual::*;
 pub use self::property::*;
 pub use self::value::*;
 
-// #[cfg(feature = "extension-module")]
 pub mod python;

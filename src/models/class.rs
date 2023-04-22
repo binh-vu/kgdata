@@ -1,5 +1,3 @@
-use crate::error::KGDataError;
-
 use super::{MultiLingualString, MultiLingualStringList};
 use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};

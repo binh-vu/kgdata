@@ -132,6 +132,7 @@ impl PyValue {
     }
 
     #[staticmethod]
+    #[pyo3(signature = (amount, lower_bound, upper_bound, unit))]
     pub fn quantity(
         amount: String,
         lower_bound: Option<String>,
@@ -147,6 +148,7 @@ impl PyValue {
     }
 
     #[staticmethod]
+    #[pyo3(signature = (latitude, longitude, precision, altitude, globe))]
     pub fn globe_coordinate(
         latitude: f64,
         longitude: f64,
