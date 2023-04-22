@@ -4,6 +4,7 @@ pub mod entity;
 pub mod iterators;
 pub mod value;
 
+#[allow(dead_code)]
 pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     let submodule = PyModule::new(py, "models")?;
 
