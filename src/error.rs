@@ -5,6 +5,9 @@ use thiserror::Error;
 /// Represent possible errors returned by this library.
 #[derive(Error, Debug)]
 pub enum KGDataError {
+    #[error("ValueError: {0}")]
+    ValueError(String),
+
     #[error(transparent)]
     SerdeJsonErr(#[from] serde_json::Error),
 

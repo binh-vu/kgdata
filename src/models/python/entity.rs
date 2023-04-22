@@ -165,6 +165,11 @@ impl PyEntity {
     fn prop(&self, id: &str) -> PyStatementsView {
         PyStatementsView::new(&self.entity.props[id])
     }
+
+    /// Get a statement
+    pub fn statement(&self, prop: &str, index: usize) -> PyStatementView {
+        PyStatementView::new(&self.entity.props[prop][index])
+    }
 }
 
 #[pyclass(module = "kgdata.core.models", name = "StatementView")]
@@ -183,7 +188,7 @@ impl PyStatementView {
 #[pymethods]
 impl PyStatementView {
     fn value(&self) -> PyValueView {
-        PyValueView::new(&self.statement.value)
+        PyValueView(&self.statement.value)
     }
 
     fn qualifiers_keys(&self) -> PyQualifiersKeysView {

@@ -1,13 +1,15 @@
 use crate::models::entity::{Entity, Statement};
 use crate::models::entity_metadata::EntityMetadata;
 use crate::models::value::Value;
-use crate::models::{MultiLingualString, MultiLingualStringList};
+use crate::models::{Class, MultiLingualString, MultiLingualStringList, Property};
 use hashbrown::HashMap;
 use serde::de::{Deserialize, Deserializer, Error, MapAccess, SeqAccess, Visitor};
 use std::fmt;
 
 pub struct WDEntity(pub Entity);
 pub struct WDEntityMetadata(pub EntityMetadata);
+pub struct WDProperty(pub Property);
+pub struct WDClass(pub Class);
 pub struct WDStatement(pub Statement);
 pub struct WDValue(pub Value);
 pub struct WDEntityProps(HashMap<String, Vec<Statement>>);
@@ -187,6 +189,317 @@ impl<'de> Deserialize<'de> for WDEntityMetadata {
         }
 
         deserializer.deserialize_seq(WDEntityMetadataVisitor {})
+    }
+}
+
+impl<'de> Deserialize<'de> for WDProperty {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct WDPropertyVisitor;
+
+        impl<'de> Visitor<'de> for WDPropertyVisitor {
+            type Value = WDProperty;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a JSON string contains a serialized WDProperty")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<WDProperty, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut id = None;
+                let mut label = None;
+                let mut description = None;
+                let mut aliases = None;
+                let mut datatype = None;
+                let mut parents = None;
+                let mut related_properties = None;
+                let mut equivalent_properties = None;
+                let mut subjects = None;
+                let mut inverse_properties = None;
+                let mut instanceof = None;
+                let mut ancestors = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        "id" => {
+                            id = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser property's id: {}", e.to_string()))
+                            })?;
+                        }
+                        "label" => {
+                            label = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser property's label: {}", e.to_string()))
+                            })?;
+                        }
+                        "description" => {
+                            description = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser property's description: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "aliases" => {
+                            aliases = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser property's aliases: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "datatype" => {
+                            datatype = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser entity's datatype: {}", e.to_string()))
+                            })?;
+                        }
+                        "parents" => {
+                            parents = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser entity's parents: {}", e.to_string()))
+                            })?;
+                        }
+                        "related_properties" => {
+                            related_properties = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's related_properties: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "equivalent_properties" => {
+                            equivalent_properties = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's equivalent_properties: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "subjects" => {
+                            subjects = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser entity's subjects: {}", e.to_string()))
+                            })?;
+                        }
+                        "inverse_properties" => {
+                            inverse_properties = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's inverse_properties: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "instanceof" => {
+                            instanceof = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's instanceof: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "ancestors" => {
+                            ancestors = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's ancestors: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        _ => {
+                            return Err(M::Error::unknown_field(
+                                key,
+                                &[
+                                    "id",
+                                    "label",
+                                    "description",
+                                    "aliases",
+                                    "datatype",
+                                    "parents",
+                                    "related_properties",
+                                    "equivalent_properties",
+                                    "subjects",
+                                    "inverse_properties",
+                                    "instanceof",
+                                    "ancestors",
+                                ],
+                            ));
+                        }
+                    }
+                }
+                let id = id.ok_or_else(|| Error::missing_field("id"))?;
+                let label = label.ok_or_else(|| Error::missing_field("label"))?;
+                let description = description.ok_or_else(|| Error::missing_field("description"))?;
+                let aliases = aliases.ok_or_else(|| Error::missing_field("aliases"))?;
+                let datatype = datatype.ok_or_else(|| Error::missing_field("datatype"))?;
+                let parents = parents.ok_or_else(|| Error::missing_field("parents"))?;
+                let related_properties =
+                    related_properties.ok_or_else(|| Error::missing_field("related_properties"))?;
+                let equivalent_properties = equivalent_properties
+                    .ok_or_else(|| Error::missing_field("equivalent_properties"))?;
+                let subjects = subjects.ok_or_else(|| Error::missing_field("subjects"))?;
+                let inverse_properties =
+                    inverse_properties.ok_or_else(|| Error::missing_field("inverse_properties"))?;
+                let instanceof = instanceof.ok_or_else(|| Error::missing_field("instanceof"))?;
+                let ancestors = ancestors.ok_or_else(|| Error::missing_field("ancestors"))?;
+                Ok(WDProperty(Property {
+                    id,
+                    label,
+                    description,
+                    aliases,
+                    datatype,
+                    parents,
+                    related_properties,
+                    equivalent_properties,
+                    subjects,
+                    inverse_properties,
+                    instanceof,
+                    ancestors,
+                }))
+            }
+        }
+
+        deserializer.deserialize_map(WDPropertyVisitor {})
+    }
+}
+
+impl<'de> Deserialize<'de> for WDClass {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct WDClassVisitor;
+
+        impl<'de> Visitor<'de> for WDClassVisitor {
+            type Value = WDClass;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a JSON string contains a serialized WDProperty")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<WDClass, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut id = None;
+                let mut label = None;
+                let mut description = None;
+                let mut aliases = None;
+                let mut parents = None;
+                let mut properties = None;
+                let mut different_froms = None;
+                let mut equivalent_classes = None;
+                let mut ancestors = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        "id" => {
+                            id = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser property's id: {}", e.to_string()))
+                            })?;
+                        }
+                        "label" => {
+                            label = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser property's label: {}", e.to_string()))
+                            })?;
+                        }
+                        "description" => {
+                            description = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser property's description: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "aliases" => {
+                            aliases = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser property's aliases: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "parents" => {
+                            parents = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser entity's parents: {}", e.to_string()))
+                            })?;
+                        }
+                        "properties" => {
+                            properties = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's properties: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "different_froms" => {
+                            different_froms = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's different_froms: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "equivalent_classes" => {
+                            equivalent_classes = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's equivalent_classes: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        "ancestors" => {
+                            ancestors = map.next_value().map_err(|e| {
+                                Error::custom(format!(
+                                    "deser entity's ancestors: {}",
+                                    e.to_string()
+                                ))
+                            })?;
+                        }
+                        _ => {
+                            return Err(M::Error::unknown_field(
+                                key,
+                                &[
+                                    "id",
+                                    "label",
+                                    "description",
+                                    "aliases",
+                                    "parents",
+                                    "properties",
+                                    "different_froms",
+                                    "equivalent_classes",
+                                    "ancestors",
+                                ],
+                            ));
+                        }
+                    }
+                }
+                let id = id.ok_or_else(|| Error::missing_field("id"))?;
+                let label = label.ok_or_else(|| Error::missing_field("label"))?;
+                let description = description.ok_or_else(|| Error::missing_field("description"))?;
+                let aliases = aliases.ok_or_else(|| Error::missing_field("aliases"))?;
+                let parents = parents.ok_or_else(|| Error::missing_field("parents"))?;
+                let properties = properties.ok_or_else(|| Error::missing_field("properties"))?;
+                let different_froms =
+                    different_froms.ok_or_else(|| Error::missing_field("different_froms"))?;
+                let equivalent_classes =
+                    equivalent_classes.ok_or_else(|| Error::missing_field("equivalent_classes"))?;
+                let ancestors = ancestors.ok_or_else(|| Error::missing_field("ancestors"))?;
+                Ok(WDClass(Class {
+                    id,
+                    label,
+                    description,
+                    aliases,
+                    parents,
+                    properties,
+                    different_froms,
+                    equivalent_classes,
+                    ancestors,
+                }))
+            }
+        }
+
+        deserializer.deserialize_map(WDClassVisitor {})
     }
 }
 

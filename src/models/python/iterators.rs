@@ -2,8 +2,8 @@ use crate::models::{Statement, Value};
 
 use super::super::entity::Entity;
 use super::entity::PyStatementView;
-use super::unsafe_update_view_lifetime_signature;
 use super::value::PyValueView;
+use crate::macros::unsafe_update_view_lifetime_signature;
 
 use hashbrown::hash_map;
 use pyo3::prelude::*;
@@ -228,7 +228,7 @@ impl PyValuesView {
 
     fn __next__(&mut self) -> Option<PyValueView> {
         if let Some(s) = self.iter.next() {
-            Some(PyValueView::new(s))
+            Some(PyValueView(s))
         } else {
             None
         }
@@ -236,7 +236,7 @@ impl PyValuesView {
 
     fn __getitem__(&self, i: usize) -> PyResult<PyValueView> {
         if i < self.lst.len() {
-            Ok(PyValueView::new(&self.lst[i]))
+            Ok(PyValueView(&self.lst[i]))
         } else {
             Err(pyo3::exceptions::PyIndexError::new_err(
                 "index out of range",

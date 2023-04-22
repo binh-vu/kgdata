@@ -1,8 +1,8 @@
 pub mod conversions;
 pub mod db;
 pub mod error;
+pub mod macros;
 pub mod models;
-
 use pyo3::prelude::*;
 
 #[pyfunction]

@@ -1,6 +1,6 @@
 [package]
 name = "kgdata"
-version = "1.2.1"
+version = "1.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,7 +20,7 @@ env_logger = "0.9.0"
 flate2 = { version = "1.0.24", features = ["zlib-ng"], default-features = false }
 hashbrown = { version = "0.13.2", features = ["serde"] }
 log = "0.4.17"
-pyo3 = { version = "0.16.5", features = ["anyhow"] }
+pyo3 = { version = "0.16.5", features = ["anyhow", "multiple-pymethods"] }
 pythonize = "0.16.0"
 rayon = "1.5.3"
 rocksdb = "0.20.1"

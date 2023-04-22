@@ -4,13 +4,6 @@ pub mod entity;
 pub mod iterators;
 pub mod value;
 
-/// Change signature of a reference from temporary to static. This is unsafe and
-/// only be used for temporary views that drop immediately after use.
-fn unsafe_update_view_lifetime_signature<T>(val: &T) -> &'static T {
-    let ptr = val as *const T;
-    unsafe { &*ptr }
-}
-
 pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     let submodule = PyModule::new(py, "models")?;
 
@@ -19,6 +12,7 @@ pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     submodule.add_class::<self::entity::PyEntity>()?;
     submodule.add_class::<self::entity::PyStatementView>()?;
     submodule.add_class::<self::value::PyValueView>()?;
+    submodule.add_class::<self::value::PyValue>()?;
     submodule.add_class::<self::value::PyEntityId>()?;
     submodule.add_class::<self::value::PyTime>()?;
     submodule.add_class::<self::value::PyQuantity>()?;

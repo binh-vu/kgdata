@@ -1,3 +1,5 @@
+use crate::error::KGDataError;
+
 use super::multilingual::{MultiLingualString, MultiLingualStringList};
 use super::value::Value;
 use hashbrown::HashMap;
@@ -16,6 +18,17 @@ impl EntityType {
         match self {
             EntityType::Item => "item",
             EntityType::Property => "property",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Result<EntityType, KGDataError> {
+        match s {
+            "item" => Ok(EntityType::Item),
+            "property" => Ok(EntityType::Property),
+            _ => Err(KGDataError::ValueError(format!(
+                "Unknown entity type: {}",
+                s
+            ))),
         }
     }
 }

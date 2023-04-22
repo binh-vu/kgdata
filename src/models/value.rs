@@ -68,6 +68,59 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn get_type(&self) -> &'static str {
+        match self {
+            Value::String(_) => "string",
+            Value::EntityId(_) => "entity-id",
+            Value::Quantity(_) => "quantity",
+            Value::Time(_) => "time",
+            Value::GlobeCoordinate(_) => "globe-coordinate",
+            Value::MonolingualText(_) => "monolingual-text",
+        }
+    }
+
+    pub fn is_str(&self) -> bool {
+        match self {
+            Value::String(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_entity_id(&self) -> bool {
+        match self {
+            Value::EntityId(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_quantity(&self) -> bool {
+        match self {
+            Value::Quantity(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_time(&self) -> bool {
+        match self {
+            Value::Time(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_globe_coordinate(&self) -> bool {
+        match self {
+            Value::GlobeCoordinate(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_monolingual_text(&self) -> bool {
+        match self {
+            Value::MonolingualText(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn as_string(&self) -> Option<&String> {
         match self {
             Value::String(s) => Some(s),
@@ -108,5 +161,9 @@ impl Value {
             Value::GlobeCoordinate(g) => Some(g),
             _ => None,
         }
+    }
+
+    pub fn to_string_repr(&self) -> String {
+        serde_json::to_string(self).unwrap()
     }
 }

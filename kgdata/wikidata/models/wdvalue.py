@@ -1,4 +1,5 @@
 from __future__ import annotations
+from kgdata.core.models import Value
 import orjson
 from typing import Generic, Literal, TypeVar, TypedDict, Union
 from typing_extensions import TypeGuard
@@ -154,6 +155,41 @@ class WDValue(Generic[T, V]):
 
     def to_string_repr(self) -> str:
         return orjson.dumps(self.to_dict()).decode()
+
+    def to_rust(self, cls=Value) -> Value:
+        if self.is_string(self):
+            return cls.string(self.value)
+        if self.is_entity_id(self):
+            return cls.entity_id(
+                self.value["id"], self.value["entity-type"], self.value["numeric-id"]
+            )
+        if self.is_time(self):
+            return cls.time(
+                self.value["time"],
+                self.value["timezone"],
+                self.value["before"],
+                self.value["after"],
+                self.value["precision"],
+                self.value["calendarmodel"],
+            )
+        if self.is_quantity(self):
+            return cls.quantity(
+                self.value["amount"],
+                self.value.get("lowerBound", None),
+                self.value.get("upperBound", None),
+                self.value["unit"],
+            )
+        if self.is_globe_coordinate(self):
+            return cls.globe_coordinate(
+                self.value["latitude"],
+                self.value["longitude"],
+                self.value["precision"],
+                self.value["altitude"],
+                self.value["globe"],
+            )
+        if self.is_mono_lingual_text(self):
+            return cls.monolingual_text(self.value["text"], self.value["language"])
+        raise ValueError(f"Unknown type: {self.type}")
 
 
 WDValueString = WDValue[Literal["string"], str]

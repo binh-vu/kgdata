@@ -4,14 +4,21 @@
 
 /// Entity in Knowledge Graph.
 pub mod entity;
+pub mod entity_link;
 pub mod entity_metadata;
 pub mod multilingual;
 pub mod value;
 
+pub mod class;
+pub mod property;
+
+pub use self::class::*;
 pub use self::entity::*;
+pub use self::entity_link::*;
 pub use self::entity_metadata::*;
 pub use self::multilingual::*;
+pub use self::property::*;
 pub use self::value::*;
 
-#[cfg(feature = "extension-module")]
+// #[cfg(feature = "extension-module")]
 pub mod python;
