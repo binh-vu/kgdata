@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from __future__ import annotations
 
 from sm.misc.funcs import filter_duplication
 
@@ -6,9 +6,9 @@ from sm.misc.funcs import filter_duplication
 class MultiLingualString(str):
     # two characters language code: en, th, de, fr, etc.
     lang: str
-    lang2value: Dict[str, str]
+    lang2value: dict[str, str]
 
-    def __new__(cls, lang2value: Dict[str, str], lang):
+    def __new__(cls, lang2value: dict[str, str], lang):
         object = str.__new__(cls, lang2value[lang])
         object.lang = lang
         object.lang2value = lang2value
@@ -33,12 +33,12 @@ class MultiLingualString(str):
     def to_tuple(self):
         return self.lang2value, self.lang
 
-    def __getnewargs__(self) -> Tuple[Dict[str, str], str]:
+    def __getnewargs__(self) -> tuple[dict[str, str], str]:
         return self.lang2value, self.lang
 
 
-class MultiLingualStringList(List[str]):
-    def __init__(self, lang2values: Dict[str, List[str]], lang):
+class MultiLingualStringList(list[str]):
+    def __init__(self, lang2values: dict[str, list[str]], lang):
         super().__init__(lang2values[lang])
         self.lang2values = lang2values
         self.lang = lang

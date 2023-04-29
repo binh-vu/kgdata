@@ -7,11 +7,13 @@ from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.models.wdentity import WDEntity
+from kgdata.wikidata.models.wdstatement import WDStatement
 from loguru import logger
 import orjson
 from pyspark import Broadcast
 from kgdata.dataset import Dataset
 import serde.textline
+from sm.misc.funcs import filter_duplication
 
 
 def entities(lang: str = "en") -> Dataset[WDEntity]:
@@ -210,6 +212,32 @@ def fixed_entity(
             ent.props[redirected_entities[pid]] = ent.props.pop(pid)
 
     return ent, is_fixed
+
+
+def fix_transitive_qualifier(ent: WDEntity):
+    """Fix transitive qualifiers that are the same as the property."""
+    transitive_props = {"P276", "P131", "P527", "P2541"}
+
+    for pid, stmts in ent.props.items():
+        new_stmts: list[WDStatement] = []
+        for stmt in stmts:
+            for qid, qvals in list(stmt.qualifiers.items()):
+                if qid != pid:
+                    continue
+                assert qid in transitive_props, qid
+                for qval in qvals:
+                    new_stmts.append(
+                        WDStatement(
+                            qval, qualifiers={}, qualifiers_order=[], rank=stmt.rank
+                        )
+                    )
+                del stmt.qualifiers[qid]
+                stmt.qualifiers_order = [x for x in stmt.qualifiers_order if x != qid]
+        new_stmts = filter_duplication(
+            new_stmts, key_fn=lambda x: x.value.to_string_repr()
+        )
+        stmts.extend(new_stmts)
+    return ent
 
 
 if __name__ == "__main__":

@@ -121,7 +121,7 @@ class EasyTests:
                 ), f"Table {tbl.table.id} must have exactly one <th> element."
                 thel = thels[0]
                 colspan = header.value.get_element_attr_by_id(thel, "colspan")
-                if colspan is not None and colspan != '' and int(colspan) > 1:
+                if colspan is not None and colspan != "" and int(colspan) > 1:
                     return False
         return True
 
