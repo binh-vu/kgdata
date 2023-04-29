@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import functools
+import functools, struct
 from functools import partial
 from pathlib import Path
 from typing import (
@@ -35,7 +35,10 @@ from kgdata.wikidata.datasets.entity_metadata import (
     deser_entity_metadata,
     ser_entity_metadata,
 )
-from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
+from kgdata.wikidata.extra_ent_db import (
+    EntAttr,
+    get_entity_attr_db,
+)
 from kgdata.wikidata.models import (
     WDClass,
     WDProperty,
@@ -411,6 +414,34 @@ def get_wp2wd_db(
     )
 
 
+def get_wdontcount_db(
+    dbpath: Union[Path, str],
+    create_if_missing=False,
+    read_only=True,
+) -> HugeMutableMapping[str, int]:
+    """Mapping from wikipedia article's title to wikidata id"""
+    version = Path(dbpath) / "_VERSION"
+    if version.exists():
+        ver = version.read_text()
+        assert ver.strip() == "1", ver
+    else:
+        version.parent.mkdir(parents=True, exist_ok=True)
+        version.write_text("1")
+
+    dboptions = RocksDBOptions(
+        create_if_missing=create_if_missing,
+        compression_type="none",
+    )
+    return RocksDBDict(
+        path=str(dbpath),
+        options=dboptions,
+        readonly=read_only,
+        deser_key=partial(str, encoding="utf-8"),
+        deser_value=unpack_int,
+        ser_value=pack_int,
+    )
+
+
 def get_wdprop_range_db(
     dbfile: Union[Path, str],
     create_if_missing=False,
@@ -517,6 +548,10 @@ class WikidataDB:
         return wdprops
 
     @functools.cached_property
+    def wdontcount(self):
+        return get_wdontcount_db(self.database_dir / "wdontcount.db", read_only=True)
+
+    @functools.cached_property
     def wdprop_domains(self):
         return get_wdprop_domain_db(
             self.database_dir / "wdprop_domains.db", read_only=True
@@ -581,3 +616,28 @@ class WikidataDB:
     def get_instance() -> "WikidataDB":
         assert WikidataDB.instance is not None
         return WikidataDB.instance
+
+
+def pack_int(v: int) -> bytes:
+    return struct.pack("<l", v)
+
+
+def unpack_int(v: bytes) -> int:
+    return struct.unpack("<l", v)[0]
+
+
+if __name__ == "__main__":
+    import click
+
+    @click.command()
+    @click.option("-d", "--data-dir", help="database directory")
+    @click.option("-n", "--dbname", help="database name")
+    @click.argument("keys", nargs=-1)
+    def cli(data_dir: str, dbname: str, keys: list[str]):
+        db = getattr(WikidataDB(data_dir), dbname)
+        for k in keys:
+            print("key:", k)
+            print("value:", db[k])
+            print("")
+
+    cli()

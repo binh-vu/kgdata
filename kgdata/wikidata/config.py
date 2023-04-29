@@ -32,6 +32,7 @@ class WDDataDirCfg:
         self.classes = datadir / "classes"
         self.class_count = datadir / "class_count"
         self.properties = datadir / "properties"
+        self.property_count = datadir / "property_count"
         self.property_domains = datadir / "property_domains"
         self.property_ranges = datadir / "property_ranges"
         self.wp2wd = datadir / "wp2wd"
