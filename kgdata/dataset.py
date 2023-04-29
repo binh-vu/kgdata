@@ -69,6 +69,22 @@ class Dataset(Generic[V]):
 
         return rdd
 
+    def take(
+        self,
+        n: int,
+        rstrip: bool = True,
+        file_order: Optional[Literal["asc", "desc"]] = None,
+    ):
+        output = []
+        for file in tqdm(self.get_files(file_order), desc="read dataset"):
+            for line in serde.textline.deser(file):
+                output.append(self.deserialize(line.rstrip()))
+                if len(output) >= n:
+                    break
+            if len(output) >= n:
+                break
+        return output
+
     def get_list(
         self, rstrip: bool = True, file_order: Optional[Literal["asc", "desc"]] = None
     ):
