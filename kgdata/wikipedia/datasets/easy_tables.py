@@ -10,7 +10,7 @@ from kgdata.wikipedia.datasets.linked_relational_tables import (
     deser_linked_tables,
 )
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable
-from rsoup.rsoup import Table
+from rsoup.core import Table
 
 
 def easy_tables() -> Dataset[LinkedHTMLTable]:

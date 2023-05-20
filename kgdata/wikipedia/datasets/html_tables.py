@@ -4,7 +4,7 @@ from kgdata.wikipedia.config import WPDataDirConfig
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle
 from loguru import logger
-from rsoup.rsoup import ContextExtractor, Table, TableExtractor
+from rsoup.core import ContextExtractor, Table, TableExtractor
 
 
 def html_tables() -> Dataset[Table]:

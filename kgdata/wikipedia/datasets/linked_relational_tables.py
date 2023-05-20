@@ -6,7 +6,7 @@ from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WPDataDirConfig
 
-from rsoup.rsoup import Table, Cell
+from rsoup.core import Table, Cell
 from importlib import import_module
 
 

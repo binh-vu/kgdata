@@ -3,7 +3,7 @@ import copy, orjson
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Optional, Tuple, Union
-from rsoup.rsoup import Table
+from rsoup.core import Table
 from sm.dataset import FullTable, Context
 from sm.inputs.column import Column
 from sm.inputs.link import WIKIDATA, Link, EntityId

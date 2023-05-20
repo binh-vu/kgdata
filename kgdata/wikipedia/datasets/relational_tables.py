@@ -2,7 +2,7 @@ from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WPDataDirConfig
-from rsoup.rsoup import Table
+from rsoup.core import Table
 import sm.misc as M
 
 
