@@ -50,13 +50,15 @@ macro_rules! pyiter {
     };
 }
 
-/// Generating a temporary view of a Rust's type.
+/// Generating a temporary view of a Rust's type, properties accessed in Python will trigger a conversion.
 #[macro_export]
 macro_rules! pyview {
     ($viewname:ident (module = $module:literal, name = $name:literal, cls = $clsname:ident $(, derive = ($( $derivetrait:ident ),*) )? ) $({
         $(
             $(c($cel:ident: $cty:ty))?  // c for copy
-            $(r($rel:ident: $rty:ty))?  // r for reference
+            $(b($bel:ident: $bty:ty))?  // b for borrow
+            $(r($rel:ident: $rty:ty))?  // r for as_ref
+            $(v($vel:ident: $vty:ident))?  // v for view -- return a temporary view
             $(f($func:ident: $returntype:ty))?  // f for function
             $(iter($itervec:ident { $iel:ident: $ity:ty }))?  // iter for iterator
         ),*
@@ -77,8 +79,22 @@ macro_rules! pyview {
 
                 $(
                     #[getter]
-                    fn $rel(&self) -> &$rty {
-                        &self.0.$rel
+                    fn $bel(&self) -> &$bty {
+                        &self.0.$bel
+                    }
+                )?
+
+                $(
+                    #[getter]
+                    fn $rel(&self) -> $rty {
+                        self.0.$rel.as_ref()
+                    }
+                )?
+
+                $(
+                    #[getter]
+                    fn $vel(&self) -> $vty {
+                        $vty(unsafe_update_view_lifetime_signature(&self.0.$vel))
                     }
                 )?
 
@@ -98,13 +114,15 @@ macro_rules! pyview {
     };
 }
 
-/// Generating a Python wrapper of a Rust's type, properties accessed in Python will trigger a conversion.
+/// Generating a Python wrapper of a Rust's type, properties accessed in Python will trigger a conversion. Different from view, this wrapper owns the data.
 #[macro_export]
 macro_rules! pywrap {
     ($wrapper:ident (module = $module:literal, name = $name:literal, cls = $clsname:ident $(, derive = ($( $derivetrait:ident ),*) )? ) $({
         $(
             $(c($cel:ident: $cty:ty))?  // c for copy
-            $(r($rel:ident: $rty:ty))?  // r for reference
+            $(b($bel:ident: $bty:ty))?  // b for borrow
+            $(r($rel:ident: $rty:ty))?  // r for as_ref
+            $(v($vel:ident: $vty:ty))?  // v for view -- return a temporary view
             $(f($func:ident: $returntype:ty))?  // f for function
             $(iter($itervec:ident { $iel:ident: $ity:ty }))?  // iter for iterator
         ),*
@@ -125,8 +143,22 @@ macro_rules! pywrap {
 
                 $(
                     #[getter]
-                    fn $rel(&self) -> &$rty {
-                        &self.0.$rel
+                    fn $bel(&self) -> &$bty {
+                        &self.0.$bel
+                    }
+                )?
+
+                $(
+                    #[getter]
+                    fn $rel(&self) -> $rty {
+                        self.0.$rel.as_ref()
+                    }
+                )?
+
+                $(
+                    #[getter]
+                    fn $vel(&self) -> $vty {
+                        <$vty>(unsafe_update_view_lifetime_signature(&self.0.$vel))
                     }
                 )?
 
