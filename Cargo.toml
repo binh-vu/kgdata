@@ -15,9 +15,6 @@ include = ["/src"]
 name = "kgdata"
 crate-type = ["cdylib", "rlib"]
 
-[package.metadata.maturin]
-name = "kgdata.core"
-
 [dependencies]
 anyhow = { version = "1.0.58", features = ["backtrace"] }
 bincode = "1.3.3"
@@ -28,7 +25,6 @@ flate2 = { version = "1.0.24", features = ["zlib-ng"], default-features = false 
 hashbrown = { version = "0.13.2", features = ["serde"] }
 log = "0.4.17"
 pyo3 = { version = "0.18.3", features = ["anyhow", "multiple-pymethods"] }
-pythonize = "0.18.0"
 rayon = "1.5.3"
 rocksdb = "0.20.1"
 serde = { version = "1.0.137", features = ["derive"] }
