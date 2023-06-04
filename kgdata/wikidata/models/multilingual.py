@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sm.misc.funcs import filter_duplication
+from typing import List
 
 
 class MultiLingualString(str):
@@ -37,7 +38,8 @@ class MultiLingualString(str):
         return self.lang2value, self.lang
 
 
-class MultiLingualStringList(list[str]):
+# important to use List[str] as python 3.8 does not support inherit from list[str]
+class MultiLingualStringList(List[str]):
     def __init__(self, lang2values: dict[str, list[str]], lang):
         super().__init__(lang2values[lang])
         self.lang2values = lang2values
