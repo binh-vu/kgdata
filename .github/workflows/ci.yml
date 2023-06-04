@@ -22,7 +22,7 @@ jobs:
         run: cargo test --no-default-features --features pyo3/auto-initialize
       - uses: messense/maturin-action@v1
         env:
-          MACOSX_DEPLOYMENT_TARGET: 10.9
+          MACOSX_DEPLOYMENT_TARGET: 10.14
         with:
           command: build
           args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.8') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
