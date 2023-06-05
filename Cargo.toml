@@ -19,7 +19,6 @@ crate-type = ["cdylib", "rlib"]
 anyhow = { version = "1.0.58", features = ["backtrace"] }
 bincode = "1.3.3"
 bzip2 = "0.4.3"
-criterion = "0.4.0"
 env_logger = "0.9.0"
 flate2 = { version = "1.0.24", features = ["zlib-ng"], default-features = false }
 hashbrown = { version = "0.13.2", features = ["serde"] }
@@ -34,11 +33,12 @@ thiserror = "1.0.31"
 [dev-dependencies]
 rstest = "0.13.0"
 tempfile = "3.3.0"
+criterion = "0.4.0"
 
 [features]
 extension-module = ["pyo3/extension-module"]
 default = ["extension-module"]
 
-[[bench]]
-name = "rc_vs_py"
-harness = false
+# [[bench]]
+# name = "rc_vs_py"
+# harness = false
