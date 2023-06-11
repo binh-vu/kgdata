@@ -1,6 +1,6 @@
 [project]
 name = "kgdata"
-version = "3.7.1"
+version = "3.7.2"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 readme = "README.md"
 authors = [
@@ -30,9 +30,9 @@ dependencies = [
     'fastnumbers >= 3.2.1, < 4.0.0',
     'requests >= 2.28.0, < 3.0.0',
     'sem-desc >= 4.4.2, < 5.0.0',
-    'click >= 8.0.0, <= 8.0.4',
+    'click >= 8.1.3, < 9.0.0',
     'parsimonious >= 0.8.1, < 0.9.0',
-    'hugedict >= 2.9.1, < 3.0.0',
+    'hugedict >= 2.9.2, < 3.0.0',
     'rsoup >= 3.0.1, < 4.0.0',
     'lxml >= 4.9.0, < 5.0.0',
     'ray >= 2.0.1, < 3.0.0',
