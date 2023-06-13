@@ -10,7 +10,7 @@ use serde_json;
 
 pub struct ReadonlyRocksDBDict<K: AsRef<[u8]> + 'static, V: 'static> {
     db: rocksdb::DB,
-    deser_value: Box<dyn Fn(&[u8]) -> Result<V, KGDataError> + Send + Sync>,
+    deser_value: fn(&[u8]) -> Result<V, KGDataError>,
     deser_key: PhantomData<fn() -> K>,
 }
 
@@ -50,7 +50,7 @@ pub fn open_entity_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Enti
     let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
     Ok(ReadonlyRocksDBDict {
         db,
-        deser_value: Box::new(deser_entity),
+        deser_value: deser_entity,
         deser_key: PhantomData,
     })
 }
@@ -72,7 +72,7 @@ pub fn open_entity_metadata_db(
     let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
     Ok(ReadonlyRocksDBDict {
         db,
-        deser_value: Box::new(deser_entity_metadata),
+        deser_value: deser_entity_metadata,
         deser_key: PhantomData,
     })
 }
@@ -87,7 +87,29 @@ pub fn open_entity_link_db(
     let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
     Ok(ReadonlyRocksDBDict {
         db,
-        deser_value: Box::new(deser_entity_link),
+        deser_value: deser_entity_link,
+        deser_key: PhantomData,
+    })
+}
+
+pub fn open_entity_pagerank_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, f64>, KGDataError> {
+    let mut options = Options::default();
+    options.create_if_missing(false);
+    options.set_compression_type(DBCompressionType::Zstd);
+    options.set_compression_options(
+        -14,       // window_bits
+        6,         // level
+        0,         // strategy
+        16 * 1024, // max_dict_bytes
+    );
+    options.set_zstd_max_train_bytes(100 * 16 * 1024);
+
+    let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
+    Ok(ReadonlyRocksDBDict {
+        db,
+        deser_value: deser_entity_pagerank,
         deser_key: PhantomData,
     })
 }
@@ -102,7 +124,7 @@ pub fn open_property_db(
     let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
     Ok(ReadonlyRocksDBDict {
         db,
-        deser_value: Box::new(deser_property),
+        deser_value: deser_property,
         deser_key: PhantomData,
     })
 }
@@ -116,17 +138,21 @@ pub fn open_class_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Class
     let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
     Ok(ReadonlyRocksDBDict {
         db,
-        deser_value: Box::new(deser_class),
+        deser_value: deser_class,
         deser_key: PhantomData,
     })
 }
 
-fn deser_entity(v: &[u8]) -> Result<Entity, KGDataError> {
+pub fn deser_entity(v: &[u8]) -> Result<Entity, KGDataError> {
     Ok(serde_json::from_slice::<WDEntity>(v)?.0)
 }
 
 fn deser_entity_metadata(v: &[u8]) -> Result<EntityMetadata, KGDataError> {
     Ok(serde_json::from_slice::<WDEntityMetadata>(v)?.0)
+}
+
+fn deser_entity_pagerank(v: &[u8]) -> Result<f64, KGDataError> {
+    Ok(f64::from_le_bytes(v.try_into()?))
 }
 
 fn deser_entity_link(v: &[u8]) -> Result<EntityLink, KGDataError> {

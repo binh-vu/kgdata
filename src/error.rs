@@ -12,6 +12,9 @@ pub enum KGDataError {
     SerdeJsonErr(#[from] serde_json::Error),
 
     #[error(transparent)]
+    TryFromSliceErro(#[from] std::array::TryFromSliceError),
+
+    #[error(transparent)]
     RocksDBError(#[from] rocksdb::Error),
 
     #[error(transparent)]
