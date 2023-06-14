@@ -1,43 +1,57 @@
 from typing import (
+    Generic,
+    ItemsView,
     Iterator,
+    KeysView,
     Literal,
     Optional,
     TypeVar,
-    Generic,
-    KeysView,
     ValuesView,
-    ItemsView,
 )
+
+from kgdata.core.base import RustMapView, RustVecView
 
 V = TypeVar("V")
 
+EntityType = Literal["item", "property"]
+
+class EntityView:
+    id: str
+    entity_type: EntityType
+    label: MultiLingualStringView
+    description: MultiLingualStringView
+    aliases: MultiLingualStringListView
+    sitelinks: RustMapView[str, SiteLinkView]
+    props: RustMapView[str, RustVecView[StatementView]]
+
 class Entity:
+    id: str
+    entity_type: EntityType
+    label: MultiLingualStringView
+    description: MultiLingualStringView
+    aliases: MultiLingualStringListView
+    sitelinks: RustMapView[str, SiteLinkView]
+    props: RustMapView[str, RustVecView[StatementView]]
+
     @staticmethod
     def from_wdentity_json(data: bytes) -> Entity: ...
-    @property
-    def id(self) -> str: ...
-    def entity_type(self) -> Literal["item", "property"]: ...
-    @property
-    def label(self) -> str: ...
-    def label_default_lang(self) -> str: ...
-    def lang_in_lang(self, lang: str) -> bool: ...
-    def label_keys(self) -> KeysView[str]: ...
-    def label_values(self) -> ValuesView[str]: ...
-    def label_items(self) -> ItemsView[str, str]: ...
-    def description(self) -> str: ...
-    def description_default_lang(self) -> str: ...
-    def description_keys(self) -> KeysView[str]: ...
-    def description_values(self) -> ValuesView[str]: ...
-    def description_items(self) -> ItemsView[str, str]: ...
-    def aliases(self) -> ListView[str]: ...
-    def aliases_default_lang(self) -> str: ...
-    def aliases_keys(self) -> KeysView[str]: ...
-    def aliases_values(self) -> ValuesView[ListView[str]]: ...
-    def aliases_items(self) -> ItemsView[str, ListView[str]]: ...
-    def props_keys(self) -> KeysView[str]: ...
-    def props_values(self) -> ValuesView[str]: ...
-    def props_items(self) -> ItemsView[str, ListView[StatementView]]: ...
-    def prop(self, id: str) -> ListView[StatementView]: ...
+
+class EntityMetadata:
+    id: str
+    label: MultiLingualStringView
+    description: MultiLingualStringView
+    aliases: MultiLingualStringListView
+    instanceof: RustVecView[str]
+    subclassof: RustVecView[str]
+    subpropertyof: RustVecView[str]
+
+    def get_all_aliases(self) -> list[str]: ...
+
+class SiteLinkView:
+    site: str
+    title: str
+    badges: RustVecView[str]
+    url: Optional[str]
 
 class StatementView:
     def value(self) -> ValueView: ...
@@ -74,7 +88,7 @@ class Value:
     def string(value: str) -> Value: ...
     @staticmethod
     def entity_id(
-        id: str, entity_type: Literal["item", "property"], numeric_id: Optional[int]
+        id: str, entity_type: EntityType, numeric_id: Optional[int]
     ) -> Value: ...
     @staticmethod
     def time(
@@ -151,6 +165,20 @@ class GlobeCoordinate:
 class MonolingualText:
     text: str
     language: str
+
+class MultiLingualStringView:
+    default_lang: str  # default language
+
+    def as_lang_default(self) -> str: ...
+    def as_lang(self, lang: str) -> str: ...
+    def to_list(self) -> list[str]: ...
+
+class MultiLingualStringListView:
+    default_lang: str  # default language
+
+    def as_lang_default(self) -> list[str]: ...
+    def as_lang(self, lang: str) -> list[str]: ...
+    def flatten(self) -> list[str]: ...
 
 class ListView(Iterator[V], Generic[V]):
     """A convenience class that is an iterator with random access. Note that when the iterator
