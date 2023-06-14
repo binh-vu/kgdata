@@ -11,17 +11,21 @@
 ///
 /// # Example
 ///
-/// ```
-/// pylist!(ListStrView (module = "kgdata.core.pyo3helper", name = "ListStrView", derive = (Clone, Debug)) {
+/// ```ignore
+/// use kgdata::pyo3helper::PyStr;
+///
+/// pylist!(ListStrView (module = "kgdata.core.test", name = "ListStrView", derive = (Clone, Debug)) {
 ///     String: PyStr,
 /// });
 /// ```
 /// The above macro will generate the following code:
 ///
-/// ```
+/// ```ignore
 /// pub mod ListStrView {
+///     use pyo3::prelude::*;
+///     use kgdata::pyo3helper::PyStr;
 ///
-///     #[pyclass(module = "kgdata.core.pyo3helper", name = "ListStrView")]
+///     #[pyclass(module = "kgdata.core.test", name = "ListStrView")]
 ///     #[derive(Clone, Debug)]
 ///     pub struct ListView(pub &'static [String]);
 ///
@@ -47,7 +51,7 @@
 macro_rules! pylist {
     ($structname:ident (module = $module:literal, name = $name:literal, item = $item:ty as $itemview:ty $(, derive = ($( $derivetrait:ident ),*) )? )) => {
         pub mod $structname {
-            use crate::pyo3helper::unsafe_update_view_lifetime_signature;
+            use kgdata::pyo3helper::unsafe_update_view_lifetime_signature;
             use pyo3::prelude::*;
 
             #[pyclass(module = $module, name = $name)]
@@ -117,7 +121,7 @@ macro_rules! pylist {
 macro_rules! pymap {
     ($structname:ident (module = $module:literal, name = $name:literal, key = $key:ty as $keyview:ty, value = $value:ty as $valueview:ty $(, derive = ($( $derivetrait:ident ),*) )? )) => {
         pub mod $structname {
-            use crate::pyo3helper::unsafe_update_view_lifetime_signature;
+            use kgdata::pyo3helper::unsafe_update_view_lifetime_signature;
             use pyo3::prelude::*;
             use pyo3::types::PyTuple;
 

@@ -31,8 +31,8 @@ impl ToPyObject for PyStr {
     }
 }
 
-crate::pylist!(list_str_view(
+kgdata::pylist!(list_str_view(
     module = "kgdata.core.pyo3helper",
     name = "ListStrView",
-    item = String as crate::pyo3helper::PyStr
+    item = String as kgdata::pyo3helper::PyStr
 ));

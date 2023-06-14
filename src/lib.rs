@@ -1,9 +1,10 @@
+extern crate self as kgdata;
+
 pub mod conversions;
 pub mod db;
 pub mod error;
 pub mod models;
 pub mod pyo3helper;
-#[cfg(feature = "extension-module")]
 pub mod python;
 
 use pyo3::prelude::*;
