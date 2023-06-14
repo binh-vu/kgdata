@@ -1,12 +1,42 @@
 use std::borrow::Borrow;
 use std::ffi::OsStr;
 use std::marker::PhantomData;
+use std::path::PathBuf;
 
 use crate::conversions::{WDClass, WDEntityMetadata, WDProperty};
 use crate::models::{Class, Entity, EntityLink, EntityMetadata, Property};
 use crate::{conversions::WDEntity, error::KGDataError};
 use rocksdb::{DBCompressionType, Options};
 use serde_json;
+
+pub struct KGDB {
+    pub datadir: PathBuf,
+    pub classes: ReadonlyRocksDBDict<String, Class>,
+    pub props: ReadonlyRocksDBDict<String, Property>,
+    pub entities: ReadonlyRocksDBDict<String, Entity>,
+    pub entity_metadata: ReadonlyRocksDBDict<String, EntityMetadata>,
+    pub entity_link: ReadonlyRocksDBDict<String, EntityLink>,
+    pub entity_pagerank: ReadonlyRocksDBDict<String, f64>,
+}
+
+impl KGDB {
+    pub fn new(datadir: &str) -> Result<Self, KGDataError> {
+        let datadir = PathBuf::from(datadir);
+        Ok(Self {
+            props: open_property_db(datadir.join("props.db").as_os_str())?,
+            classes: open_class_db(datadir.join("classes.db").as_os_str())?,
+            entities: open_entity_db(datadir.join("entities.db").as_os_str())?,
+            entity_metadata: open_entity_metadata_db(
+                datadir.join("entity_metadata.db").as_os_str(),
+            )?,
+            entity_link: open_entity_link_db(datadir.join("entity_links.db").as_os_str())?,
+            entity_pagerank: open_entity_pagerank_db(
+                datadir.join("entity_pagerank.db").as_os_str(),
+            )?,
+            datadir,
+        })
+    }
+}
 
 pub struct ReadonlyRocksDBDict<K: AsRef<[u8]> + 'static, V: 'static> {
     db: rocksdb::DB,
