@@ -42,6 +42,7 @@
 ///
 ///     #[pymethods]
 ///     impl IterView {
+///         fn __iter__(&self) -> Self;
 ///         fn __next__(&mut self) -> Option<PyStr>;
 ///     }
 ///
@@ -89,7 +90,11 @@ macro_rules! pylist {
 
             #[pymethods]
             impl IterView {
-                fn __next__(&mut self) -> Option<$itemview> {
+                pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+                    slf
+                }
+
+                pub fn __next__(&mut self) -> Option<$itemview> {
                     if let Some(v) = self.0.next() {
                         Some(<$itemview>::new(v))
                     } else {
@@ -141,6 +146,10 @@ macro_rules! pymap {
             }
             #[pymethods]
             impl MapView {
+                pub fn __iter__(&self) -> KeysView {
+                    KeysView(self.0.keys())
+                }
+
                 pub fn keys(&self) -> KeysView {
                     KeysView(self.0.keys())
                 }
@@ -171,6 +180,10 @@ macro_rules! pymap {
 
             #[pymethods]
             impl KeysView {
+                pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+                    slf
+                }
+
                 pub fn __next__(&mut self) -> Option<$keyview> {
                     if let Some(k) = self.0.next() {
                         Some(<$keyview>::new(k))
@@ -182,6 +195,10 @@ macro_rules! pymap {
 
             #[pymethods]
             impl ValuesView {
+                pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+                    slf
+                }
+
                 pub fn __next__(&mut self) -> Option<$valueview> {
                     if let Some(v) = self.0.next() {
                         Some(<$valueview>::new(v))
@@ -193,6 +210,10 @@ macro_rules! pymap {
 
             #[pymethods]
             impl ItemsView {
+                pub fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+                    slf
+                }
+
                 pub fn __next__(&mut self, py: Python<'_>) -> Option<Py<PyTuple>> {
                     if let Some((k, v)) = self.0.next() {
                         let output: Py<PyTuple> = (k, <$valueview>::new(v)).into_py(py);
