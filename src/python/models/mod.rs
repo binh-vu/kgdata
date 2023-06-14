@@ -1,9 +1,14 @@
 use pyo3::prelude::*;
 
 pub mod entity;
-// pub mod iterators;
+pub mod entity_metadata;
 pub mod multilingual;
 pub mod value;
+
+pub use self::entity::*;
+pub use self::entity_metadata::*;
+pub use self::multilingual::*;
+pub use self::value::*;
 
 #[allow(dead_code)]
 pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
@@ -14,6 +19,7 @@ pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     submodule.add_class::<self::entity::EntityView>()?;
     submodule.add_class::<self::entity::StatementView>()?;
     submodule.add_class::<self::entity::SiteLinkView>()?;
+    submodule.add_class::<self::entity_metadata::PyEntityMetadata>()?;
     submodule.add_class::<self::value::ValueView>()?;
     submodule.add_class::<self::value::PyValue>()?;
     submodule.add_class::<self::value::PyEntityId>()?;

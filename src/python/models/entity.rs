@@ -1,12 +1,25 @@
 use super::multilingual::{MultiLingualStringListView, MultiLingualStringView};
 use super::value::{value_list_view, ValueView};
+use crate::conversions::WDEntity;
+use crate::error::into_pyerr;
 use crate::models::{Entity, EntityType, SiteLink, Statement, StatementRank, Value};
 use crate::pyo3helper::unsafe_update_view_lifetime_signature;
-use crate::{pylist, pymap, pyview};
+use crate::{pylist, pymap, pyview, pywrap};
 use pyo3::prelude::*;
 
 pyview!(
     EntityView(module = "kgdata.core.models", name = "EntityView", cls = Entity, derive = (Clone, Debug)) {
+        b(id: String),
+        b(entity_type: EntityType),
+        v(label: MultiLingualStringView),
+        v(description: MultiLingualStringView),
+        v(aliases: MultiLingualStringListView),
+        v(sitelinks: sitelink_map_view::MapView),
+        v(props: prop_map_view::MapView),
+    }
+);
+pywrap!(
+    PyEntity(module = "kgdata.core.models", name = "Entity", cls = Entity) {
         b(id: String),
         b(entity_type: EntityType),
         v(label: MultiLingualStringView),
@@ -71,5 +84,17 @@ impl IntoPy<PyObject> for &EntityType {
 impl IntoPy<PyObject> for &StatementRank {
     fn into_py(self, py: Python) -> PyObject {
         self.to_str().into_py(py)
+    }
+}
+
+#[pymethods]
+impl PyEntity {
+    // Create a new Entity from a JSON string.
+    #[staticmethod]
+    fn from_wdentity_json(data: &[u8]) -> PyResult<Self> {
+        let ent = serde_json::from_slice::<WDEntity>(data)
+            .map_err(into_pyerr)?
+            .0;
+        return Ok(PyEntity(ent));
     }
 }
