@@ -1,8 +1,11 @@
 pub mod conversions;
 pub mod db;
 pub mod error;
-pub mod macros;
 pub mod models;
+pub mod pyo3helper;
+#[cfg(feature = "extension-module")]
+pub mod python;
+
 use pyo3::prelude::*;
 
 #[pyfunction]
@@ -18,7 +21,7 @@ fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.setattr("__path__", pyo3::types::PyList::empty(py))?;
 
     m.add_function(wrap_pyfunction!(init_env_logger, m)?)?;
-    models::python::register(py, m)?;
+    python::models::register(py, m)?;
 
     Ok(())
 }

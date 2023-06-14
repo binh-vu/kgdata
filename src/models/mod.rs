@@ -19,5 +19,3 @@ pub use self::entity_metadata::*;
 pub use self::multilingual::*;
 pub use self::property::*;
 pub use self::value::*;
-
-pub mod python;

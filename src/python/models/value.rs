@@ -2,11 +2,12 @@ use crate::error::into_pyerr;
 use crate::models::{
     EntityId, EntityType, GlobeCoordinate, MonolingualText, Quantity, Time, Value,
 };
-use crate::{pymirror, pyview, pywrap};
+use crate::pyo3helper::unsafe_update_view_lifetime_signature;
+use crate::{pylist, pymirror, pyview, pywrap};
 use pyo3::prelude::*;
 
 pyview!(
-    PyValueView(module = "kgdata.core.models", name = "ValueView", cls = Value, derive=(Clone, Debug)) {
+    ValueView(module = "kgdata.core.models", name = "ValueView", cls = Value, derive=(Clone, Debug)) {
         f(get_type: &'static str),
         f(is_str: bool),
         f(is_entity_id: bool),
@@ -29,9 +30,14 @@ pywrap!(
         f(to_string_repr: String)
     }
 );
+pylist!(value_list_view(
+    module = "kgdata.core.models",
+    name = "ValueListView",
+    item = super::Value as super::ValueView
+));
 
 #[pymethods]
-impl PyValueView {
+impl ValueView {
     pub fn as_str(&self) -> PyResult<&String> {
         match &self.0 {
             Value::String(s) => Ok(s),
@@ -234,14 +240,8 @@ impl PyValue {
     }
 }
 
-/// =================================================================================================
-/// Now to the list of specific value types that are located in Python's heap to avoid repeated conversion overhead.
-
-impl IntoPy<PyObject> for &EntityType {
-    fn into_py(self, py: Python) -> PyObject {
-        self.to_str().into_py(py)
-    }
-}
+// =================================================================================================
+// Now to the list of specific value types that are located in Python's heap to avoid repeated conversion overhead.
 
 pymirror!(PyEntityId(module = "kgdata.core.models", name = "EntityId", cls = EntityId) {
     b(id), b(entity_type), c(numeric_id)

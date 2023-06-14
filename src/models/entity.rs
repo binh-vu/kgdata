@@ -3,8 +3,10 @@ use crate::error::KGDataError;
 use super::multilingual::{MultiLingualString, MultiLingualStringList};
 use super::value::Value;
 use hashbrown::HashMap;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[pyclass(module = "kgdata.core.models", name = "EntityType")]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum EntityType {
     #[serde(rename = "item")]
@@ -52,7 +54,8 @@ pub struct SiteLink {
     pub url: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[pyclass(module = "kgdata.core.models", name = "StatementRank")]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum StatementRank {
     #[serde(rename = "normal")]
     Normal,

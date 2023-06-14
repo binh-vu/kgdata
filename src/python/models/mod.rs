@@ -1,7 +1,8 @@
 use pyo3::prelude::*;
 
 pub mod entity;
-pub mod iterators;
+// pub mod iterators;
+pub mod multilingual;
 pub mod value;
 
 #[allow(dead_code)]
@@ -10,9 +11,10 @@ pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_submodule(submodule)?;
 
-    submodule.add_class::<self::entity::PyEntity>()?;
-    submodule.add_class::<self::entity::PyStatementView>()?;
-    submodule.add_class::<self::value::PyValueView>()?;
+    submodule.add_class::<self::entity::EntityView>()?;
+    submodule.add_class::<self::entity::StatementView>()?;
+    submodule.add_class::<self::entity::SiteLinkView>()?;
+    submodule.add_class::<self::value::ValueView>()?;
     submodule.add_class::<self::value::PyValue>()?;
     submodule.add_class::<self::value::PyEntityId>()?;
     submodule.add_class::<self::value::PyTime>()?;
