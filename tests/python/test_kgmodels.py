@@ -1,6 +1,8 @@
 from pathlib import Path
+
 import orjson
 import pytest
+
 from kgdata.core.models import Entity
 
 
@@ -13,7 +15,7 @@ def ser_wdentities(resource_dir: Path):
 def test_parse_entity(ser_wdentities):
     ents = [Entity.from_wdentity_json(line) for line in ser_wdentities]
     assert ents[0].id == "P4274"
-    assert sorted(ents[0].props_keys()) == [
+    assert sorted(ents[0].props.keys()) == [
         "P1629",
         "P17",
         "P1793",
@@ -24,6 +26,6 @@ def test_parse_entity(ser_wdentities):
         "P3254",
     ]
     assert (
-        ents[0].prop("P17")[0].value().to_string_repr()
+        ents[0].props["P17"][0].value.to_string_repr()
         == '{"entity-id":{"id":"Q948","entity-type":"item","numeric-id":948}}'
     )

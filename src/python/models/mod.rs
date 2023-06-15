@@ -17,6 +17,7 @@ pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_submodule(submodule)?;
 
     submodule.add_class::<self::entity::EntityView>()?;
+    submodule.add_class::<self::entity::PyEntity>()?;
     submodule.add_class::<self::entity::StatementView>()?;
     submodule.add_class::<self::entity::SiteLinkView>()?;
     submodule.add_class::<self::entity_metadata::PyEntityMetadata>()?;
