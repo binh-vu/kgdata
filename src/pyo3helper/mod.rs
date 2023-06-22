@@ -36,3 +36,9 @@ kgdata::pylist!(list_str_view(
     name = "ListStrView",
     item = String as kgdata::pyo3helper::PyStr
 ));
+
+kgdata::pyset!(set_str_view(
+    module = "kgdata.core.pyo3helper",
+    name = "SetStrView",
+    item = String as kgdata::pyo3helper::PyStr
+));

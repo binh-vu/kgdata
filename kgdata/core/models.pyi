@@ -9,7 +9,7 @@ from typing import (
     ValuesView,
 )
 
-from kgdata.core.base import RustMapView, RustVecView
+from kgdata.core.base import RustMapView, RustVecView, RustSetView
 
 V = TypeVar("V")
 
@@ -46,6 +46,22 @@ class EntityMetadata:
     subpropertyof: RustVecView[str]
 
     def get_all_aliases(self) -> list[str]: ...
+
+class Property:
+    id: str
+    label: MultiLingualStringView
+    description: MultiLingualStringView
+    aliases: MultiLingualStringListView
+    parents: RustVecView[str]
+    related_properties: RustVecView[str]
+    equivalent_properties: RustVecView[str]
+    subjects: RustVecView[str]
+    inverse_properties: RustVecView[str]
+    instanceof: RustVecView[str]
+    ancestors: RustSetView[str]
+
+    def is_object_property(self) -> bool: ...
+    def is_data_property(self) -> bool: ...
 
 class SiteLinkView:
     site: str
