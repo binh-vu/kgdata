@@ -24,5 +24,7 @@ fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(init_env_logger, m)?)?;
     python::models::register(py, m)?;
 
+    m.add_class::<self::pyo3helper::Map>()?;
+
     Ok(())
 }

@@ -145,12 +145,6 @@ class BaseDumpCollection(ABC):
         jobs = []
         for file in files:
             outfile = dump_dir / get_url_filename(file.url)
-            # outfile_successfile = outfile.parent / (outfile.name + ".success")
-            # if outfile_successfile.exists():
-            #     print("Skip download", outfile.name, "because it already exists")
-            #     continue
-
-            # print("Downloading", f"wget -c -O {str(outfile)} {file.url}")
             jobs.append((file.url, outfile))
         return jobs
 

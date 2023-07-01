@@ -4,6 +4,13 @@ use crate::pyo3helper::unsafe_update_view_lifetime_signature;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
+// pyview!(
+//     MultiLingualStringView(module = "kgdata.core.models", name = "MultiLingualStringView", cls = MultiLingualString) {
+//         b(lang: String),
+//         b(lang2value: std::collections::HashMap<String, String>),
+//     }
+// )
+
 #[pyclass(module = "kgdata.core.models", name = "MultiLingualStringView")]
 pub struct MultiLingualStringView(pub &'static MultiLingualString);
 

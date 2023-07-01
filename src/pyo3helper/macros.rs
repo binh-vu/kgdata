@@ -197,18 +197,13 @@ macro_rules! pymap {
 
             #[pyclass(module = $module, name = $name)]
             pub struct MapView(pub &'static hashbrown::HashMap<$key, $value>);
-            #[pyclass]
-            pub struct KeysView(pub hashbrown::hash_map::Keys<'static, $key, $value>);
-            #[pyclass]
-            pub struct ValuesView(pub hashbrown::hash_map::Values<'static, $key, $value>);
-            #[pyclass]
-            pub struct ItemsView(pub hashbrown::hash_map::Iter<'static, $key, $value>);
 
             impl MapView {
                 pub fn new(map: &hashbrown::HashMap<$key, $value>) -> Self {
                     Self(unsafe_update_view_lifetime_signature(map))
                 }
             }
+
             #[pymethods]
             impl MapView {
                 pub fn __iter__(&self) -> KeysView {
@@ -242,6 +237,45 @@ macro_rules! pymap {
                     }
                 }
             }
+
+            // #[pyclass(module = $module, name = "Map")]
+            // pub struct Map(pub hashbrown::HashMap<$key, $value>);
+
+            // impl Map {
+            //     pub fn new(map: hashbrown::HashMap<$key, $value>) -> Self {
+            //         Self(map)
+            //     }
+            // }
+
+            // #[pymethods]
+            // impl Map {
+            //     pub fn init(obj: &PyAny) -> PyResult<Self> {
+            //         if let Ok(map) = obj.downcast::<PyDict>() {
+            //             return Ok(Map(map
+            //                 .into_iter()
+            //                 .map(|x| {
+            //                     let (k, v) = x?;
+            //                     Ok((k.extract::<$key>()?, v.extract::<$value>()?))
+            //                 })
+            //                 .collect::<PyResult<_>>()?));
+            //         }
+
+            //         return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            //             "Expected a dictionary",
+            //         ));
+
+            //         // if let Ok(lst) = obj.downcast::<PyList>() {
+
+            //         // }
+            //     }
+            // }
+
+            #[pyclass]
+            pub struct KeysView(pub hashbrown::hash_map::Keys<'static, $key, $value>);
+            #[pyclass]
+            pub struct ValuesView(pub hashbrown::hash_map::Values<'static, $key, $value>);
+            #[pyclass]
+            pub struct ItemsView(pub hashbrown::hash_map::Iter<'static, $key, $value>);
 
             #[pymethods]
             impl KeysView {
