@@ -4,12 +4,15 @@ Benchmark different ways of calling Rust from Python. Implemented with help from
 For how to run, checkout `pybench.__main__.py`
 """
 
-import serde.jl, orjson
 from dataclasses import dataclass
-from typing import Iterator, Literal
-from pybench.helper import get_module
-from pybench.base import BenchSetup
 from pathlib import Path
+from typing import Iterator, Literal
+
+import orjson
+import serde.jl
+from pybench.base import BenchSetup
+from pybench.helper import get_module
+
 from kgdata.core.bench import EntityDesign1, EntityDesign2
 
 # fmt: off
@@ -103,3 +106,16 @@ class SetupArgs(BenchSetup):
                     method=method,
                     nrecords=default_cfg.get("nrecords", 100),
                 )
+
+
+if __name__ == "__main__":
+    from kgdata.wikidata.db import WikidataDB
+
+    db = WikidataDB(Path(__file__).parent.parent / "data/databases")
+    lst = []
+    for item in db.wdentities:
+        lst.append(item.to_dict())
+        if len(lst) > 100:
+            break
+
+    serde.jl.ser(lst, infile)

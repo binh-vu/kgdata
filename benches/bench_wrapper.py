@@ -3,9 +3,13 @@ from pathlib import Path
 from typing import Iterator
 
 import orjson
+import serde.byteline
 import serde.jl
+import serde.textline
 from pybench.base import BenchSetup
 from pybench.helper import get_module
+
+from kgdata.core import Test
 
 infile = Path(__file__).parent / "resources" / "entity_labels.jl.gz"
 
@@ -16,14 +20,96 @@ class PythonImpl:
         id: str
         label: dict[str, str]  # mapping from language to label
 
+        def test(self):
+            return 5
+
+        def test2(self):
+            return int(self.id[1:])
+
+        def test3(self):
+            return self.label
+
     def __init__(self, nrecords: int):
-        self.rawrecords = [
-            orjson.dumps({"id": x["id"], "label": x["label"]})
-            for x in serde.jl.deser(infile, nlines=nrecords)
-        ]
+        self.rawrecords = serde.textline.deser(infile)[:nrecords]
+        self.records = self.deser()
 
     def deser(self):
-        self.records = [self.Record(**orjson.loads(r)) for r in self.rawrecords]
+        return [self.Record(**orjson.loads(r)) for r in self.rawrecords]
+
+    def deser_get_id(self):
+        size = 0
+        for r in self.deser():
+            size += len(r.id)
+        return size
+
+    def get_id(self):
+        size = 0
+        for r in self.records:
+            size += len(r.id)
+        return size
+
+    def contains(self):
+        size = 0
+        for r in self.records:
+            if "en" in r.label:
+                size += 1
+        return size
+
+    def test(self):
+        for r in self.records:
+            r.test()
+
+    def test2(self):
+        size = 0
+        for r in self.records:
+            size += r.test2()
+        return size
+
+    def test3(self):
+        for r in self.records:
+            r.test3()
+
+
+class RustImpl:
+    def __init__(self, nrecords: int):
+        self.rawrecords = serde.byteline.deser(infile)[:nrecords]
+        self.records = self.deser()
+
+    def deser(self):
+        return [Test.deser(x) for x in self.rawrecords]
+
+    def deser_get_id(self):
+        size = 0
+        for r in self.deser():
+            size += len(r.id)
+        return size
+
+    def get_id(self):
+        size = 0
+        for r in self.records:
+            size += len(r.id)
+        return size
+
+    def contains(self):
+        size = 0
+        for r in self.records:
+            if "en" in r.label:
+                size += 1
+        return size
+
+    def test(self):
+        for r in self.records:
+            r.test()
+
+    def test2(self):
+        size = 0
+        for r in self.records:
+            size += r.test2()
+        return size
+
+    def test3(self):
+        for r in self.records:
+            r.test3()
 
 
 @dataclass
@@ -53,10 +139,10 @@ class SetupArgs(BenchSetup):
     @staticmethod
     def iter_configs(default_cfg: dict) -> Iterator[BenchSetup]:
         for clsname in [
+            "RustImpl",
             "PythonImpl",
-            # "RustImpl",
         ]:
-            for method in ["deser"]:
+            for method in ["test"]:
                 yield SetupArgs(
                     clsname=clsname,
                     method=method,
@@ -64,7 +150,7 @@ class SetupArgs(BenchSetup):
                 )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__2":
     # make data
     from kgdata.wikidata.db import WikidataDB
 

@@ -3,6 +3,7 @@ use pyo3::{
     prelude::*,
     types::{PyDict, PyList, PySet},
 };
+use serde::{Deserialize, Serialize};
 
 /// An zero-cost abstraction for automatically receiving HashSet<String> from Python.
 pub struct PySetString(pub HashSet<String>);
@@ -30,6 +31,7 @@ impl<'t> FromPyObject<'t> for PySetString {
 }
 
 #[pyclass]
+// #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Map(pub hashbrown::HashMap<String, String>);
 
 impl Map {

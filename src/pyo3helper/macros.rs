@@ -509,11 +509,14 @@ macro_rules! pymirror {
 
 /// Change signature of a reference from temporary to static. This is unsafe and
 /// only be used for temporary views that drop immediately after use.
+#[inline]
 pub fn unsafe_update_view_lifetime_signature<T: ?Sized>(val: &T) -> &'static T {
-    let ptr = val as *const T;
-    unsafe { &*ptr }
+    return unsafe { std::mem::transmute(val) };
+    // let ptr = val as *const T;
+    // unsafe { &*ptr }
 }
 
+#[inline]
 pub fn unsafe_update_mut_view_lifetime_signature<T: ?Sized>(val: &mut T) -> &'static mut T {
     let ptr = val as *mut T;
     unsafe { &mut *ptr }

@@ -17,3 +17,10 @@ kgdata::pyset!(set_str_view(
     name = "SetStrView",
     item = String as kgdata::pyo3helper::PyStrView
 ));
+
+kgdata::pymap!(map_str_view(
+    module = "kgdata.core.pyo3helper",
+    name = "MapStrView",
+    key = String as kgdata::pyo3helper::PyStrView,
+    value = String as kgdata::pyo3helper::PyStrView
+));

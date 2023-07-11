@@ -7,7 +7,10 @@ pub mod models;
 pub mod pyo3helper;
 pub mod python;
 
-use pyo3::prelude::*;
+use error::into_pyerr;
+use pyo3::{prelude::*, types::PyBytes};
+
+use serde::{Deserialize, Serialize};
 
 #[pyfunction]
 pub fn init_env_logger() -> PyResult<()> {
