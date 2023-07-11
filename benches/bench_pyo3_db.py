@@ -13,7 +13,7 @@ import serde.jl
 from pybench.base import BenchSetup
 from pybench.helper import get_module
 
-from kgdata.core.bench import EntityDesign1, EntityDesign2
+# from kgdata.core.bench import EntityDesign1, EntityDesign2
 
 # fmt: off
 infile = Path(__file__).parent / "resources" / "wdentities.jl.gz"
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
     db = WikidataDB(Path(__file__).parent.parent / "data/databases")
     lst = []
-    for item in db.wdentities:
+    for item in db.wdentities.values():
         lst.append(item.to_dict())
         if len(lst) > 100:
             break
