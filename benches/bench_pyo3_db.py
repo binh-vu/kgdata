@@ -8,103 +8,67 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Literal
 
+import kgbench
 import orjson
 import serde.jl
 from pybench.base import BenchSetup
 from pybench.helper import get_module
 
+from kgdata.wikidata.models import WDEntity
+
 # from kgdata.core.bench import EntityDesign1, EntityDesign2
 
 # fmt: off
-infile = Path(__file__).parent / "resources" / "wdentities.jl.gz"
-
-@dataclass
-class BasePythonObject:
-    id: str
-    entity_type: Literal["item", "property"]
-
-class Base:
-    def __init__(self, nrecords: int):
-        self.rawrecords = [orjson.dumps({'id': x['id'], 'entity_type': x['type']}) for x in serde.jl.deser(infile, nlines=nrecords)]
-        self.nrecords = nrecords
-        self.records: list = []
-        self.deser()
-    
-    def access_string(self):
-        count = 0
-        for r in self.records:
-            # count += sum(ord(c) for c in r.id)
-            count += len(r.id)
-        return count
-    
-    def deser(self):
-        raise NotImplementedError()
+WD_ENT_FILE = Path(__file__).parent / "resources" / "wdentities.jl"
 
 
-class PythonBaseline(Base):
+class Python:
+    @staticmethod
+    def read_entities(infile: str):
+        return serde.jl.deser(infile, cls = WDEntity)
 
-    def __init__(self, nrecords: int):
-        super().__init__(nrecords)
-        self.deser()
-    
-    def deser(self):
-        self.records = [BasePythonObject(**orjson.loads(r)) for r in self.rawrecords]
 
-class ReturnString(Base):
+class Rust:
+    read_entities = kgbench.read_entities
 
-    def __init__(self, nrecords: int):
-        super().__init__(nrecords)
-    
-    def deser(self):
-        self.records = [EntityDesign1.from_bytes(r) for r in self.rawrecords]
-
-class ReturnPyString(Base):
-
-    def __init__(self, nrecords: int):
-        super().__init__(nrecords)
-    
-    def deser(self):
-        self.records = [EntityDesign2.from_bytes(r) for r in self.rawrecords]
-
-# fmt: on
 
 
 @dataclass
-class SetupArgs(BenchSetup):
-    clsname: str
+class BenchPyo3(BenchSetup):
+    bench: str
     method: str
-    nrecords: int
 
     def get_bench_name(self):
-        return f"pyo3_{self.nrecords}"
+        return self.bench
 
-    def get_run_name(self) -> str:
-        return f"{self.clsname}_{self.method}_{self.nrecords}"
+    def get_method_name(self) -> str:
+        return self.method
 
     def get_setup(self):
         module = get_module(__file__)
         return "\n".join(
             [
-                f"from {module} import {self.clsname}",
-                f"obj = {self.clsname}({self.nrecords})",
+                f"from {module} import {self.method}, WD_ENT_FILE",
+                f"fn = {self.method}.{self.bench}",
+                f"wd_ent_file = str(WD_ENT_FILE)"
             ]
         )
 
     def get_statement(self):
-        return f"obj.{self.method}()"
+        if self.bench == "read_entities":
+            return "fn(wd_ent_file)"
+
+        assert False, f"Unknown bench: {self.bench}"
 
     @staticmethod
     def iter_configs(default_cfg: dict) -> Iterator[BenchSetup]:
-        for clsname in [
-            "PythonBaseline",
-            # "ReturnString",
-            "ReturnPyString",
+        for bench in [
+            "read_entities",
         ]:
-            for method in ["access_string"]:
-                yield SetupArgs(
-                    clsname=clsname,
+            for method in ["Rust", "Python"]:
+                yield BenchPyo3(
+                    bench=bench,
                     method=method,
-                    nrecords=default_cfg.get("nrecords", 100),
                 )
 
 
@@ -118,4 +82,4 @@ if __name__ == "__main__":
         if len(lst) > 100:
             break
 
-    serde.jl.ser(lst, infile)
+    serde.jl.ser(lst, WD_ENT_FILE)
