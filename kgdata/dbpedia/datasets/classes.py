@@ -6,8 +6,8 @@ from rdflib import OWL, RDF
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDataDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import Resource, ontology_dump
+from kgdata.models.multilingual import MultiLingualString
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikidata.models.multilingual import MultiLingualString
 from kgdata.wikidata.models.wdclass import WDClass
 
 

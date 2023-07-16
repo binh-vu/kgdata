@@ -1,13 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import List, Literal, Mapping, Set
+
+from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.wikidata.models.wdentity import WDEntity
-
-
-from kgdata.wikidata.models.multilingual import (
-    MultiLingualString,
-    MultiLingualStringList,
-)
 
 
 @dataclass

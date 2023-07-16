@@ -7,10 +7,7 @@ pub mod models;
 pub mod pyo3helper;
 pub mod python;
 
-use error::into_pyerr;
-use pyo3::{prelude::*, types::PyBytes};
-
-use serde::{Deserialize, Serialize};
+use pyo3::prelude::*;
 
 #[pyfunction]
 pub fn init_env_logger() -> PyResult<()> {
@@ -26,8 +23,6 @@ fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(init_env_logger, m)?)?;
     python::models::register(py, m)?;
-
-    m.add_class::<self::pyo3helper::Map>()?;
 
     Ok(())
 }

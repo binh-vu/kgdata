@@ -32,7 +32,6 @@ pywrap!(
 );
 pylist!(value_list_view(
     module = "kgdata.core.models",
-    name = "ValueListView",
     item = super::Value as super::ValueView
 ));
 

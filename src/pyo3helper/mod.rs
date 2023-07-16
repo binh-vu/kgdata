@@ -8,19 +8,16 @@ pub use self::strview::*;
 
 kgdata::pylist!(list_str_view(
     module = "kgdata.core.pyo3helper",
-    name = "ListStrView",
     item = String as kgdata::pyo3helper::PyStrView
 ));
 
 kgdata::pyset!(set_str_view(
     module = "kgdata.core.pyo3helper",
-    name = "SetStrView",
     item = String as kgdata::pyo3helper::PyStrView
 ));
 
 kgdata::pymap!(map_str_view(
     module = "kgdata.core.pyo3helper",
-    name = "MapStrView",
     key = String as kgdata::pyo3helper::PyStrView,
     value = String as kgdata::pyo3helper::PyStrView
 ));

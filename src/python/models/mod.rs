@@ -13,6 +13,7 @@ pub use self::entity::*;
 pub use self::entity_metadata::*;
 pub use self::multilingual::*;
 pub use self::property::*;
+pub use self::property::*;
 pub use self::value::*;
 
 #[allow(dead_code)]

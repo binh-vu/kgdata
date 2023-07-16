@@ -1,11 +1,9 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Dict, List, Literal, Optional
-from kgdata.wikidata.models.multilingual import (
-    MultiLingualString,
-    MultiLingualStringList,
-)
 
+from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.wikidata.models.wdstatement import WDStatement
 from kgdata.wikidata.models.wdvalue import WDValue
 
