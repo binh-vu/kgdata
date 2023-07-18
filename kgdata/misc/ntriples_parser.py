@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from __future__ import absolute_import, division, print_function
 
+from sm.misc.funcs import assert_not_null
+
 __doc__ = """
 N-Triples Parser
 License: GPL 2, W3C, BSD, or MIT
@@ -15,8 +17,6 @@ from rdflib.term import BNode as bNode
 from rdflib.term import Literal
 from rdflib.term import URIRef as URI
 from six import BytesIO, string_types, text_type, unichr
-
-__all__ = ["unquote", "uriquote", "Sink", "NTriplesParser"]
 
 # uriref = r'<([^:]+:[^\s"<>]*)>'
 uriref = r'<([^:]+:[^\t\n\r\f\v"<>]*)>'
@@ -214,11 +214,44 @@ class NTriplesParser(object):
         return False
 
 
-def ntriple_loads(line: str) -> tuple[str, str, str]:
+Triple = tuple[URI | bNode, URI, URI | Literal | bNode]
+
+
+def ntriple_loads(line: str) -> Triple:
     parser = NTriplesParser()
-    s, p, o = parser.parseline(line)
+    s, p, o = assert_not_null(parser.parseline(line))
     return (s, p, o)
 
 
 def ignore_comment(line: str):
     return not line.startswith("#")
+
+
+def node_to_dict(term: URI | bNode | Literal) -> dict:
+    if isinstance(term, URI):
+        return {"type": "URIRef", "value": str(term)}
+    if isinstance(term, bNode):
+        return {"type": "BNode", "value": str(term)}
+    if isinstance(term, Literal):
+        return {
+            "type": "Literal",
+            "value": term.value,
+            "datatype": term.datatype,
+            "language": term.language,
+        }
+
+    raise NotImplementedError()
+
+
+def node_from_dict(o: dict):
+    if o["type"] == "URIRef":
+        return URI(o["value"])
+    if o["type"] == "BNode":
+        return bNode(o["value"])
+    if o["type"] == "Literal":
+        return Literal(
+            o["value"],
+            o["language"],
+            URI(o["datatype"]) if o["datatype"] is not None else None,
+        )
+    raise NotImplementedError()

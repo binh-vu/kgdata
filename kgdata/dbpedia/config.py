@@ -30,6 +30,7 @@ class DBpediaDataDirCfg:
         self.ontology_dump = datadir / "ontology_dump"
         self.infobox_property_dump = datadir / "infobox_property_dump"
         self.classes = datadir / "classes"
+        self.properties = datadir / "properties"
 
         # mapping from dbpedia resource to wikipedia id
         self.page_id_dump = datadir / "page_id_dump"

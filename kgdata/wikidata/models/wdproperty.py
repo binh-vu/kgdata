@@ -1,69 +1,38 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Literal, Mapping, Set
+from typing import Literal, Mapping
 
-from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
+from kgdata.models.ont_property import OntologyProperty
 from kgdata.wikidata.models.wdentity import WDEntity
+
+# wikibase-lexeme, monolingualtext, wikibase-sense, url, wikibase-property,
+# wikibase-form, external-id, time, commonsMedia, quantity, wikibase-item, musical-notation,
+# tabular-data, string, math, geo-shape, globe-coordinate
+WDDataType = Literal[
+    "wikibase-lexeme",
+    "monolingualtext",
+    "wikibase-sense",
+    "url",
+    "wikibase-property",
+    "wikibase-form",
+    "external-id",
+    "time",
+    "commonsMedia",
+    "quantity",
+    "wikibase-item",
+    "musical-notation",
+    "tabular-data",
+    "string",
+    "math",
+    "geo-shape",
+    "globe-coordinate",
+]
 
 
 @dataclass
-class WDProperty:
-    __slots__ = (
-        "id",
-        "label",
-        "description",
-        "aliases",
-        "datatype",
-        "parents",
-        "related_properties",
-        "equivalent_properties",
-        "subjects",
-        "inverse_properties",
-        "instanceof",
-        "ancestors",
-    )
-    id: str
-    label: MultiLingualString
-    description: MultiLingualString
-    aliases: MultiLingualStringList
-    # wikibase-lexeme, monolingualtext, wikibase-sense, url, wikibase-property,
-    # wikibase-form, external-id, time, commonsMedia, quantity, wikibase-item, musical-notation,
-    # tabular-data, string, math, geo-shape, globe-coordinate
-    datatype: Literal[
-        "wikibase-lexeme",
-        "monolingualtext",
-        "wikibase-sense",
-        "url",
-        "wikibase-property",
-        "wikibase-form",
-        "external-id",
-        "time",
-        "commonsMedia",
-        "quantity",
-        "wikibase-item",
-        "musical-notation",
-        "tabular-data",
-        "string",
-        "math",
-        "geo-shape",
-        "globe-coordinate",
-    ]
-    parents: List[str]
-    related_properties: List[str]
-    equivalent_properties: List[str]
-    subjects: List[str]
-    inverse_properties: List[str]
-    instanceof: List[str]
-    ancestors: Set[str]
-
-    @staticmethod
-    def from_dict(o):
-        o["label"] = MultiLingualString(**o["label"])
-        o["description"] = MultiLingualString(**o["description"])
-        o["aliases"] = MultiLingualStringList(**o["aliases"])
-        o["ancestors"] = set(o["ancestors"])
-        return WDProperty(**o)
+class WDProperty(OntologyProperty):
+    datatype: WDDataType
 
     @staticmethod
     def from_entity(ent: WDEntity):
@@ -117,52 +86,41 @@ class WDProperty:
             ancestors=set(),
         )
 
-    def get_ancestors(self, distance: int, props: Mapping[str, WDProperty]) -> set[str]:
-        output = set(self.parents)
-        if distance == 1:
-            return output
-        for parent in self.parents:
-            output.update(props[parent].get_ancestors(distance - 1, props))
-        return output
-
-    def get_distance(self, ancestor: str, props: Mapping[str, WDProperty]) -> int:
-        """Get distance from this property to its ancestor property. Return -1 if ancestor is not an ancestor of this property."""
-        if ancestor not in self.ancestors:
-            return -1
-
-        if ancestor in self.parents:
-            return 1
-
-        return 1 + min(
-            d
-            for parent in self.parents
-            if (d := props[parent].get_distance(ancestor, props)) != -1
-        )
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "label": self.label.to_dict(),
-            "description": self.description.to_dict(),
-            "datatype": self.datatype,
-            "aliases": self.aliases.to_dict(),
-            "parents": self.parents,
-            "related_properties": self.related_properties,
-            "equivalent_properties": self.equivalent_properties,
-            "subjects": self.subjects,
-            "inverse_properties": self.inverse_properties,
-            "instanceof": self.instanceof,
-            "ancestors": list(self.ancestors),
-        }
-
     def is_object_property(self):
-        return self.datatype == "wikibase-item"
+        return self.datatype in {
+            "wikibase-item",
+            "wikibase-property",
+            "wikibase-lexeme",
+            "wikibase-sense",
+        }
 
     def is_data_property(self):
         return not self.is_object_property()
 
     def is_transitive(self):
         return "Q18647515" in self.instanceof
+
+    def to_base(self):
+        return OntologyProperty(
+            id=self.id,
+            label=self.label,
+            description=self.description,
+            aliases=self.aliases,
+            datatype=normalize_wikidata_datatype(self.datatype),
+            parents=self.parents,
+            related_properties=self.related_properties,
+            equivalent_properties=self.equivalent_properties,
+            subjects=self.subjects,
+            inverse_properties=self.inverse_properties,
+            instanceof=self.instanceof,
+            ancestors=self.ancestors,
+        )
+
+
+def normalize_wikidata_datatype(datatype: WDDataType) -> str:
+    if datatype == "wikibase-property" or datatype == "wikibase-item":
+        return "http://www.w3.org/2001/XMLSchema#anyURI"
+    return datatype
 
 
 # domains of a property, mapping from the class id to the number of instances of the class having this property
