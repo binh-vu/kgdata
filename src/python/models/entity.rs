@@ -50,28 +50,24 @@ pyview!(
 
 pymap!(sitelink_map_view(
     module = "kgdata.core.models",
-    name = "SiteLinkMapView",
-    key = String as crate::pyo3helper::PyStr,
+    key = String as crate::pyo3helper::PyStrView,
     value = super::SiteLink as super::SiteLinkView
 ));
 
 pylist!(statement_list_view(
     module = "kgdata.core.models",
-    name = "StatementListView",
     item = super::Statement as super::StatementView
 ));
 
 pymap!(prop_map_view(
     module = "kgdata.core.models",
-    name = "PropMapView",
-    key = String as crate::pyo3helper::PyStr,
+    key = String as crate::pyo3helper::PyStrView,
     value = Vec<super::Statement> as super::statement_list_view::ListView
 ));
 
 pymap!(qualifier_map_view(
     module = "kgdata.core.models",
-    name = "QualifierMapView",
-    key = String as crate::pyo3helper::PyStr,
+    key = String as crate::pyo3helper::PyStrView,
     value = Vec<super::Value> as super::value_list_view::ListView
 ));
 

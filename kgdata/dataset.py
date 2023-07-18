@@ -4,14 +4,15 @@ import glob
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Generic, Literal, Optional, TypeVar, Union, cast
-from loguru import logger
 
+import orjson
 import serde.byteline
 import serde.textline
-from hugedict.misc import Chain2, identity
+from loguru import logger
 from pyspark import RDD
 from tqdm import tqdm
 
+from hugedict.misc import Chain2, identity
 from kgdata.spark import get_spark_context
 
 V = TypeVar("V")
@@ -157,7 +158,22 @@ class Dataset(Generic[V]):
             file_pattern=self.file_pattern,
             deserialize=Chain2(func, self.deserialize),
             prefilter=self.prefilter,
+            postfilter=self.postfilter,
             is_deser_identity=False,
+        )
+
+    def filter(self, func: Callable[[V], bool]) -> Dataset[V]:
+        """Filter record by a function.
+
+        Args:
+            func: filter function
+        """
+        return Dataset(
+            file_pattern=self.file_pattern,
+            deserialize=self.deserialize,
+            prefilter=self.prefilter,
+            postfilter=Chain2(func, self.postfilter),
+            is_deser_identity=self.is_deser_identity,
         )
 
     @staticmethod

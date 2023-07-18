@@ -1,9 +1,9 @@
 """Locations of DBpedia dumps and datasets on disk."""
 
 from dataclasses import dataclass
+from glob import glob
 from pathlib import Path
 from typing import Union
-from glob import glob
 
 
 class DBpediaDataDirCfg:
@@ -27,12 +27,19 @@ class DBpediaDataDirCfg:
         self.datadir = datadir
 
         self.dumps = datadir / "dumps"
+        self.ontology_dump = datadir / "ontology_dump"
         self.infobox_property_dump = datadir / "infobox_property_dump"
+        self.classes = datadir / "classes"
+        self.properties = datadir / "properties"
+
         # mapping from dbpedia resource to wikipedia id
         self.page_id_dump = datadir / "page_id_dump"
         self.wikilink_dump = datadir / "wikilink_dump"
 
         self.wikilinks = datadir / "wikilinks"
+
+    def get_ontology_dump_file(self):
+        return self._get_file(self.dumps / "ontology_tag=sorted_type=parsed.nt")
 
     def get_infobox_property_dump_file(self, lang: str = "en"):
         return self._get_file(self.dumps / f"infobox-properties_lang={lang}.ttl.bz2")

@@ -1,12 +1,11 @@
 from __future__ import annotations
-import orjson
+
 from dataclasses import dataclass
 from typing import Dict, List, Literal, Optional
-from kgdata.wikidata.models.multilingual import (
-    MultiLingualString,
-    MultiLingualStringList,
-)
 
+import orjson
+
+from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.wikidata.models.wdstatement import WDStatement
 from kgdata.wikidata.models.wdvalue import WDValue
 

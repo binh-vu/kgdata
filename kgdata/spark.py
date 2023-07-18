@@ -1,29 +1,29 @@
 """Utility functions for Apache Spark."""
 
-from dataclasses import dataclass
-import math
-import random
 import glob
-import orjson
+import math
 import os
+import random
 import shutil
+from dataclasses import dataclass
 from operator import add, itemgetter
 from pathlib import Path
 from typing import (
     Any,
+    Callable,
     Generic,
     Iterable,
-    Sequence,
-    TypeVar,
-    Callable,
     List,
-    Union,
-    Tuple,
     Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
 )
-from pyspark import RDD, SparkContext, SparkConf
-from loguru import logger
 
+import orjson
+from loguru import logger
+from pyspark import RDD, SparkConf, SparkContext
 
 # SparkContext singleton
 _sc = None
@@ -123,7 +123,7 @@ def does_result_dir_exist(
 
     Args:
         dpath (Union[str, Path]): path to the result directory
-        allow_override (bool, optional): allow override the result directory. Defaults to True.
+        allow_override (bool, optional): allow override the result directory if the result is not success. Defaults to True.
     """
     dpath = str(dpath)
     if not os.path.exists(dpath):

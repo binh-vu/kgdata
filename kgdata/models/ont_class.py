@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Mapping
+
+from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
+
+
+@dataclass
+class OntologyClass:
+    __slots__ = (
+        "id",
+        "label",
+        "description",
+        "aliases",
+        "parents",
+        "properties",
+        "different_froms",
+        "equivalent_classes",
+        "ancestors",
+    )
+    id: str
+    label: MultiLingualString
+    description: MultiLingualString
+    aliases: MultiLingualStringList
+    parents: list[str]
+    # properties of a type, "P1963"
+    properties: list[str]
+    different_froms: list[str]
+    equivalent_classes: list[str]
+    ancestors: set[str]
+
+    @classmethod
+    def from_dict(cls, obj):
+        obj["label"] = MultiLingualString(**obj["label"])
+        obj["description"] = MultiLingualString(**obj["description"])
+        obj["aliases"] = MultiLingualStringList(**obj["aliases"])
+        obj["ancestors"] = set(obj["ancestors"])
+        return cls(**obj)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "label": self.label.to_dict(),
+            "description": self.description.to_dict(),
+            "aliases": self.aliases.to_dict(),
+            "parents": self.parents,
+            "properties": self.properties,
+            "different_froms": self.different_froms,
+            "equivalent_classes": self.equivalent_classes,
+            "ancestors": list(self.ancestors),
+        }
+
+    def get_ancestors(
+        self, distance: int, classes: Mapping[str, OntologyClass]
+    ) -> set[str]:
+        """Retrieve all ancestors of this class within a given distance"""
+        output = set(self.parents)
+        if distance == 1:
+            return output
+        for parent in self.parents:
+            output.update(classes[parent].get_ancestors(distance - 1, classes))
+        return output
+
+    def get_distance(self, ancestor: str, classes: Mapping[str, OntologyClass]) -> int:
+        """Get distance from this class to its ancestor class. Return -1 if ancestor is not an ancestor of this class."""
+        if ancestor not in self.ancestors:
+            return -1
+
+        if ancestor in self.parents:
+            return 1
+
+        return 1 + min(
+            d
+            for parent in self.parents
+            if (d := classes[parent].get_distance(ancestor, classes)) != -1
+        )

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
+from glob import glob
 from pathlib import Path
 from typing import Union
-from glob import glob
 
 
 class WikipediaConfig:
