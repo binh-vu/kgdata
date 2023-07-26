@@ -39,8 +39,11 @@ List of available databases can be found by running ``python -m kgdata.dbpedia``
 DBpedia dumps
 --------------
 
-The dumps are available at `databus.dbpedia.org <https://databus.dbpedia.org/>`__.
+The dumps are available at `databus.dbpedia.org <https://databus.dbpedia.org/>`__. DBpedia snapshot can be found in here: `dbpedia snapshot 2022-12 https://databus.dbpedia.org/dbpedia/collections/dbpedia-snapshot-2022-12`__
 
 We need the following dumps:
 
-1. ontology dump (e.g., `ontology_type=parsed.ttl https://databus.dbpedia.org/ontologies/dbpedia.org/ontology/2023.05.12-020000/ontology_type=parsed.ttl`__): needed to extract classes and properties.
+1. ontology dump (e.g., `ontology_type=parsed.ttl https://databus.dbpedia.org/ontologies/dbpedia.org/ontology/2023.05.12-020000/ontology_type=parsed.ttl`__): needed to extract classes and properties. Note: somehow the Ontology-DEV version contains more information similar to the DBpedia endpoint than the release version.
+2. `mapping extractor dumps https://databus.dbpedia.org/dbpedia/mappings`__
+3. `generic extractor dumps https://databus.dbpedia.org/dbpedia/generic`__
+4. `redirect dumps https://databus.dbpedia.org/dbpedia/generic/redirects`__

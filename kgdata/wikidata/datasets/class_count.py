@@ -1,16 +1,17 @@
-from typing import Tuple
 from operator import add
+from typing import Tuple
+
+import orjson
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, saveAsSingleTextFile
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.classes import classes
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_types import entity_types, get_instanceof
-import orjson
 
 
 def class_count(lang="en") -> Dataset[Tuple[str, int]]:
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.class_count):
         ds = entity_types(lang)

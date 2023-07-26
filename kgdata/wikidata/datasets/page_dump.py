@@ -2,17 +2,15 @@ from bz2 import BZ2File
 from gzip import GzipFile
 from typing import BinaryIO, Union
 
-from kgdata.spark import (
-    get_spark_context,
-)
-from kgdata.splitter import split_a_file
-from kgdata.wikidata.config import WDDataDirCfg
 from kgdata.dataset import Dataset
+from kgdata.spark import get_spark_context
+from kgdata.splitter import split_a_file
+from kgdata.wikidata.config import WikidataDirCfg
 
 
 def page_dump() -> Dataset[str]:
     """mapping from Wikidata internal page id and Wikidata entity id (possible old id)"""
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     split_a_file(
         infile=cfg.get_page_dump_file(),
@@ -43,5 +41,5 @@ def _record_postprocess(line: bytes):
 
 
 if __name__ == "__main__":
-    WDDataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
+    WikidataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
     page_dump()

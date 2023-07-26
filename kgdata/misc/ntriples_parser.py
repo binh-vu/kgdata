@@ -9,14 +9,11 @@ License: GPL 2, W3C, BSD, or MIT
 Author: Sean B. Palmer, inamidst.com
 """
 
-import codecs
 import re
 
 from rdflib.compat import decodeUnicodeEscape
-from rdflib.term import BNode as bNode
-from rdflib.term import Literal
-from rdflib.term import URIRef as URI
-from six import BytesIO, string_types, text_type, unichr
+from rdflib.term import _XSD_DATE, BNode, Literal, URIRef, _toPythonMapping, parse_date
+from six import text_type, unichr
 
 # uriref = r'<([^:]+:[^\s"<>]*)>'
 uriref = r'<([^:]+:[^\t\n\r\f\v"<>]*)>'
@@ -34,6 +31,17 @@ r_literal = re.compile(literal + litinfo)
 
 bufsiz = 2048
 validate = False
+
+
+def parse_iso8601_date(datestring):
+    try:
+        return parse_date(datestring, expanded=True)
+    except ValueError:
+        # silent error if the year is negative.
+        return None
+
+
+_toPythonMapping[_XSD_DATE] = parse_iso8601_date
 
 
 class Node(text_type):
@@ -175,7 +183,7 @@ class NTriplesParser(object):
             uri = self.eat(r_uriref).group(1)
             uri = unquote(uri)
             uri = uriquote(uri)
-            return URI(uri)
+            return URIRef(uri)
         return False
 
     def nodeid(self):
@@ -185,10 +193,10 @@ class NTriplesParser(object):
             new_id = self._bnode_ids.get(bnode_id, None)
             if new_id is not None:
                 # Re-map to id specfic to this doc
-                return bNode(new_id)
+                return BNode(new_id)
             else:
                 # Replace with freshly-generated document-specific BNode id
-                bnode = bNode()
+                bnode = BNode()
                 # Store the mapping
                 self._bnode_ids[bnode_id] = bnode
                 return bnode
@@ -204,7 +212,7 @@ class NTriplesParser(object):
             if dtype:
                 dtype = unquote(dtype)
                 dtype = uriquote(dtype)
-                dtype = URI(dtype)
+                dtype = URIRef(dtype)
             else:
                 dtype = None
             if lang and dtype:
@@ -214,7 +222,7 @@ class NTriplesParser(object):
         return False
 
 
-Triple = tuple[URI | bNode, URI, URI | Literal | bNode]
+Triple = tuple[URIRef | BNode, URIRef, URIRef | Literal | BNode]
 
 
 def ntriple_loads(line: str) -> Triple:
@@ -227,15 +235,18 @@ def ignore_comment(line: str):
     return not line.startswith("#")
 
 
-def node_to_dict(term: URI | bNode | Literal) -> dict:
-    if isinstance(term, URI):
+def node_to_dict(term: URIRef | BNode | Literal) -> dict:
+    if isinstance(term, URIRef):
         return {"type": "URIRef", "value": str(term)}
-    if isinstance(term, bNode):
+    if isinstance(term, BNode):
         return {"type": "BNode", "value": str(term)}
     if isinstance(term, Literal):
         return {
             "type": "Literal",
-            "value": term.value,
+            # literal store the original value as a string
+            # storing raw value as the library reparses everytime and so we can handle unparsable
+            # such as -0411-06-09 (negative year is not supported in Python)
+            "value": str(term),
             "datatype": term.datatype,
             "language": term.language,
         }
@@ -245,13 +256,13 @@ def node_to_dict(term: URI | bNode | Literal) -> dict:
 
 def node_from_dict(o: dict):
     if o["type"] == "URIRef":
-        return URI(o["value"])
+        return URIRef(o["value"])
     if o["type"] == "BNode":
-        return bNode(o["value"])
+        return BNode(o["value"])
     if o["type"] == "Literal":
         return Literal(
             o["value"],
             o["language"],
-            URI(o["datatype"]) if o["datatype"] is not None else None,
+            URIRef(o["datatype"]) if o["datatype"] is not None else None,
         )
     raise NotImplementedError()

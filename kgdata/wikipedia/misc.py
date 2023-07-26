@@ -2,11 +2,12 @@ from typing import Optional
 from urllib.parse import unquote, urlparse
 
 
-def get_title_from_url(url: str) -> str:
+def get_title_from_url(url: str, prefix: str = "/wiki/") -> str:
     """This function converts a wikipedia page/article's URL to its title. The function is tested manually in `20200425-wikipedia-links` notebook in section 2.2.
 
     Args:
         url: A wikipedia page/article's URL.
+        prefix: The prefix of the URL that is removed to get the title.
 
     Returns:
         A wikipedia page/article's title.
@@ -31,11 +32,11 @@ def get_title_from_url(url: str) -> str:
     else:
         path = urlparse(url).path
 
-    if not path.startswith("/wiki/"):
+    if not path.startswith(prefix):
         return ""
 
-    assert path.startswith("/wiki/"), path
-    path = path[6:]
+    assert path.startswith(prefix), path
+    path = path[len(prefix) :]
     title = unquote(path).replace("_", " ")
     return title.strip()
 

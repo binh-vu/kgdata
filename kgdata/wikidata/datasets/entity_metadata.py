@@ -1,11 +1,14 @@
 import os
 from functools import partial
 from pathlib import Path
-from typing import Union, cast, Set, Dict
+from typing import Dict, Set, Union, cast
 
+import orjson
+import sm.misc as M
 from kgdata.config import WIKIDATA_DIR
+from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import deser_entity, entities
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids
@@ -13,17 +16,14 @@ from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.models.wdentity import WDEntity, WDValue
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 from loguru import logger
-import orjson
-import sm.misc as M
-from pyspark.rdd import RDD
 from pyspark import Broadcast
-from kgdata.dataset import Dataset
+from pyspark.rdd import RDD
 
 
 def entity_metadata(lang: str = "en") -> Dataset[WDEntityMetadata]:
     """Keep all data of the entities but its properties (set it to empty dictionary)."""
 
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
     outdir = cfg.entity_metadata.parent / (cfg.entity_metadata.name + "_" + lang)
 
     if not does_result_dir_exist(outdir):

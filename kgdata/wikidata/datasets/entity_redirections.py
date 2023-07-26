@@ -1,25 +1,23 @@
 from __future__ import annotations
+
+import shutil
 from collections import defaultdict
 from operator import itemgetter
-import shutil
 from typing import Dict, List, Tuple, Union
 
+import orjson
+import serde.csv
+import serde.textline
 from kgdata.config import WIKIDATA_DIR
-from kgdata.spark import (
-    get_spark_context,
-    saveAsSingleTextFile,
-)
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.dataset import Dataset
+from kgdata.spark import get_spark_context, saveAsSingleTextFile
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids, is_entity_id
 from kgdata.wikidata.datasets.entity_redirection_dump import entity_redirection_dump
-from kgdata.dataset import Dataset
-from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.datasets.page_ids import page_ids, parse_sql_values
-import orjson
+from kgdata.wikidata.models.wdentity import WDEntity
 from pyspark.rdd import RDD
-import serde.csv
-import serde.textline
 from tqdm import tqdm
 
 
@@ -35,7 +33,7 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
     Returns:
         Dataset[tuple[str, str]]
     """
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not (cfg.entity_redirections / "raw_redirections.tsv").exists():
         # mapping from page id to the latest entity id

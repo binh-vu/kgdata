@@ -1,21 +1,22 @@
 import gzip
-from kgdata.dataset import Dataset
-import orjson
 from collections import deque
-from typing import List, Dict
-import sm.misc as M
-from tqdm import tqdm
-from kgdata.wikidata.models import WDClass
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.entities import entities, ser_entity
-from kgdata.splitter import split_a_list
-from kgdata.wikidata.models.wdentity import WDEntity
+from typing import Dict, List
+
+import orjson
 import serde.jl
+import sm.misc as M
+from kgdata.dataset import Dataset
+from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kgdata.splitter import split_a_list
+from kgdata.wikidata.config import WikidataDirCfg
+from kgdata.wikidata.datasets.entities import entities, ser_entity
+from kgdata.wikidata.models import WDClass
+from kgdata.wikidata.models.wdentity import WDEntity
+from tqdm import tqdm
 
 
 def classes(lang: str = "en") -> Dataset[WDClass]:
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.classes / "ids"):
         (

@@ -25,12 +25,12 @@ Examples::
 """
 
 from importlib import import_module
-from typing_extensions import Required
+
 import click
-from kgdata.wikipedia.config import WPDataDirConfig
-from kgdata.wikidata.config import WDDataDirCfg
-import kgdata.wikipedia.datasets
+from kgdata.wikidata.config import WikidataDirCfg
+from kgdata.wikipedia.config import WikipediaDirCfg
 from loguru import logger
+from typing_extensions import Required
 
 
 @click.command("Generate a specific dataset")
@@ -40,10 +40,10 @@ from loguru import logger
 def main(wp_dir: str, wd_dir: str, dataset: str):
     logger.info("Wikipedia directory: {}", wp_dir)
 
-    WPDataDirConfig.init(wp_dir)
+    WikipediaDirCfg.init(wp_dir)
     if wd_dir.strip() != "":
         logger.info("Wikidata directory: {}", wd_dir)
-        WDDataDirCfg.init(wd_dir)
+        WikidataDirCfg.init(wd_dir)
 
     module = import_module(f"kgdata.wikipedia.datasets.{dataset}")
     getattr(module, dataset)()

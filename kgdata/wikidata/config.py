@@ -1,12 +1,12 @@
 """Locations of Wikidata dumps and datasets on disk."""
 
 from dataclasses import dataclass
+from glob import glob
 from pathlib import Path
 from typing import Union
-from glob import glob
 
 
-class WDDataDirCfg:
+class WikidataDirCfg:
     """Locations of Wikidata dumps and datasets on disk"""
 
     instance = None
@@ -61,12 +61,12 @@ class WDDataDirCfg:
 
     @staticmethod
     def get_instance():
-        if WDDataDirCfg.instance is None:
+        if WikidataDirCfg.instance is None:
             raise Exception("The config object must be initialized before use")
-        return WDDataDirCfg.instance
+        return WikidataDirCfg.instance
 
     @staticmethod
     def init(datadir: Union[str, Path]):
         """Initialize or update the config object to use the given directory"""
-        WDDataDirCfg.instance = WDDataDirCfg(Path(datadir))
-        return WDDataDirCfg.instance
+        WikidataDirCfg.instance = WikidataDirCfg(Path(datadir))
+        return WikidataDirCfg.instance

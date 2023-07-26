@@ -5,9 +5,8 @@ from dataclasses import dataclass
 from typing import Iterable
 
 import orjson
-
 from kgdata.dataset import Dataset
-from kgdata.dbpedia.config import DBpediaDataDirCfg
+from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
@@ -21,7 +20,7 @@ def ontology_dump() -> Dataset[RDFResource]:
     Returns:
         Dataset[dict]
     """
-    cfg = DBpediaDataDirCfg.get_instance()
+    cfg = DBpediaDirCfg.get_instance()
 
     outdir = cfg.ontology_dump / "step2"
 

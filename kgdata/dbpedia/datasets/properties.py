@@ -4,15 +4,14 @@ import re
 from urllib.parse import urlparse
 
 import orjson
-from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
-
 from kgdata.dataset import Dataset
-from kgdata.dbpedia.config import DBpediaDataDirCfg
+from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import RDFResource, ontology_dump
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
 from kgdata.spark import does_result_dir_exist
+from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
 from sm.misc.funcs import assert_not_null
 
 rdf_type = str(RDF.type)
@@ -22,7 +21,7 @@ rdfs_subpropertyof = str(RDFS.subPropertyOf)
 
 
 def properties() -> Dataset[OntologyProperty]:
-    cfg = DBpediaDataDirCfg.get_instance()
+    cfg = DBpediaDirCfg.get_instance()
     outdir = cfg.properties
 
     if not does_result_dir_exist(outdir):
@@ -45,7 +44,10 @@ def properties() -> Dataset[OntologyProperty]:
 
 
 def is_prop(resource: RDFResource) -> bool:
-    return RDF.Property in resource.props.get(rdf_type, [])
+    return (
+        RDF.Property in resource.props.get(rdf_type, [])
+        or rdfs_subpropertyof in resource.props
+    )
 
 
 def to_prop(resource: RDFResource, default_lang: str = "en") -> OntologyProperty:
@@ -114,7 +116,9 @@ ID_TO_LANGUAGE = {
 }
 
 
-def extract_label(resource: RDFResource) -> MultiLingualString:
+def extract_label(
+    resource: RDFResource, dump_lang: str = "en", strict: bool = True
+) -> MultiLingualString:
     """Extract label of a resource and guess its default language."""
     default_label = urlparse(resource.id).path.split("/ontology/", 1)[1]
     default_label = re.sub(
@@ -137,14 +141,18 @@ def extract_label(resource: RDFResource) -> MultiLingualString:
         if len(match_langs) == 1:
             default_lang = match_langs[0]
         else:
-            if "en" in match_langs:
-                default_lang = "en"
-            elif "en" in label.lang2value:
-                default_lang = "en"
+            if dump_lang in match_langs:
+                default_lang = dump_lang
+            elif dump_lang in label.lang2value:
+                default_lang = dump_lang
             elif resource.id in ID_TO_LANGUAGE:
                 default_lang = ID_TO_LANGUAGE[resource.id]
-            else:
+            elif strict:
                 raise NotImplementedError(resource.id)
+            else:
+                default_lang = dump_lang
+                if default_lang not in label.lang2value:
+                    label.lang2value[default_lang] = ""
         label.lang = default_lang
 
     return label

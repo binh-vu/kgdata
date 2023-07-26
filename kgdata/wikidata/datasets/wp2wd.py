@@ -1,15 +1,16 @@
-from kgdata.dataset import Dataset
-import orjson
 from typing import Tuple
+
+import orjson
+from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
 def wp2wd(lang="en") -> Dataset[Tuple[str, str]]:
     """Get alignments between wiki article titles and wikidata qnode."""
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
     site = lang + "wiki"
 
     if not does_result_dir_exist(cfg.wp2wd / lang):

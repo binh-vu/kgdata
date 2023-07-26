@@ -9,7 +9,7 @@ class WikipediaConfig:
     WikiURL = "https://en.wikipedia.org"
 
 
-class WPDataDirConfig:
+class WikipediaDirCfg:
     instance = None
 
     def __init__(self, datadir: Path) -> None:
@@ -44,12 +44,12 @@ class WPDataDirConfig:
 
     @staticmethod
     def get_instance():
-        if WPDataDirConfig.instance is None:
+        if WikipediaDirCfg.instance is None:
             raise Exception("The config object must be initialized before use")
-        return WPDataDirConfig.instance
+        return WikipediaDirCfg.instance
 
     @staticmethod
     def init(datadir: Union[str, Path]):
         """Initialize or update the config object to use the given directory"""
-        WPDataDirConfig.instance = WPDataDirConfig(Path(datadir))
-        return WPDataDirConfig.instance
+        WikipediaDirCfg.instance = WikipediaDirCfg(Path(datadir))
+        return WikipediaDirCfg.instance

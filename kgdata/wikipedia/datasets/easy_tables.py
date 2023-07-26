@@ -1,13 +1,14 @@
 from dataclasses import dataclass
-from typing import Callable, List
 from functools import partial
+from typing import Callable, List
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikipedia.config import WPDataDirConfig
+from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.linked_relational_tables import (
+    deser_linked_tables,
     linked_relational_tables,
     ser_linked_tables,
-    deser_linked_tables,
 )
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable
 from rsoup.core import Table
@@ -17,7 +18,7 @@ def easy_tables() -> Dataset[LinkedHTMLTable]:
     """Tables that can be labeled automatically easily.
     The table is easy or not is determined by :py:func:`kgdata.wikipedia.easy_table.is_easy_table`.
     """
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
 
     # step 1: generate stats of which tables passed which tests
 

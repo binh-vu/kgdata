@@ -1,13 +1,13 @@
-from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_table
+import sm.misc as M
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikipedia.config import WPDataDirConfig
+from kgdata.wikipedia.config import WikipediaDirCfg
+from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_table
 from rsoup.core import Table
-import sm.misc as M
 
 
 def relational_tables() -> Dataset[Table]:
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.relational_tables):
         (
@@ -50,5 +50,5 @@ def is_relational_table(tbl: Table) -> bool:
 
 
 if __name__ == "__main__":
-    WPDataDirConfig.init("/nas/ckgfs/users/binhvu/wikipedia/20220420")
+    WikipediaDirCfg.init("/nas/ckgfs/users/binhvu/wikipedia/20220420")
     relational_tables()

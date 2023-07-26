@@ -1,13 +1,13 @@
-from kgdata.wikidata.datasets.wp2wd import wp2wd
-from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
-from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable, WikiLink
+from importlib import import_module
 from typing import Dict, Iterable, List, Literal, Tuple, Union
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikipedia.config import WPDataDirConfig
-
-from rsoup.core import Table, Cell
-from importlib import import_module
+from kgdata.wikidata.datasets.wp2wd import wp2wd
+from kgdata.wikipedia.config import WikipediaDirCfg
+from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
+from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable, WikiLink
+from rsoup.core import Cell, Table
 
 
 def linked_tables(
@@ -19,7 +19,7 @@ def linked_tables(
         table_dataset_name: the table dataset to convert
         lang: the language of Wikidata
     """
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
 
     if table_dataset_name == "relational_tables":
         outdir = cfg.linked_relational_tables

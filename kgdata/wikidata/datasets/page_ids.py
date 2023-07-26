@@ -2,10 +2,11 @@ import csv
 import os
 from operator import itemgetter
 from typing import Tuple
-from kgdata.spark import does_result_dir_exist, get_spark_context, ensure_unique_records
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.entity_ids import is_entity_id
+
 from kgdata.dataset import Dataset
+from kgdata.spark import does_result_dir_exist, ensure_unique_records, get_spark_context
+from kgdata.wikidata.config import WikidataDirCfg
+from kgdata.wikidata.datasets.entity_ids import is_entity_id
 from kgdata.wikidata.datasets.page_dump import page_dump
 
 
@@ -18,7 +19,7 @@ def page_ids() -> Dataset[Tuple[str, str]]:
     Returns:
         Dataset[tuple[str, str]]
     """
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.page_ids):
         (

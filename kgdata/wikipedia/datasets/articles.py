@@ -1,18 +1,19 @@
+import xml.etree.ElementTree as ET
 from bz2 import BZ2File
 from gzip import GzipFile
 from typing import BinaryIO, Union
+
 import orjson
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.splitter import split_a_file
-from kgdata.wikipedia.config import WPDataDirConfig
+from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.models.page_article import WikiPageArticle
-import xml.etree.ElementTree as ET
 
 
 def articles() -> Dataset[WikiPageArticle]:
     """Extract articles from XML dumps"""
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.articles):
         split_a_file(

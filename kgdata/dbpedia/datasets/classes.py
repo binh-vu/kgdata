@@ -4,10 +4,8 @@ import re
 from urllib.parse import urlparse
 
 import orjson
-from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
-
 from kgdata.dataset import Dataset
-from kgdata.dbpedia.config import DBpediaDataDirCfg
+from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import RDFResource, ontology_dump
 from kgdata.dbpedia.datasets.properties import (
     as_multilingual,
@@ -20,6 +18,7 @@ from kgdata.dbpedia.datasets.properties import (
 from kgdata.models.multilingual import MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.spark import does_result_dir_exist
+from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
 
 rdfs_subclassof = str(RDFS.subClassOf)
 owl_class = str(OWL.Class)
@@ -27,7 +26,7 @@ owl_disjointwith = str(OWL.disjointWith)
 
 
 def classes() -> Dataset[OntologyClass]:
-    cfg = DBpediaDataDirCfg.get_instance()
+    cfg = DBpediaDirCfg.get_instance()
     outdir = cfg.classes
 
     if not does_result_dir_exist(outdir):
@@ -71,7 +70,10 @@ def classes() -> Dataset[OntologyClass]:
 
 
 def is_class(resource: RDFResource) -> bool:
-    return OWL.Class in resource.props.get(rdf_type, [])
+    return (
+        OWL.Class in resource.props.get(rdf_type, [])
+        or rdfs_subclassof in resource.props
+    )
 
 
 def to_class(resource: RDFResource) -> OntologyClass:

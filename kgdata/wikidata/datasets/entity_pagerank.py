@@ -3,30 +3,23 @@ from dataclasses import dataclass
 from glob import glob
 from io import BytesIO
 from pathlib import Path
-from typing import (
-    Callable,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-)
-from sm.misc.ray_helper import ray_map
+from typing import Callable, Generic, Iterable, List, Optional, Sequence, Tuple, TypeVar
+
+import numpy as np
+import orjson
+import ray
+import serde.pickle
+import serde.textline
 from kgdata.dataset import Dataset
 from kgdata.spark import (
     does_result_dir_exist,
-    left_outer_join_repartition,
     get_spark_context,
+    left_outer_join_repartition,
 )
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
-import orjson, ray, numpy as np
-import serde.textline
-import serde.pickle
-
+from sm.misc.ray_helper import ray_map
 
 KeyType = TypeVar("KeyType")
 
@@ -56,7 +49,7 @@ EntityPageRank = Tuple[str, float]
 
 def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
     """Generate a weighted graph of Wikidata's entities. The graph can be used to calculate page rank to determine entity popularity"""
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     idmap_outdir = cfg.entity_pagerank / f"idmap_{lang}"
     if not does_result_dir_exist(idmap_outdir):

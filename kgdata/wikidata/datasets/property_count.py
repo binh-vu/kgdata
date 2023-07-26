@@ -1,17 +1,18 @@
-from typing import Tuple
 from operator import add
+from typing import Tuple
+
+import orjson
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, saveAsSingleTextFile
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.properties import properties
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_types import entity_types, get_instanceof
-import orjson
+from kgdata.wikidata.datasets.properties import properties
 from kgdata.wikidata.models import WDEntity
 
 
 def property_count(lang="en") -> Dataset[Tuple[str, int]]:
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.property_count):
         rdd = entities(lang).get_rdd().map(get_property)

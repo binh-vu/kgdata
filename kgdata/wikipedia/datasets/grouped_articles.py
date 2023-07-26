@@ -1,10 +1,11 @@
 import gzip
-from typing import TypedDict, Tuple, List
+from typing import List, Tuple, TypedDict
+
+import orjson
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikipedia.config import WPDataDirConfig
+from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.articles import articles
-import orjson
 from serde.helper import get_open_fn
 from tqdm import tqdm
 
@@ -17,7 +18,7 @@ class GroupedArticles(TypedDict):
 
 def grouped_articles() -> Dataset[GroupedArticles]:
     """Group wikipedia pages/articles that are belong to the same entity"""
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
     batch_size = 64000
 
     if not does_result_dir_exist(cfg.grouped_articles):

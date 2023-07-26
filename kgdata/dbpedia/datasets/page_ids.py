@@ -1,12 +1,14 @@
 from __future__ import annotations
-from kgdata.spark import does_result_dir_exist, ensure_unique_records
+
+from dataclasses import dataclass
+
 import orjson
 from kgdata.dataset import Dataset
-from kgdata.dbpedia.config import DBpediaDataDirCfg
-from kgdata.splitter import split_a_file
-from dataclasses import dataclass
-from kgdata.misc.ntriples_parser import ntriple_loads
+from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.page_id_dump import page_id_dump
+from kgdata.misc.ntriples_parser import ntriple_loads
+from kgdata.spark import does_result_dir_exist, ensure_unique_records
+from kgdata.splitter import split_a_file
 from rdflib.term import URIRef
 
 
@@ -17,7 +19,7 @@ class DBpediaPageId:
 
 
 def page_ids(lang: str = "en") -> Dataset[DBpediaPageId]:
-    cfg = DBpediaDataDirCfg.get_instance()
+    cfg = DBpediaDirCfg.get_instance()
 
     outdir = cfg.wikilinks / lang
 

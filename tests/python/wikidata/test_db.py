@@ -1,7 +1,7 @@
-from pathlib import Path
-from kgdata.wikidata.db import get_entity_db, get_wdclass_db, get_wdprop_db
 import gc
+from pathlib import Path
 
+from kgdata.wikidata.db import get_class_db, get_entity_db, get_prop_db
 from sm.misc.funcs import assert_not_null
 
 
@@ -19,7 +19,7 @@ def test_get_entity_db(tmp_path: Path):
 
 
 def test_get_wdclass_db(tmp_path: Path):
-    db = get_wdclass_db(tmp_path / "classes.db", proxy=True)
+    db = get_class_db(tmp_path / "classes.db", proxy=True)
 
     assert db["Q8502"].label == "mountain"
     assert assert_not_null(db.get("Q8502")).label == "mountain"
@@ -27,12 +27,12 @@ def test_get_wdclass_db(tmp_path: Path):
     del db
     gc.collect()
 
-    db = get_wdclass_db(tmp_path / "classes.db", proxy=False)
+    db = get_class_db(tmp_path / "classes.db", proxy=False)
     assert db["Q8502"].label == "mountain"
 
 
 def test_get_wdprop_db(tmp_path: Path):
-    db = get_wdprop_db(tmp_path / "props.db", proxy=True)
+    db = get_prop_db(tmp_path / "props.db", proxy=True)
 
     assert db["P131"].label == "located in the administrative territorial entity"
     assert (
@@ -43,5 +43,5 @@ def test_get_wdprop_db(tmp_path: Path):
     del db
     gc.collect()
 
-    db = get_wdprop_db(tmp_path / "props.db", proxy=False)
+    db = get_prop_db(tmp_path / "props.db", proxy=False)
     assert db["P131"].label == "located in the administrative territorial entity"

@@ -1,11 +1,13 @@
 from __future__ import annotations
+
+from dataclasses import dataclass
+
 import orjson
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.datasets.wikilinks import WikiLink, wikilinks
 from kgdata.spark import does_result_dir_exist, left_outer_join
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.wp2wd import wp2wd
-from dataclasses import dataclass
 from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
 
 
@@ -13,7 +15,7 @@ def entity_wikilinks(lang: str = "en") -> Dataset[WDEntityWikiLink]:
     """This dataset provides links between the entities that were found in Wikipedia. The dataset is generated
     by combining dbpedia.datasets.wikilinks and wikidata.datasets.wp2wd
     """
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     outdir = cfg.entity_wikilinks / lang
     if not does_result_dir_exist(outdir):

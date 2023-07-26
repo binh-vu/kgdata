@@ -1,30 +1,18 @@
 """Functions to split a big file into smaller files.
 """
 
+import shutil
 from bz2 import BZ2File
 from gzip import GzipFile
 from io import TextIOWrapper
-import shutil
-from pathlib import Path
-from typing import (
-    BinaryIO,
-    Callable,
-    ContextManager,
-    Iterable,
-    List,
-    Tuple,
-    Union,
-)
-from serde.helper import get_open_fn
-
-from sm.misc.prelude import (
-    datasize,
-    identity_func,
-    import_func,
-)
-from tqdm import tqdm
 from multiprocessing import Process, Queue
+from pathlib import Path
+from typing import BinaryIO, Callable, ContextManager, Iterable, List, Tuple, Union
+
 import serde.byteline
+from serde.helper import get_open_fn
+from sm.misc.prelude import datasize, identity_func, import_func
+from tqdm.auto import tqdm
 
 
 def default_currentbyte_constructor(

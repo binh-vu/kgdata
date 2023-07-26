@@ -11,10 +11,9 @@ from typing import Iterator, Literal
 import kgbench
 import orjson
 import serde.jl
+from kgdata.wikidata.models import WDEntity
 from pybench.base import BenchSetup
 from pybench.helper import get_module
-
-from kgdata.wikidata.models import WDEntity
 
 # from kgdata.core.bench import EntityDesign1, EntityDesign2
 
@@ -77,7 +76,7 @@ if __name__ == "__main__":
 
     db = WikidataDB(Path(__file__).parent.parent / "data/databases")
     lst = []
-    for item in db.wdentities.values():
+    for item in db.entities.values():
         lst.append(item.to_dict())
         if len(lst) > 100:
             break

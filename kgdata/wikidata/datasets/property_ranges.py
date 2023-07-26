@@ -1,18 +1,18 @@
 from collections import defaultdict
 from typing import Dict, List, Set, Tuple, Union
-from kgdata.wikidata.datasets.property_domains import merge_counters
 
 import orjson
 import sm.misc as M
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.splitter import split_a_list
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.classes import build_ancestors
 from kgdata.wikidata.datasets.entities import entities, ser_entity
 from kgdata.wikidata.datasets.entity_ids import entity_ids
-from kgdata.wikidata.datasets.entity_types import entity_types
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
+from kgdata.wikidata.datasets.entity_types import entity_types
+from kgdata.wikidata.datasets.property_domains import merge_counters
 from kgdata.wikidata.models import WDProperty
 from kgdata.wikidata.models.wdentity import WDEntity
 
@@ -23,7 +23,7 @@ def property_ranges(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
     NOTE: it does not returns children of a range class but only the class that is typed of an entity
     in the statement target with the property.
     """
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.property_ranges):
         # mapping from entity id to the incoming properties with counts

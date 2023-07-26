@@ -1,18 +1,18 @@
 from functools import partial
-from typing import Union, Set, Dict
+from typing import Dict, Set, Union
 
+import orjson
+import serde.textline
+from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdstatement import WDStatement
 from loguru import logger
-import orjson
 from pyspark import Broadcast
-from kgdata.dataset import Dataset
-import serde.textline
 from sm.misc.funcs import filter_duplication
 
 
@@ -31,7 +31,7 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
     Returns:
         Dataset[WDEntity]
     """
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
     outdir = cfg.entities.parent / (cfg.entities.name + "_" + lang)
 
     if not does_result_dir_exist(outdir / "all_ids"):
@@ -241,5 +241,5 @@ def fix_transitive_qualifier(ent: WDEntity):
 
 
 if __name__ == "__main__":
-    WDDataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
+    WikidataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
     print("Total:", entities().get_rdd().count())

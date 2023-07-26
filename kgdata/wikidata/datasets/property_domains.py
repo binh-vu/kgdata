@@ -5,7 +5,7 @@ import sm.misc as M
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.splitter import split_a_list
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.classes import build_ancestors
 from kgdata.wikidata.datasets.entities import entities, ser_entity
 from kgdata.wikidata.datasets.entity_ids import entity_ids
@@ -23,7 +23,7 @@ def property_domains(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
     For example, consider the statement Peter - age - 50. the direct domain is the class Human, and we don't include
     class Men, which is a child of the class Human.
     """
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.property_domains):
         (

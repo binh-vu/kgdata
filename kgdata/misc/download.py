@@ -16,11 +16,10 @@ from typing import MutableSequence, Optional, Sequence, cast
 from urllib.parse import urlparse
 
 import requests
+from hugedict.sqlitedict import SqliteDict
 from loguru import logger
 from rsoup.core import Document
 from tqdm.auto import tqdm
-
-from hugedict.sqlitedict import SqliteDict
 
 
 @dataclass
@@ -180,7 +179,7 @@ class WikidataDump(BaseDumpCollection):
         pbar: Optional[tqdm] = None,
     ):
         # fmt: off
-        self.entities = self.parse_urls(match_url(url, "entities", RegexPattern(r"\d{8}"), RegexPattern(r"wikidata-(\d{8})-all\.json\.gz"), pbar=pbar))
+        self.entities = self.parse_urls(match_url(url, "entities", RegexPattern(r"\d{8}"), RegexPattern(r"wikidata-(\d{8})-all\.json\.bz2"), pbar=pbar))
         self.page = self.parse_urls(match_url(url, RegexPattern(r"\d{8}"), RegexPattern(r"wikidatawiki-(\d{8})-page\.sql\.gz"), pbar=pbar))
         self.redirect = self.parse_urls(match_url(url, RegexPattern(r"\d{8}"), RegexPattern(r"wikidatawiki-(\d{8})-redirect\.sql\.gz"), pbar=pbar))
         # fmt: on

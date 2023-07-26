@@ -1,15 +1,15 @@
-from bz2 import BZ2File
 import glob
-from gzip import GzipFile
 import os
+from bz2 import BZ2File
+from gzip import GzipFile
 from pathlib import Path
 from typing import BinaryIO, Union, cast
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.dataset import Dataset
 
 import orjson
+from kgdata.dataset import Dataset
 from kgdata.spark import get_spark_context
 from kgdata.splitter import split_a_file
+from kgdata.wikidata.config import WikidataDirCfg
 from pyspark import RDD
 
 
@@ -20,13 +20,13 @@ def entity_dump() -> Dataset[dict]:
     Returns:
         Dataset[dict]
     """
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     split_a_file(
         infile=cfg.get_entity_dump_file(),
         outfile=cfg.entity_dump / "part.ndjson.gz",
         record_iter=_record_iter,
-        record_postprocess="kgdata.wikidata.datasets.entity_dumps._record_postprocess",
+        record_postprocess="kgdata.wikidata.datasets.entity_dump._record_postprocess",
         n_writers=8,
         override=False,
     )

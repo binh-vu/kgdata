@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import functools, struct
-from functools import partial
+from functools import cached_property, partial
 from pathlib import Path
 from typing import (
     Callable,
@@ -30,15 +29,21 @@ from hugedict.prelude import (
     RocksDBOptions,
 )
 from hugedict.types import HugeMutableMapping
-
+from kgdata.db import (
+    deser_from_dict,
+    get_rocksdb,
+    large_dbopts,
+    medium_dbopts,
+    pack_int,
+    ser_to_dict,
+    small_dbopts,
+    unpack_int,
+)
 from kgdata.wikidata.datasets.entity_metadata import (
     deser_entity_metadata,
     ser_entity_metadata,
 )
-from kgdata.wikidata.extra_ent_db import (
-    EntAttr,
-    get_entity_attr_db,
-)
+from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
 from kgdata.wikidata.models import (
     WDClass,
     WDProperty,
@@ -150,350 +155,86 @@ def query_wikidata_entities(
     return qnodes
 
 
-def serialize(ent: V) -> bytes:
-    return orjson.dumps(ent.to_dict())
-
-
-def deserialize(cls: Type[V], data: Union[str, bytes]) -> V:
-    return cls.from_dict(orjson.loads(data))  # type: ignore
-
-
-def get_wdclass_db(
+def proxy_wrapper(
     dbfile: Union[Path, str],
-    create_if_missing=True,
-    read_only=False,
+    cls: type[WDClass] | type[WDProperty] | type[WDEntity],
+    create_if_missing: bool = True,
+    read_only: bool = False,
     proxy: bool = False,
-) -> HugeMutableMapping[str, WDClass]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
+    dbopts: dict | None = None,
+) -> HugeMutableMapping[str, V]:
     if proxy:
         constructor = WDProxyDB
         create_if_missing = True
     else:
         constructor = RocksDBDict
 
-    db = constructor(
-        path=str(dbfile),
-        options=RocksDBOptions(
-            create_if_missing=create_if_missing,
-            compression_type="lz4",
-            bottommost_compression_type="zstd",
-        ),
-        readonly=read_only,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=partial(deserialize, WDClass),
-        ser_value=serialize,
+    db = get_rocksdb(
+        dbfile,
+        ser_value=ser_to_dict,
+        deser_value=partial(deser_from_dict, cls),  # type: ignore
+        cls=constructor,
+        create_if_missing=create_if_missing,
+        read_only=read_only,
+        dbopts=dbopts,
     )
-
     if proxy:
-        return cast(WDProxyDB, db).set_extract_ent_from_entity(WDClass.from_entity)
-    return db
+        return cast(WDProxyDB, db).set_extract_ent_from_entity(cls.from_entity)  # type: ignore
+    return db  # type: ignore
 
 
-def get_wdprop_db(
-    dbfile: Union[Path, str],
-    create_if_missing=True,
-    read_only=False,
-    proxy: bool = False,
-) -> HugeMutableMapping[str, WDProperty]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    if proxy:
-        constructor = WDProxyDB
-        create_if_missing = True
-    else:
-        constructor = RocksDBDict
-
-    db = constructor(
-        path=str(dbfile),
-        options=RocksDBOptions(
-            create_if_missing=create_if_missing,
-            compression_type="lz4",
-        ),
-        readonly=read_only,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=partial(deserialize, WDProperty),
-        ser_value=serialize,
-    )
-
-    if proxy:
-        return cast(WDProxyDB, db).set_extract_ent_from_entity(WDProperty.from_entity)
-    return db
-
-
-def get_entity_db(
-    dbfile: Union[Path, str],
-    create_if_missing=True,
-    read_only=False,
-    proxy: bool = False,
-) -> HugeMutableMapping[str, WDEntity]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "2", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("2")
-
-    if proxy:
-        constructor = WDProxyDB
-        create_if_missing = True
-    else:
-        constructor = RocksDBDict
-
-    db = constructor(
-        path=str(dbfile),
-        options=RocksDBOptions(
-            create_if_missing=create_if_missing,
-            compression_type="zstd",
-            compression_opts=RocksDBCompressionOptions(
-                window_bits=-14, level=6, strategy=0, max_dict_bytes=16 * 1024
-            ),
-            zstd_max_train_bytes=100 * 16 * 1024,
-        ),
-        readonly=read_only,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=partial(deserialize, WDEntity),
-        ser_value=serialize,
-    )
-
-    if proxy:
-        return cast(WDProxyDB, db).set_extract_ent_from_entity(identity)
-
-    return db
-
-
-def get_entity_metadata_db(
-    dbfile: Union[Path, str],
-    create_if_missing=True,
-    read_only=False,
-) -> HugeMutableMapping[str, WDEntityMetadata]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "2", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("2")
-
-    return RocksDBDict(
-        path=str(dbfile),
-        options=RocksDBOptions(
-            create_if_missing=create_if_missing,
-            compression_type="zstd",
-            compression_opts=RocksDBCompressionOptions(
-                window_bits=-14, level=6, strategy=0, max_dict_bytes=16 * 1024
-            ),
-            zstd_max_train_bytes=100 * 16 * 1024,
-        ),
-        readonly=read_only,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=deser_entity_metadata,
-        ser_value=ser_entity_metadata,
-    )
-
-
-def get_entity_redirection_db(
-    dbfile: Union[Path, str],
-    create_if_missing=False,
-    read_only=True,
-) -> HugeMutableMapping[str, str]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-    )
-    return RocksDBDict(
-        str(dbfile),
-        readonly=read_only,
-        options=dboptions,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=partial(str, encoding="utf-8"),
-        ser_value=str.encode,
-    )
-
-
-def get_entity_label_db(
-    dbfile: Union[Path, str],
-    create_if_missing=False,
-    read_only=True,
-) -> HugeMutableMapping[str, WDEntityLabel]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-    )
-    return RocksDBDict(
-        str(dbfile),
-        readonly=read_only,
-        options=dboptions,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=partial(deserialize, WDEntityLabel),
-        ser_value=serialize,
-    )
-
-
-def get_entity_wikilinks_db(
-    dbfile: Union[Path, str],
-    create_if_missing=False,
-    read_only=True,
-) -> HugeMutableMapping[str, WDEntityWikiLink]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-    )
-    return RocksDBDict(
-        str(dbfile),
-        readonly=read_only,
-        options=dboptions,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=partial(deserialize, WDEntityWikiLink),
-        ser_value=serialize,
-    )
-
-
-def get_wp2wd_db(
-    dbpath: Union[Path, str],
-    create_if_missing=False,
-    read_only=True,
-) -> HugeMutableMapping[str, str]:
-    """Mapping from wikipedia article's title to wikidata id"""
-    version = Path(dbpath) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-    )
-    return RocksDBDict(
-        path=str(dbpath),
-        options=dboptions,
-        readonly=read_only,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=partial(str, encoding="utf-8"),
-        ser_value=str.encode,
-    )
-
-
-def get_wdontcount_db(
-    dbpath: Union[Path, str],
-    create_if_missing=False,
-    read_only=True,
-) -> HugeMutableMapping[str, int]:
-    """Mapping from wikipedia article's title to wikidata id"""
-    version = Path(dbpath) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="none",
-    )
-    return RocksDBDict(
-        path=str(dbpath),
-        options=dboptions,
-        readonly=read_only,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=unpack_int,
-        ser_value=pack_int,
-    )
-
-
-def get_wdprop_range_db(
-    dbfile: Union[Path, str],
-    create_if_missing=False,
-    read_only=True,
-) -> HugeMutableMapping[str, WDPropertyRanges]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-    )
-    return RocksDBDict(
-        str(dbfile),
-        readonly=read_only,
-        options=dboptions,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=orjson.loads,
-        ser_value=orjson.dumps,
-    )
-
-
-def get_wdprop_domain_db(
-    dbfile: Union[Path, str],
-    create_if_missing=False,
-    read_only=True,
-) -> HugeMutableMapping[str, WDPropertyDomains]:
-    version = Path(dbfile) / "_VERSION"
-    if version.exists():
-        ver = version.read_text()
-        assert ver.strip() == "1", ver
-    else:
-        version.parent.mkdir(parents=True, exist_ok=True)
-        version.write_text("1")
-
-    dboptions = RocksDBOptions(
-        create_if_missing=create_if_missing,
-        compression_type="lz4",
-    )
-    return RocksDBDict(
-        str(dbfile),
-        readonly=read_only,
-        options=dboptions,
-        deser_key=partial(str, encoding="utf-8"),
-        deser_value=orjson.loads,
-        ser_value=orjson.dumps,
-    )
+get_class_db = partial(proxy_wrapper, cls=WDClass, dbopts=medium_dbopts)
+get_prop_db = partial(proxy_wrapper, cls=WDProperty, dbopts=small_dbopts)
+get_entity_db = partial(proxy_wrapper, cls=WDEntity, dbopts=large_dbopts)
+get_entity_metadata_db = partial(
+    get_rocksdb,
+    deser_value=deser_entity_metadata,
+    ser_value=ser_entity_metadata,
+    dbopts=large_dbopts,
+    version="2",
+)
+get_entity_redirection_db = partial(
+    get_rocksdb,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
+    dbopts=small_dbopts,
+)
+get_entity_label_db = partial(
+    get_rocksdb,
+    deser_value=partial(deser_from_dict, WDEntityLabel),
+    ser_value=ser_to_dict,
+    dbopts=small_dbopts,
+)
+get_entity_wikilinks_db = partial(
+    get_rocksdb,
+    deser_value=partial(deser_from_dict, WDEntityWikiLink),
+    ser_value=ser_to_dict,
+    dbopts=small_dbopts,
+)
+get_wp2wd_db = partial(
+    get_rocksdb,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
+    dbopts=small_dbopts,
+)
+get_ontcount_db = partial(
+    get_rocksdb,
+    deser_value=unpack_int,
+    ser_value=pack_int,
+    dbopts={"compression_type": "none"},
+)
+get_prop_range_db = partial(
+    get_rocksdb,
+    deser_value=orjson.loads,
+    ser_value=orjson.dumps,
+    dbopts=small_dbopts,
+)
+get_prop_domain_db = partial(
+    get_rocksdb,
+    deser_value=orjson.loads,
+    ser_value=orjson.dumps,
+    dbopts=small_dbopts,
+)
 
 
 class WikidataDB:
@@ -509,99 +250,95 @@ class WikidataDB:
     def __init__(self, database_dir: Union[str, Path]):
         self.database_dir = Path(database_dir)
 
-    @functools.cached_property
-    def wdentities(self):
-        return get_entity_db(self.database_dir / "wdentities.db", read_only=True)
+    @cached_property
+    def entities(self):
+        return get_entity_db(self.database_dir / "entities.db", read_only=True)
 
-    @functools.cached_property
-    def wdentity_metadata(self):
+    @cached_property
+    def entity_metadata(self):
         return get_entity_metadata_db(
-            self.database_dir / "wdentity_metadata.db", read_only=True
+            self.database_dir / "entity_metadata.db", read_only=True
         )
 
-    @functools.cached_property
-    def wdentity_labels(self):
+    @cached_property
+    def entity_labels(self):
         return get_entity_label_db(
-            self.database_dir / "wdentity_labels.db", read_only=True
+            self.database_dir / "entity_labels.db", read_only=True
         )
 
-    @functools.cached_property
-    def wdclasses(self):
-        wdclasses = get_wdclass_db(self.database_dir / "wdclasses.db", read_only=True)
-        if (self.database_dir / "wdclasses.fixed.jl").exists():
+    @cached_property
+    def classes(self):
+        wdclasses = get_class_db(self.database_dir / "classes.db", read_only=True)
+        if (self.database_dir / "classes.fixed.jl").exists():
             wdclasses = wdclasses.cache()
             assert isinstance(wdclasses, CacheDict)
-            for record in jl.deser(self.database_dir / "wdclasses.fixed.jl"):
+            for record in jl.deser(self.database_dir / "classes.fixed.jl"):
                 cls = WDClass.from_dict(record)
                 wdclasses._cache[cls.id] = cls
         return wdclasses
 
-    @functools.cached_property
-    def wdprops(self):
-        wdprops = get_wdprop_db(self.database_dir / "wdprops.db", read_only=True)
-        if (self.database_dir / "wdprops.fixed.jl").exists():
+    @cached_property
+    def props(self):
+        wdprops = get_prop_db(self.database_dir / "props.db", read_only=True)
+        if (self.database_dir / "props.fixed.jl").exists():
             wdprops = wdprops.cache()
             assert isinstance(wdprops, CacheDict)
-            for record in jl.deser(self.database_dir / "wdprops.fixed.jl"):
+            for record in jl.deser(self.database_dir / "props.fixed.jl"):
                 prop = WDProperty.from_dict(record)
                 wdprops._cache[prop.id] = prop
         return wdprops
 
-    @functools.cached_property
-    def wdontcount(self):
-        return get_wdontcount_db(self.database_dir / "wdontcount.db", read_only=True)
+    @cached_property
+    def ontcount(self):
+        return get_ontcount_db(self.database_dir / "ontcount.db", read_only=True)
 
-    @functools.cached_property
-    def wdprop_domains(self):
-        return get_wdprop_domain_db(
-            self.database_dir / "wdprop_domains.db", read_only=True
-        )
+    @cached_property
+    def prop_domains(self):
+        return get_prop_domain_db(self.database_dir / "prop_domains.db", read_only=True)
 
-    @functools.cached_property
-    def wdprop_ranges(self):
-        return get_wdprop_range_db(
-            self.database_dir / "wdprop_ranges.db", read_only=True
-        )
+    @cached_property
+    def prop_ranges(self):
+        return get_prop_range_db(self.database_dir / "prop_ranges.db", read_only=True)
 
-    @functools.cached_property
-    def wdredirections(self):
+    @cached_property
+    def redirections(self):
         return get_entity_redirection_db(
-            self.database_dir / "wdentity_redirections.db", read_only=True
+            self.database_dir / "entity_redirections.db", read_only=True
         )
 
-    @functools.cached_property
+    @cached_property
     def wp2wd(self):
-        return get_wp2wd_db(self.database_dir / "wd2wp.db", read_only=True)
+        return get_wp2wd_db(self.database_dir / "wp2wd.db", read_only=True)
 
-    @functools.cached_property
-    def wdpagerank(self):
+    @cached_property
+    def pagerank(self):
         return get_entity_attr_db(
-            self.database_dir / "wdentities_attr.db",
+            self.database_dir / "entities_attr.db",
             "pagerank",
             read_only=True,
         )
 
-    @functools.cached_property
-    def wdentity_wikilinks(self):
+    @cached_property
+    def entity_wikilinks(self):
         return get_entity_wikilinks_db(
-            self.database_dir / "wdentity_wikilinks.db", read_only=True
+            self.database_dir / "entity_wikilinks.db", read_only=True
         )
 
     @overload
-    def wdattr(
+    def attr(
         self, attr: Literal["aliases", "instanceof"]
     ) -> HugeMutableMapping[str, list[str]]:
         ...
 
     @overload
-    def wdattr(
+    def attr(
         self, attr: Literal["label", "description"]
     ) -> HugeMutableMapping[str, str]:
         ...
 
-    def wdattr(self, attr: EntAttr):
+    def attr(self, attr: EntAttr):
         return get_entity_attr_db(
-            self.database_dir / "wdentities_attr.db",
+            self.database_dir / "entities_attr.db",
             attr,
             read_only=True,
         )
@@ -618,20 +355,12 @@ class WikidataDB:
         return WikidataDB.instance
 
 
-def pack_int(v: int) -> bytes:
-    return struct.pack("<l", v)
-
-
-def unpack_int(v: bytes) -> int:
-    return struct.unpack("<l", v)[0]
-
-
 if __name__ == "__main__":
     import click
 
     @click.command()
-    @click.option("-d", "--data-dir", help="database directory")
-    @click.option("-n", "--dbname", help="database name")
+    @click.option("-d", "--data-dir", required=True, help="database directory")
+    @click.option("-n", "--dbname", required=True, help="database name")
     @click.argument("keys", nargs=-1)
     def cli(data_dir: str, dbname: str, keys: list[str]):
         db = getattr(WikidataDB(data_dir), dbname)

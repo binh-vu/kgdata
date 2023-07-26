@@ -1,21 +1,21 @@
+from typing import List
+
+import orjson
+import serde.jl
 from kgdata.dataset import Dataset
+from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.splitter import split_a_list
+from kgdata.wikidata.config import WikidataDirCfg
+from kgdata.wikidata.datasets.classes import build_ancestors
+from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
-import orjson
-from typing import List
 from kgdata.wikidata.models import WDProperty
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.wikidata.datasets.entities import entities
-from kgdata.wikidata.datasets.classes import build_ancestors
 from kgdata.wikidata.models.wdentity import WDEntity
-
-import serde.jl
 
 
 def properties(lang="en") -> Dataset[WDProperty]:
-    cfg = WDDataDirCfg.get_instance()
+    cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.properties / "ids"):
         (

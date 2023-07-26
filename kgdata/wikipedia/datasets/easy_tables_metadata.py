@@ -1,12 +1,14 @@
 from __future__ import annotations
+
 from dataclasses import asdict, dataclass
 from typing import List, Optional
+
+import orjson
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, left_outer_join
-from kgdata.wikipedia.config import WPDataDirConfig
-from kgdata.wikipedia.datasets.easy_tables import easy_tables
 from kgdata.wikidata.datasets.entity_types import entity_types
-import orjson
+from kgdata.wikipedia.config import WikipediaDirCfg
+from kgdata.wikipedia.datasets.easy_tables import easy_tables
 
 
 @dataclass
@@ -17,7 +19,7 @@ class TableMetadata:
 
 
 def easy_tables_metadata() -> Dataset[TableMetadata]:
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
     if not does_result_dir_exist(cfg.easy_tables_metadata):
         entity_type_rdd = entity_types().get_rdd()
         table_rdd = (

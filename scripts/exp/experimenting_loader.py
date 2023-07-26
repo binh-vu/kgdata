@@ -2,21 +2,21 @@
 
 
 import os
+from operator import itemgetter
 from pathlib import Path
+from typing import Any, Callable, List, Optional, Union
+
 import click
+import orjson
+from hugedict.loader import FileFormat, FileReaderArgs, read_file
 from hugedict.misc import Chain2, zstd6_compress
-from kgdata.wikidata.config import WDDataDirCfg
+from hugedict.parallel import Parallel
+from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from loguru import logger
 from networkx.readwrite.adjlist import generate_adjlist
-import orjson
-from rocksdict import Rdict, Options, SstFileWriter, DBCompressionType
-from typing import List, Callable, Any, Optional, Union
-
-from hugedict.loader import FileFormat, FileReaderArgs, read_file
-from hugedict.parallel import Parallel
+from rocksdict import DBCompressionType, Options, Rdict, SstFileWriter
 from tqdm import tqdm
-from operator import itemgetter
 
 
 def load_wdentities(
@@ -91,7 +91,7 @@ def generate_sst(outdir: Path, args: FileReaderArgs):
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_entities(directory: str, output: str, compact: bool, lang: str):
     """Wikidata entities"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
     dbpath = Path(output) / "wdentities.db"
     dbpath.mkdir(exist_ok=True, parents=True)

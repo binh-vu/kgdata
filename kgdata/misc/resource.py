@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 import orjson
-from rdflib import BNode, Literal, URIRef
-
 from kgdata.misc.ntriples_parser import node_from_dict, node_to_dict
+from rdflib import BNode, Literal, URIRef
 
 V = TypeVar("V")
 
@@ -51,6 +50,16 @@ class RDFResource(Resource[URIRef | BNode | Literal]):
             id=o["id"],
             props={k: [node_from_dict(v) for v in vs] for k, vs in o["props"].items()},
         )
+
+    def merge(self, resource: RDFResource) -> RDFResource:
+        for pid, lst in resource.props.items():
+            if pid not in self.props:
+                self.props[pid] = lst
+            else:
+                self.props[pid].extend(
+                    (item for item in lst if item not in self.props[pid])
+                )
+        return self
 
 
 def orjson_default(o):

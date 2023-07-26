@@ -28,12 +28,13 @@ Examples::
 
 from importlib import import_module
 from typing import Optional
-from typing_extensions import Required
+
 import click
-from kgdata.wikidata.config import WDDataDirCfg
-from kgdata.dbpedia.config import DBpediaDataDirCfg
 import kgdata.wikidata.datasets
+from kgdata.dbpedia.config import DBpediaDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
 from loguru import logger
+from typing_extensions import Required
 
 
 @click.command("Generate a specific dataset")
@@ -47,9 +48,9 @@ from loguru import logger
 def main(source: str, dataset: str, dbpedia: Optional[str] = None):
     logger.info("Wikidata directory: {}", source)
 
-    WDDataDirCfg.init(source)
+    WikidataDirCfg.init(source)
     if dbpedia is not None:
-        DBpediaDataDirCfg.init(dbpedia)
+        DBpediaDirCfg.init(dbpedia)
 
     module = import_module(f"kgdata.wikidata.datasets.{dataset}")
     getattr(module, dataset)()

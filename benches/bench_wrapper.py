@@ -6,10 +6,9 @@ import orjson
 import serde.byteline
 import serde.jl
 import serde.textline
+from kgdata.core import Test
 from pybench.base import BenchSetup
 from pybench.helper import get_module
-
-from kgdata.core import Test
 
 infile = Path(__file__).parent / "resources" / "entity_labels.jl.gz"
 
@@ -157,7 +156,7 @@ if __name__ == "__main__2":
     samples = []
     for ent in WikidataDB(
         Path(__file__).parent.parent / "data/databases"
-    ).wdentities.values():
+    ).entities.values():
         label = ent.label.to_dict()["lang2value"]
         if len(label) > 20:
             samples.append({"id": ent.id, "label": label})

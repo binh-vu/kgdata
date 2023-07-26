@@ -8,12 +8,11 @@ from typing import Any, Callable, Generic, Literal, Optional, TypeVar, Union, ca
 import orjson
 import serde.byteline
 import serde.textline
+from hugedict.misc import Chain2, identity
+from kgdata.spark import get_spark_context
 from loguru import logger
 from pyspark import RDD
 from tqdm import tqdm
-
-from hugedict.misc import Chain2, identity
-from kgdata.spark import get_spark_context
 
 V = TypeVar("V")
 V2 = TypeVar("V2")
@@ -156,7 +155,9 @@ class Dataset(Generic[V]):
         """
         return Dataset(
             file_pattern=self.file_pattern,
-            deserialize=Chain2(func, self.deserialize),
+            deserialize=Chain2(func, self.deserialize)
+            if self.deserialize is not identity
+            else func,
             prefilter=self.prefilter,
             postfilter=self.postfilter,
             is_deser_identity=False,

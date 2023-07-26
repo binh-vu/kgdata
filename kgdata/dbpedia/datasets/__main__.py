@@ -25,11 +25,12 @@ Examples::
 """
 
 from importlib import import_module
-from typing_extensions import Required
+
 import click
-from kgdata.dbpedia.config import DBpediaDataDirCfg
 import kgdata.dbpedia.datasets
+from kgdata.dbpedia.config import DBpediaDirCfg
 from loguru import logger
+from typing_extensions import Required
 
 
 @click.command("Generate a specific dataset")
@@ -38,7 +39,7 @@ from loguru import logger
 def main(source: str, dataset: str):
     logger.info("DBpedia directory: {}", source)
 
-    DBpediaDataDirCfg.init(source)
+    DBpediaDirCfg.init(source)
 
     module = import_module(f"kgdata.dbpedia.datasets.{dataset}")
     getattr(module, dataset)()

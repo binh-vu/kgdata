@@ -1,6 +1,6 @@
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, ensure_unique_records
-from kgdata.wikipedia.config import WPDataDirConfig
+from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle
 from loguru import logger
@@ -10,7 +10,7 @@ from rsoup.core import ContextExtractor, Table, TableExtractor
 def html_tables() -> Dataset[Table]:
     """Extracting all tables (at the lowest level) and their surrounding context from Wikipedia articles."""
 
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
 
     need_double_check = False
 

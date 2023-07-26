@@ -1,14 +1,16 @@
 from __future__ import annotations
-from kgdata.spark import does_result_dir_exist, ensure_unique_records
+
+from dataclasses import dataclass
+from urllib.parse import unquote, urlparse
+
 import orjson
 from kgdata.dataset import Dataset
-from kgdata.dbpedia.config import DBpediaDataDirCfg
-from kgdata.splitter import split_a_file
-from dataclasses import dataclass
-from kgdata.misc.ntriples_parser import ntriple_loads
+from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.wikilink_dump import wikilink_dump
+from kgdata.misc.ntriples_parser import ntriple_loads
+from kgdata.spark import does_result_dir_exist, ensure_unique_records
+from kgdata.splitter import split_a_file
 from rdflib.term import URIRef
-from urllib.parse import unquote, urlparse
 
 
 @dataclass
@@ -25,7 +27,7 @@ class WikiLink:
 
 
 def wikilinks(lang: str = "en") -> Dataset[WikiLink]:
-    cfg = DBpediaDataDirCfg.get_instance()
+    cfg = DBpediaDirCfg.get_instance()
 
     outdir = cfg.wikilinks / lang
 

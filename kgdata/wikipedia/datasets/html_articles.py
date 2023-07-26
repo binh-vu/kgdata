@@ -3,14 +3,14 @@ import os
 import tarfile
 from pathlib import Path
 from typing import BinaryIO, Union, cast
-from kgdata.wikipedia.config import WPDataDirConfig
-from kgdata.wikipedia.models.html_article import HTMLArticle
 
 import orjson
 from kgdata.config import WIKIPEDIA_DIR
+from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.splitter import split_a_file
-from kgdata.dataset import Dataset
+from kgdata.wikipedia.config import WikipediaDirCfg
+from kgdata.wikipedia.models.html_article import HTMLArticle
 
 
 def html_articles() -> Dataset[HTMLArticle]:
@@ -20,7 +20,7 @@ def html_articles() -> Dataset[HTMLArticle]:
     Returns:
         Dataset[HTMLArticle]
     """
-    cfg = WPDataDirConfig.get_instance()
+    cfg = WikipediaDirCfg.get_instance()
 
     dump_file = cfg.get_html_article_file()
 

@@ -6,9 +6,6 @@ from pathlib import Path
 from typing import List, cast, get_args
 
 import click
-from kgdata.wikidata.datasets.class_count import class_count
-from kgdata.wikidata.datasets.entity_wikilinks import entity_wikilinks
-from kgdata.wikidata.datasets.property_count import property_count
 import orjson
 import ray
 import serde.jl
@@ -21,35 +18,37 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
     rocksdb_load,
 )
-from sm.misc.ray_helper import ray_map
-from timer import Timer
-
-from kgdata.wikidata.config import WDDataDirCfg
+from kgdata.dbpedia.config import DBpediaDirCfg
+from kgdata.wikidata.config import WikidataDirCfg
+from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.classes import classes
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_metadata import entity_metadata
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
+from kgdata.wikidata.datasets.entity_wikilinks import entity_wikilinks
 from kgdata.wikidata.datasets.properties import properties
+from kgdata.wikidata.datasets.property_count import property_count
 from kgdata.wikidata.datasets.property_domains import property_domains
 from kgdata.wikidata.datasets.property_ranges import property_ranges
 from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikidata.db import (
+    get_class_db,
     get_entity_db,
-    get_entity_metadata_db,
     get_entity_label_db,
+    get_entity_metadata_db,
     get_entity_redirection_db,
     get_entity_wikilinks_db,
-    get_wdclass_db,
-    get_wdontcount_db,
-    get_wdprop_db,
-    get_wdprop_domain_db,
-    get_wdprop_range_db,
+    get_ontcount_db,
+    get_prop_db,
+    get_prop_domain_db,
+    get_prop_range_db,
     get_wp2wd_db,
     pack_int,
 )
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
-from kgdata.dbpedia.config import DBpediaDataDirCfg
+from sm.misc.ray_helper import ray_map
+from timer import Timer
 
 
 @click.command(name="entities")
@@ -64,9 +63,9 @@ from kgdata.dbpedia.config import DBpediaDataDirCfg
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_entities(directory: str, output: str, compact: bool, lang: str):
     """Build a key-value database of Wikidata entities"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdentities.db"
+    dbpath = Path(output) / "entities.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     options = cast(RocksDBDict, get_entity_db(dbpath)).options
@@ -97,9 +96,9 @@ def db_entities(directory: str, output: str, compact: bool, lang: str):
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_entity_metadata(directory: str, output: str, compact: bool, lang: str):
     """Build a key-value database of Wikidata entities"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdentity_metadata.db"
+    dbpath = Path(output) / "entity_metadata.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     options = cast(RocksDBDict, get_entity_metadata_db(dbpath)).options
@@ -135,9 +134,9 @@ def db_entities_attr(
     directory: str, attr: EntAttr, output: str, compact: bool, lang: str
 ):
     """Build a key-value database of Wikidata entities"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdentities_attr.db"
+    dbpath = Path(output) / "entities_attr.db"
     build_extra_ent_db(dbpath, attr, lang=lang, compact=compact)
 
 
@@ -153,9 +152,9 @@ def db_entities_attr(
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_entity_labels(directory: str, output: str, compact: bool, lang: str):
     """Wikidata entity labels"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdentity_labels.db"
+    dbpath = Path(output) / "entity_labels.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     temp_dir = dbpath / "_temporary"
@@ -222,9 +221,9 @@ def db_entity_labels(directory: str, output: str, compact: bool, lang: str):
 )
 def db_entity_redirections(directory: str, output: str, compact: bool):
     """Wikidata entity redirections"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdentity_redirections.db"
+    dbpath = Path(output) / "entity_redirections.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     options = cast(
@@ -258,10 +257,10 @@ def db_entity_redirections(directory: str, output: str, compact: bool):
 )
 def db_entity_wikilinks(directory: str, dbpedia: str, output: str, compact: bool):
     """Wikidata entity redirections"""
-    WDDataDirCfg.init(directory)
-    DBpediaDataDirCfg.init(dbpedia)
+    WikidataDirCfg.init(directory)
+    DBpediaDirCfg.init(dbpedia)
 
-    dbpath = Path(output) / "wdentity_wikilinks.db"
+    dbpath = Path(output) / "entity_wikilinks.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     options = cast(
@@ -295,14 +294,14 @@ def db_entity_wikilinks(directory: str, dbpedia: str, output: str, compact: bool
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_classes(directory: str, output: str, compact: bool, lang: str):
     """Wikidata classes"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdclasses.db"
+    dbpath = Path(output) / "classes.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     options = cast(
         RocksDBDict,
-        get_wdclass_db(dbpath),
+        get_class_db(dbpath),
     ).options
     gc.collect()
 
@@ -341,14 +340,14 @@ def db_properties(
     """Build databases storing Wikidata properties. It comes with a list of extra
     options (sub databases) for building domains and ranges of properties.
     """
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdprops.db"
+    dbpath = Path(output) / "props.db"
     dbpath.mkdir(exist_ok=True, parents=True)
 
     options = cast(
         RocksDBDict,
-        get_wdprop_db(dbpath),
+        get_prop_db(dbpath),
     ).options
     gc.collect()
 
@@ -366,21 +365,21 @@ def db_properties(
 
     for name in extra:
         if name == "domains":
-            dbpath = Path(output) / "wdprop_domains.db"
+            dbpath = Path(output) / "prop_domains.db"
             dbpath.mkdir(exist_ok=True, parents=True)
             files = property_domains(lang=lang).get_files()
             options = cast(
                 RocksDBDict,
-                get_wdprop_domain_db(dbpath, create_if_missing=True, read_only=False),
+                get_prop_domain_db(dbpath, create_if_missing=True, read_only=False),
             ).options
             gc.collect()
         elif name == "ranges":
-            dbpath = Path(output) / "wdprop_ranges.db"
+            dbpath = Path(output) / "prop_ranges.db"
             dbpath.mkdir(exist_ok=True, parents=True)
             files = property_ranges(lang=lang).get_files()
             options = cast(
                 RocksDBDict,
-                get_wdprop_range_db(dbpath, create_if_missing=True, read_only=False),
+                get_prop_range_db(dbpath, create_if_missing=True, read_only=False),
             ).options
             gc.collect()
         else:
@@ -411,7 +410,7 @@ def db_properties(
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
     """Mapping from Wikipedia articles to Wikidata entities"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
     dbpath = Path(output) / "wp2wd.db"
     dbpath.mkdir(exist_ok=True, parents=True)
@@ -447,9 +446,9 @@ def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
 def db_ontcount(directory: str, output: str, compact: bool, lang: str):
     """Build a database storing the count of each ontology class & property"""
-    WDDataDirCfg.init(directory)
+    WikidataDirCfg.init(directory)
 
-    dbpath = Path(output) / "wdontcount.db"
+    dbpath = Path(output) / "ontcount.db"
     dbpath.mkdir(exist_ok=True, parents=True)
     temp_dir = dbpath / "_temporary"
     if temp_dir.exists():
@@ -458,7 +457,7 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
 
     options = cast(
         RocksDBDict,
-        get_wdontcount_db(dbpath, create_if_missing=True, read_only=False),
+        get_ontcount_db(dbpath, create_if_missing=True, read_only=False),
     ).options
     gc.collect()
 
