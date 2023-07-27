@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 from functools import partial
 from typing import Optional
 
 import orjson
+from rdflib import BNode, Literal, URIRef
+
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.generic_extractor_dump import generic_extractor_dump
@@ -17,7 +21,6 @@ from kgdata.models.entity import Entity, Statement
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.misc import get_title_from_url
-from rdflib import BNode, Literal, URIRef
 
 
 def entities(lang: str = "en") -> Dataset[Entity]:

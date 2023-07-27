@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Union
 
 import orjson
-from kgdata.misc.ntriples_parser import node_from_dict, node_to_dict
 from rdflib import BNode, Literal, URIRef
+
+from kgdata.misc.ntriples_parser import node_from_dict, node_to_dict
 
 V = TypeVar("V")
 
@@ -32,7 +33,7 @@ class Resource(Record, Generic[V]):
 
 
 @dataclass
-class RDFResource(Resource[URIRef | BNode | Literal]):
+class RDFResource(Resource[Union[URIRef, BNode, Literal]]):
     def ser(self) -> bytes:
         return orjson.dumps(
             {

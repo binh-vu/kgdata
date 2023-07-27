@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-from __future__ import absolute_import, division, print_function
+from __future__ import annotations
 
 from sm.misc.funcs import assert_not_null
 
@@ -10,6 +9,7 @@ Author: Sean B. Palmer, inamidst.com
 """
 
 import re
+from typing import Tuple, Union
 
 from rdflib.compat import decodeUnicodeEscape
 from rdflib.term import _XSD_DATE, BNode, Literal, URIRef, _toPythonMapping, parse_date
@@ -222,7 +222,7 @@ class NTriplesParser(object):
         return False
 
 
-Triple = tuple[URIRef | BNode, URIRef, URIRef | Literal | BNode]
+Triple = Tuple[Union[URIRef, BNode], URIRef, Union[URIRef, Literal, BNode]]
 
 
 def ntriple_loads(line: str) -> Triple:

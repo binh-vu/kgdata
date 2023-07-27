@@ -1,8 +1,12 @@
+import os
+import shutil
 import tempfile
-
-import pytest, os, orjson, shutil
-from kgdata.spark import get_spark_context, left_outer_join, left_outer_join_broadcast
 from operator import itemgetter
+
+import orjson
+import pytest
+
+from kgdata.spark import get_spark_context, left_outer_join, left_outer_join_broadcast
 
 
 @pytest.mark.skipif(
