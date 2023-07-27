@@ -11,7 +11,6 @@ from typing import (
     Literal,
     Optional,
     Set,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -21,14 +20,9 @@ from typing import (
 import orjson
 import requests
 import serde.jl as jl
-from hugedict.misc import identity
-from hugedict.prelude import (
-    CacheDict,
-    RocksDBCompressionOptions,
-    RocksDBDict,
-    RocksDBOptions,
-)
+from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
+
 from kgdata.db import (
     deser_from_dict,
     get_rocksdb,
@@ -44,16 +38,10 @@ from kgdata.wikidata.datasets.entity_metadata import (
     ser_entity_metadata,
 )
 from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
-from kgdata.wikidata.models import (
-    WDClass,
-    WDProperty,
-    WDPropertyDomains,
-    WDPropertyRanges,
-)
+from kgdata.wikidata.models import WDClass, WDProperty
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
-from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel, WDEntityWikiLink)
 
@@ -179,7 +167,9 @@ def proxy_wrapper(
         dbopts=dbopts,
     )
     if proxy:
-        return cast(WDProxyDB, db).set_extract_ent_from_entity(cls.from_entity)  # type: ignore
+        if hasattr(cls, "from_entity"):
+            return cast(WDProxyDB, db).set_extract_ent_from_entity(cls.from_entity)  # type: ignore
+        return cast(WDProxyDB, db).set_extract_ent_from_entity(lambda x: x)
     return db  # type: ignore
 
 

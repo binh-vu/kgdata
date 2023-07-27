@@ -16,5 +16,5 @@ For a full documentation, please see [the website](https://kgdata.readthedocs.io
 From PyPI (using pre-built binaries):
 
 ```bash
-pip install kgdata
+pip install kgdata[spark]   # omit spark to manually specify its version if your cluster has different version
 ```

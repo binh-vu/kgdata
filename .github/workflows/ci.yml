@@ -36,7 +36,7 @@ jobs:
       - name: Run test
         if: matrix.python == '3.8' && !startsWith(matrix.platform, 'windows')
         run: |
-          python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp38*.whl'))[0]; subprocess.check_output(['pip', 'install', file])"
+          python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp38*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
           pip install pytest
           mv kgdata kgdata2
           pytest -xs tests/
