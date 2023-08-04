@@ -1,3 +1,4 @@
+import re
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, ensure_unique_records
 from kgdata.wikipedia.config import WikipediaDirCfg
@@ -56,6 +57,14 @@ def extract_tables(article: HTMLArticle):
             auto_pad=True,
             extract_context=True,
         )
+    except RuntimeError as e:
+        m = re.match(r"^Invalid(Row|Col)SpanError: '(\d+[;])'$", str(e))
+        if m is None:
+            # can't fix row/cell span errors
+            raise
+        
+        article.html = re.sub(r"""(row|col)span=["'](\d+)[;]["']""", r'\1span="\2"', article.html)
+        return extract_tables(article)                
     except Exception as e:
         logger.exception(
             "Error while extracting tables from article {}: {}",

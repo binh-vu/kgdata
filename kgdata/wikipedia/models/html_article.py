@@ -80,6 +80,24 @@ class HTMLArticle:
             wikitext=o["article_body"].get("wikitext", ""),
         )
 
+    @staticmethod
+    def from_dict(o: dict) -> HTMLArticle:
+        return HTMLArticle(
+            o["name"],
+            o["page_id"],
+            o["date_modified"],
+            o["url"],
+            o["lang"],
+            o["wdentity"],
+            [AdditionalEntity.from_dict(ent) for ent in o["additional_entities"]],
+            o["is_part_of"],
+            [NameAndURL.from_dict(c) for c in o["categories"]],
+            [NameAndURL.from_dict(t) for t in o["templates"]],
+            [NameAndURL.from_dict(r) for r in o["redirects"]],
+            o["html"],
+            o["wikitext"],
+        )
+
     def to_dict(self) -> dict:
         return {
             "name": self.name,
@@ -104,6 +122,14 @@ class AdditionalEntity:
     url: str
     aspects: List[str]
 
+    @staticmethod
+    def from_dict(o: dict) -> AdditionalEntity:
+        return AdditionalEntity(
+            o["identifier"],
+            o["url"],
+            o["aspects"],
+        )
+
     def to_dict(self) -> dict:
         return {
             "identifier": self.identifier,
@@ -116,6 +142,10 @@ class AdditionalEntity:
 class NameAndURL:
     name: str
     url: str
+
+    @staticmethod
+    def from_dict(o: dict) -> NameAndURL:
+        return NameAndURL(o["name"], o["url"])
 
     def to_dict(self) -> dict:
         return {"name": self.name, "url": self.url}
