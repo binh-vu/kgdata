@@ -1,11 +1,13 @@
 import re
+
+from loguru import logger
+from rsoup.core import ContextExtractor, Table, TableExtractor
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, ensure_unique_records
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle
-from loguru import logger
-from rsoup.core import ContextExtractor, Table, TableExtractor
 
 
 def html_tables() -> Dataset[Table]:
@@ -61,10 +63,12 @@ def extract_tables(article: HTMLArticle):
         m = re.match(r"^Invalid(Row|Col)SpanError: '(\d+[;])'$", str(e))
         if m is None:
             # can't fix row/cell span errors
-            raise
-        
-        article.html = re.sub(r"""(row|col)span=["'](\d+)[;]["']""", r'\1span="\2"', article.html)
-        return extract_tables(article)                
+            return [article.url]
+
+        article.html = re.sub(
+            r"""(row|col)span=["'](\d+)[;]["']""", r'\1span="\2"', article.html
+        )
+        return extract_tables(article)
     except Exception as e:
         logger.exception(
             "Error while extracting tables from article {}: {}",
