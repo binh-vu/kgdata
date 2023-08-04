@@ -50,7 +50,7 @@ def ser_table(x: Table) -> str:
 
 
 def extract_tables(article: HTMLArticle):
-    extractor = TableExtractor(context_extractor=ContextExtractor())
+    extractor = TableExtractor(context_extractor=ContextExtractor(), html_error_forgiveness=True)
     try:
         tables = extractor.extract(
             article.url,
@@ -59,16 +59,6 @@ def extract_tables(article: HTMLArticle):
             auto_pad=True,
             extract_context=True,
         )
-    except RuntimeError as e:
-        m = re.match(r"^Invalid(Row|Col)SpanError: '(\d+[;])'$", str(e))
-        if m is None:
-            # can't fix row/cell span errors
-            return [article.url]
-
-        article.html = re.sub(
-            r"""(row|col)span=["'](\d+)[;]["']""", r'\1span="\2"', article.html
-        )
-        return extract_tables(article)
     except Exception as e:
         logger.exception(
             "Error while extracting tables from article {}: {}",
