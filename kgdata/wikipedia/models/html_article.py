@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import List, Literal, Optional
 
@@ -41,7 +42,7 @@ class HTMLArticle:
     # the parsed html
     html: str
 
-    # the wikitext
+    # the wikitext -- empty if there is no wikitext
     wikitext: str
 
     @staticmethod
@@ -67,6 +68,7 @@ class HTMLArticle:
             categories=[
                 NameAndURL(name=x["name"], url=x["url"])
                 for x in o.get("categories", [])
+                if len(x) > 0
             ],
             templates=[
                 NameAndURL(name=x["name"], url=x["url"]) for x in o.get("templates", [])
@@ -75,7 +77,7 @@ class HTMLArticle:
                 NameAndURL(name=x["name"], url=x["url"]) for x in o.get("redirects", [])
             ],
             html=o["article_body"]["html"],
-            wikitext=o["article_body"]["wikitext"],
+            wikitext=o["article_body"].get("wikitext", ""),
         )
 
     def to_dict(self) -> dict:
