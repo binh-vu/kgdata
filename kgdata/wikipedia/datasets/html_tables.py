@@ -77,7 +77,6 @@ def extract_tables(article: HTMLArticle):
                     and value.get_element_attr_by_id(uid, "href") is None
                 ):
                     cls = value.get_element_attr_by_id(uid, "class")
-                    assert cls is not None and "selflink" in cls, cls
-                    value.set_element_attr_by_id(uid, "href", article.url)
-
+                    if cls is not None and "selflink" in cls:
+                        value.set_element_attr_by_id(uid, "href", article.url)
     return [tbl.to_json() for tbl in tables]
