@@ -6,32 +6,30 @@ import warnings
 from operator import attrgetter
 from pathlib import Path
 from typing import List
-from kgdata.wikipedia.datasets.grouped_articles import grouped_articles
 
 import numpy as np
-from bs4 import Tag, NavigableString
+from bs4 import NavigableString, Tag
+from serde.helper import get_open_fn
 from tqdm.auto import tqdm
 
 from kgdata.config import DBPEDIA_DIR
 from kgdata.dbpedia.dbpediamodels import *
-from kgdata.dbpedia.dbpediamodels import (
-    Table,
-)
+from kgdata.dbpedia.dbpediamodels import Table
 from kgdata.dbpedia.instances_extraction import (
     merge_triples,
-    rdfterm_to_json,
     merged_instances_fixed_wiki_id_en,
+    rdfterm_to_json,
 )
 from kgdata.dbpedia.table_tests import is_relational_table
 from kgdata.misc.ntriples_parser import ntriple_loads
 from kgdata.spark import (
-    get_spark_context,
-    ensure_unique_records,
-    left_outer_join,
+    are_records_unique,
     does_result_dir_exist,
+    get_spark_context,
+    left_outer_join,
 )
+from kgdata.wikipedia.datasets.grouped_articles import grouped_articles
 from kgdata.wikipedia.prelude import get_title_from_url
-from serde.helper import get_open_fn
 
 """This module provides functions to extract tables from DBPedia raw table dumps.
 
@@ -402,7 +400,9 @@ def raw_tables_en(
             )
         )
 
-        ensure_unique_records(sc.textFile(outfile).map(orjson.loads), itemgetter("id"))
+        assert are_records_unique(
+            sc.textFile(outfile).map(orjson.loads), itemgetter("id")
+        )
 
     rdd = sc.textFile(outfile).map(RawHTMLTable.deserialize)
     return rdd
@@ -448,7 +448,7 @@ def tables_en(
         )
 
         tbls_rdd = sc.textFile(step0_file).map(Table.deser_str)
-        ensure_unique_records(tbls_rdd, attrgetter("id"))
+        assert are_records_unique(tbls_rdd, attrgetter("id"))
 
     if not does_result_dir_exist(outfile):
         tbls_rdd = sc.textFile(step0_file).map(Table.deser_str)

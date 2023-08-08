@@ -4,7 +4,7 @@ from operator import itemgetter
 from typing import Tuple
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, ensure_unique_records, get_spark_context
+from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_ids import is_entity_id
 from kgdata.wikidata.datasets.page_dump import page_dump
@@ -41,7 +41,7 @@ def page_ids() -> Dataset[Tuple[str, str]]:
             .textFile(os.path.join(cfg.page_ids, "*.gz"))
             .map(lambda x: x.split("\t"))
         )
-        ensure_unique_records(
+        assert are_records_unique(
             rdd,
             itemgetter(0),
         )

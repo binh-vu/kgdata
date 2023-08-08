@@ -1,22 +1,15 @@
-from collections import defaultdict
-from typing import Dict, List, Sequence, Set, Tuple, Union
+from __future__ import annotations
 
 import orjson
-import sm.misc as M
+
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
-from kgdata.splitter import split_a_list
+from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.classes import build_ancestors
-from kgdata.wikidata.datasets.entities import entities, ser_entity
-from kgdata.wikidata.datasets.entity_ids import entity_ids
-from kgdata.wikidata.datasets.entity_redirections import entity_redirections
-from kgdata.wikidata.datasets.property_domains import merge_counters
-from kgdata.wikidata.models import WDProperty
+from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def entity_types(lang="en") -> Dataset[Tuple[str, List[str]]]:
+def entity_types(lang="en") -> Dataset[tuple[str, list[str]]]:
     """Extract types of entities. Mapping from entity id to its type"""
     cfg = WikidataDirCfg.get_instance()
 
@@ -35,7 +28,7 @@ def entity_types(lang="en") -> Dataset[Tuple[str, List[str]]]:
     return Dataset(cfg.entity_types / "*.gz", deserialize=orjson.loads)
 
 
-def get_instanceof(ent: WDEntity) -> Tuple[str, List[str]]:
+def get_instanceof(ent: WDEntity) -> tuple[str, list[str]]:
     instanceof = "P31"
     return (
         ent.id,

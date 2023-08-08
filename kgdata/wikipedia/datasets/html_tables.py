@@ -1,11 +1,13 @@
 import re
+
+from loguru import logger
+from rsoup.core import ContextExtractor, Table, TableExtractor
+
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, ensure_unique_records
+from kgdata.spark import are_records_unique, does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle
-from loguru import logger
-from rsoup.core import ContextExtractor, Table, TableExtractor
 
 
 def html_tables() -> Dataset[Table]:
@@ -20,7 +22,6 @@ def html_tables() -> Dataset[Table]:
             html_articles()
             .get_rdd()
             .flatMap(extract_tables)
-            .coalesce(1024, shuffle=True)
             .saveAsTextFile(
                 str(cfg.html_tables),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
@@ -35,7 +36,7 @@ def html_tables() -> Dataset[Table]:
         prefilter=lambda x: x[0] == "{",
     )
     if need_double_check:
-        ensure_unique_records(ds.get_rdd(), lambda tbl: tbl.id)
+        assert are_records_unique(ds.get_rdd(), lambda tbl: tbl.id)
     return ds
 
 
@@ -48,7 +49,9 @@ def ser_table(x: Table) -> str:
 
 
 def extract_tables(article: HTMLArticle):
-    extractor = TableExtractor(context_extractor=ContextExtractor())
+    extractor = TableExtractor(
+        context_extractor=ContextExtractor(), html_error_forgiveness=True
+    )
     try:
         tables = extractor.extract(
             article.url,
@@ -57,14 +60,6 @@ def extract_tables(article: HTMLArticle):
             auto_pad=True,
             extract_context=True,
         )
-    except RuntimeError as e:
-        m = re.match(r"^Invalid(Row|Col)SpanError: '(\d+[;])'$", str(e))
-        if m is None:
-            # can't fix row/cell span errors
-            raise
-        
-        article.html = re.sub(r"""(row|col)span=["'](\d+)[;]["']""", r'\1span="\2"', article.html)
-        return extract_tables(article)                
     except Exception as e:
         logger.exception(
             "Error while extracting tables from article {}: {}",
@@ -74,16 +69,24 @@ def extract_tables(article: HTMLArticle):
         return [article.url]
 
     # postprocess wikipedia tables
-    for table in tables:
-        for cell in table.iter_cells():
-            value = cell.value
-            for uid in value.iter_element_id():
-                if (
-                    value.get_element_tag_by_id(uid) == "a"
-                    and value.get_element_attr_by_id(uid, "href") is None
-                ):
-                    cls = value.get_element_attr_by_id(uid, "class")
-                    assert cls is not None and "selflink" in cls, cls
-                    value.set_element_attr_by_id(uid, "href", article.url)
+    try:
+        for table in tables:
+            for cell in table.iter_cells():
+                value = cell.value
+                for uid in value.iter_element_id():
+                    if (
+                        value.get_element_tag_by_id(uid) == "a"
+                        and value.get_element_attr_by_id(uid, "href") is None
+                    ):
+                        cls = value.get_element_attr_by_id(uid, "class")
+                        if cls is not None and "selflink" in cls:
+                            value.set_element_attr_by_id(uid, "href", article.url)
+    except:
+        logger.exception(
+            "Error while posprocessing the extracted tables from article {}: {}",
+            article.page_id,
+            article.url,
+        )
+        return [article.url]
 
     return [tbl.to_json() for tbl in tables]
