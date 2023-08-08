@@ -1,18 +1,18 @@
-import gzip
+from __future__ import annotations
+
 from collections import deque
-from typing import Dict, List
 
 import orjson
 import serde.jl
-import sm.misc as M
+from tqdm import tqdm
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.splitter import split_a_list
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.entities import entities, ser_entity
+from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models import WDClass
 from kgdata.wikidata.models.wdentity import WDEntity
-from tqdm import tqdm
 
 
 def classes(lang: str = "en") -> Dataset[WDClass]:
@@ -116,7 +116,7 @@ def build_ancestors(id2parents: dict) -> dict:
     return id2ancestors
 
 
-def get_ancestors(id: str, id2parents: dict) -> List[str]:
+def get_ancestors(id: str, id2parents: dict) -> list[str]:
     # preserved the order
     ancestors = {}
     queue = deque(id2parents[id])
@@ -131,7 +131,12 @@ def get_ancestors(id: str, id2parents: dict) -> List[str]:
     return list(ancestors.keys())
 
 
-def get_class_ids(ent: WDEntity) -> List[str]:
+def get_class_ids(ent: WDEntity) -> list[str]:
+    # we can have a case where a property is mistakenly marked as a class such as P1072, which has been fixed.
+    # but we need to check it here.
+    if ent.id[0] == "P":
+        return []
+
     lst = set()
     if "P279" in ent.props:
         lst.add(ent.id)

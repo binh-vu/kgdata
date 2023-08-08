@@ -3,13 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import orjson
+from rdflib.term import URIRef
+
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.page_id_dump import page_id_dump
 from kgdata.misc.ntriples_parser import ntriple_loads
-from kgdata.spark import does_result_dir_exist, ensure_unique_records
+from kgdata.spark import are_records_unique, does_result_dir_exist
 from kgdata.splitter import split_a_file
-from rdflib.term import URIRef
 
 
 @dataclass
@@ -40,8 +41,8 @@ def page_ids(lang: str = "en") -> Dataset[DBpediaPageId]:
         rdd = Dataset(
             file_pattern=outdir / "*.gz", deserialize=deser_dbpedia_page_id
         ).get_rdd()
-        assert ensure_unique_records(rdd, lambda x: x.dbpedia_id)
-        assert ensure_unique_records(rdd, lambda x: x.wikipedia_id)
+        assert are_records_unique(rdd, lambda x: x.dbpedia_id)
+        assert are_records_unique(rdd, lambda x: x.wikipedia_id)
 
     return Dataset(file_pattern=outdir / "*.gz", deserialize=deser_dbpedia_page_id)
 

@@ -4,13 +4,14 @@ from dataclasses import dataclass
 from urllib.parse import unquote, urlparse
 
 import orjson
+from rdflib.term import URIRef
+
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.wikilink_dump import wikilink_dump
 from kgdata.misc.ntriples_parser import ntriple_loads
-from kgdata.spark import does_result_dir_exist, ensure_unique_records
+from kgdata.spark import are_records_unique, does_result_dir_exist
 from kgdata.splitter import split_a_file
-from rdflib.term import URIRef
 
 
 @dataclass
@@ -60,7 +61,7 @@ def wikilinks(lang: str = "en") -> Dataset[WikiLink]:
         rdd = Dataset(
             file_pattern=outdir / "final/*.gz", deserialize=deser_wikilink
         ).get_rdd()
-        assert ensure_unique_records(rdd, lambda x: x.source)
+        assert are_records_unique(rdd, lambda x: x.source)
 
     return Dataset(file_pattern=outdir / "final/*.gz", deserialize=deser_wikilink)
 

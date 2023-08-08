@@ -142,10 +142,13 @@ def does_result_dir_exist(
     return True
 
 
-def ensure_unique_records(
-    rdd: RDD[R1], keyfn: Callable[[R1], Union[str, int]], print_error: bool = True
+def are_records_unique(
+    rdd: RDD[R1],
+    keyfn: Callable[[R1], Union[str, int]],
+    print_error: bool = True,
+    return_duplication: bool = False,
 ):
-    """Make sure that RDDs contain unique records
+    """Whether RDDs contain unique records
 
     Parameters
     ----------
@@ -173,8 +176,11 @@ def ensure_unique_records(
         dup_record_ids = set(dup_record_ids)
 
         dup_records = rdd.filter(lambda x: keyfn(x) in dup_record_ids).collect()
+        print("Found duplicated records:")
         for r in dup_records:
-            print(">>", r)
+            print(">>", keyfn(r))
+        if return_duplication:
+            return dup_records
         return False
     return True
 

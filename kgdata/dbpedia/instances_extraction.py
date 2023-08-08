@@ -1,14 +1,14 @@
-from kgdata.wikipedia.datasets.grouped_articles import grouped_articles
-import orjson
 import os
 from operator import itemgetter
 from typing import Tuple
 
+import orjson
 from rdflib import Literal, URIRef
 
 from kgdata.config import DBPEDIA_DIR
-from kgdata.misc.ntriples_parser import ntriple_loads, ignore_comment
-from kgdata.spark import get_spark_context, ensure_unique_records
+from kgdata.misc.ntriples_parser import ignore_comment, ntriple_loads
+from kgdata.spark import are_records_unique, get_spark_context
+from kgdata.wikipedia.datasets.grouped_articles import grouped_articles
 
 Triple = Tuple[str, str, str]
 
@@ -106,7 +106,7 @@ def instance_types_specific_en(
             step1_outfile,
             compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
         )
-        ensure_unique_records(rdd, itemgetter(0))
+        assert are_records_unique(rdd, itemgetter(0))
     else:
         rdd = sc.textFile(step1_outfile).map(orjson.loads)
 
@@ -262,7 +262,7 @@ def pages_en(
             step1_outfile,
             compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
         )
-        ensure_unique_records(rdd, itemgetter("@id"))
+        assert are_records_unique(rdd, itemgetter("@id"))
     else:
         rdd = sc.textFile(step1_outfile).map(orjson.loads)
 
@@ -341,7 +341,7 @@ def merge_instances_en(
         rdd.map(orjson.dumps).saveAsTextFile(
             outfile, compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
         )
-        ensure_unique_records(rdd, itemgetter("@id"))
+        assert are_records_unique(rdd, itemgetter("@id"))
     else:
         rdd = sc.textFile(outfile).map(orjson.loads)
     return rdd
@@ -395,8 +395,10 @@ def merged_instances_fixed_wiki_id_en(
         )
 
         rdd = sc.textFile(outfile).map(orjson.loads)
-        ensure_unique_records(rdd, itemgetter("@id"))
-        ensure_unique_records(rdd, itemgetter("http://dbpedia.org/ontology/wikiPageID"))
+        assert are_records_unique(rdd, itemgetter("@id"))
+        assert are_records_unique(
+            rdd, itemgetter("http://dbpedia.org/ontology/wikiPageID")
+        )
     else:
         rdd = sc.textFile(outfile).map(orjson.loads)
 

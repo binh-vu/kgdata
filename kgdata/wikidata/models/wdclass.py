@@ -10,7 +10,7 @@ from kgdata.wikidata.models.wdentity import WDEntity
 class WDClass(OntologyClass):
     @staticmethod
     def from_entity(ent: WDEntity):
-        assert ent.datatype is None
+        assert ent.datatype is None, (ent.id, ent.datatype)
 
         parents = []
         for stmt in ent.props.get("P279", []):
