@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
+from rdflib import OWL
+
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 
 
@@ -75,3 +77,21 @@ class OntologyClass:
             for parent in self.parents
             if (d := classes[parent].get_distance(ancestor, classes)) != -1
         )
+
+
+def get_default_classes() -> list[OntologyClass]:
+    return [
+        OntologyClass(
+            id=str(OWL.Thing),
+            label=MultiLingualString({"en": "Thing"}, "en"),
+            description=MultiLingualString(
+                {"en": "The class of OWL individuals."}, "en"
+            ),
+            aliases=MultiLingualStringList({"en": []}, "en"),
+            parents=[],
+            properties=[],
+            different_froms=[],
+            equivalent_classes=[],
+            ancestors=set(),
+        )
+    ]

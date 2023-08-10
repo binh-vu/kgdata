@@ -27,31 +27,16 @@ Examples::
 """
 
 from importlib import import_module
-from typing import Optional
 
 import click
-import kgdata.wikidata.datasets
-from kgdata.dbpedia.config import DBpediaDirCfg
-from kgdata.wikidata.config import WikidataDirCfg
-from loguru import logger
-from typing_extensions import Required
+
+from kgdata.config import init_dbdir_from_env
 
 
 @click.command("Generate a specific dataset")
-@click.option("-s", "--source", required=True, help="Wikidata directory")
 @click.option("-d", "--dataset", required=True, help="Dataset name")
-@click.option(
-    "--dbpedia",
-    required=False,
-    help="DBpedia directory. Only needed if building datasets that require DBpedia data such as entity_wikilinks",
-)
-def main(source: str, dataset: str, dbpedia: Optional[str] = None):
-    logger.info("Wikidata directory: {}", source)
-
-    WikidataDirCfg.init(source)
-    if dbpedia is not None:
-        DBpediaDirCfg.init(dbpedia)
-
+def main(dataset: str):
+    init_dbdir_from_env()
     module = import_module(f"kgdata.wikidata.datasets.{dataset}")
     getattr(module, dataset)()
 

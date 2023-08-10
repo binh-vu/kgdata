@@ -1,17 +1,13 @@
-import glob
-import os
 import tarfile
 from datetime import datetime
 from functools import partial
-from pathlib import Path
 from typing import BinaryIO, Iterable, Union, cast
 
 import orjson
 
-from kgdata.config import WIKIPEDIA_DIR
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict
-from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
+from kgdata.spark import are_records_unique, does_result_dir_exist
 from kgdata.splitter import split_a_file
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.models.html_article import HTMLArticle

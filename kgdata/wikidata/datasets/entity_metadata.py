@@ -1,23 +1,13 @@
-import os
-from functools import partial
-from pathlib import Path
-from typing import Dict, Set, Union, cast
+from typing import Union
 
 import orjson
-import sm.misc as M
-from kgdata.config import WIKIDATA_DIR
+
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.entities import deser_entity, entities
-from kgdata.wikidata.datasets.entity_dump import entity_dump
-from kgdata.wikidata.datasets.entity_ids import entity_ids
-from kgdata.wikidata.datasets.entity_redirections import entity_redirections
-from kgdata.wikidata.models.wdentity import WDEntity, WDValue
+from kgdata.wikidata.datasets.entities import entities
+from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
-from loguru import logger
-from pyspark import Broadcast
-from pyspark.rdd import RDD
 
 
 def entity_metadata(lang: str = "en") -> Dataset[WDEntityMetadata]:

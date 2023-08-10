@@ -24,6 +24,7 @@ class WikipediaDirCfg:
         self.html_tables = datadir / "html_tables"
         self.article_links = datadir / "article_links"
         self.article_aliases = datadir / "article_aliases"
+        self.article_degrees = datadir / "article_degrees"
         self.relational_tables = datadir / "relational_tables"
         self.linked_relational_tables = datadir / "linked_relational_tables"
         self.easy_tables = datadir / "easy_tables"

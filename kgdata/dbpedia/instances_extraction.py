@@ -1,11 +1,11 @@
 import os
 from operator import itemgetter
-from typing import Tuple
+from typing import Optional, Tuple
 
 import orjson
 from rdflib import Literal, URIRef
 
-from kgdata.config import DBPEDIA_DIR
+from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.misc.ntriples_parser import ignore_comment, ntriple_loads
 from kgdata.spark import are_records_unique, get_spark_context
 from kgdata.wikipedia.datasets.grouped_articles import grouped_articles
@@ -31,7 +31,7 @@ def rdfterm_to_json(term):
 
 
 def merge_triples(triples: list, auto_convert_rdfterm: bool = True):
-    obj = {"@id": str(triples[0][0])}
+    obj: dict = {"@id": str(triples[0][0])}
     for s, p, o in triples:
         p = str(p)
         if auto_convert_rdfterm:
@@ -48,9 +48,13 @@ def merge_triples(triples: list, auto_convert_rdfterm: bool = True):
 
 
 def wikipedia_links_en(
-    indir: str = os.path.join(DBPEDIA_DIR, "cores/wikipedia_links_en"),
+    indir: Optional[str] = None,
     infile: str = "step_0/wikipedia-links_lang=en.ttl.bz2",
 ):
+    if indir is None:
+        indir = os.path.join(
+            DBpediaDirCfg.get_instance().datadir, "cores/wikipedia_links_en"
+        )
     sc = get_spark_context()
 
     step_1_outfile = os.path.join(indir, "step_1")
@@ -75,7 +79,7 @@ def wikipedia_links_en(
 
 
 def instance_types_specific_en(
-    indir: str = os.path.join(DBPEDIA_DIR, "cores/instance_types_specific_en"),
+    indir: Optional[str] = None,
     infile: str = "step_0/instance-types_lang=en_specific.ttl.bz2",
 ):
     """Return the most specific type for each dbpedia resource.
@@ -94,6 +98,11 @@ def instance_types_specific_en(
     RDD
         spark RDD of this dataset
     """
+    if indir is None:
+        indir = os.path.join(
+            DBpediaDirCfg.get_instance().datadir, "cores/instance_types_specific_en"
+        )
+
     sc = get_spark_context()
 
     step1_outfile = os.path.join(indir, "step_1")
@@ -114,10 +123,14 @@ def instance_types_specific_en(
 
 
 def fusion_instance_types_en(
-    indir: str = os.path.join(DBPEDIA_DIR, "fusion/instance_types_en"),
+    indir: Optional[str] = None,
     infile: str = "step_0/instance-types_reduce=dbpw_resolve=union.ttl.bz2",
 ):
     """This dataset is not very useful for me yet. DBPedia is a mess and not precise with what they release. So I think I just accept it and move on."""
+    if indir is None:
+        indir = os.path.join(
+            DBpediaDirCfg.get_instance().datadir, "fusion/instance_types_en"
+        )
     sc = get_spark_context()
 
     step1_outfile = os.path.join(indir, "step_1")
@@ -142,9 +155,13 @@ def fusion_instance_types_en(
 
 
 def mappingbased_literals_en(
-    indir: str = os.path.join(DBPEDIA_DIR, "cores/mappingbased_literals_en"),
+    indir: Optional[str] = None,
     infile: str = "step_0/mappingbased-literals_lang=en.ttl.bz2",
 ):
+    if indir is None:
+        indir = os.path.join(
+            DBpediaDirCfg.get_instance().datadir, "cores/mappingbased_literals_en"
+        )
     sc = get_spark_context()
 
     step1_outfile = os.path.join(indir, "step_1")
@@ -172,9 +189,13 @@ def mappingbased_literals_en(
 
 
 def mappingbased_objects_en(
-    indir: str = os.path.join(DBPEDIA_DIR, "cores/mappingbased_objects_en"),
+    indir: Optional[str] = None,
     infile: str = "step_0/mappingbased-objects_lang=en.ttl.bz2",
 ):
+    if indir is None:
+        indir = os.path.join(
+            DBpediaDirCfg.get_instance().datadir, "cores/mappingbased_objects_en"
+        )
     sc = get_spark_context()
 
     step1_outfile = os.path.join(indir, "step_1")
@@ -200,9 +221,11 @@ def mappingbased_objects_en(
 
 
 def redirects_en(
-    indir: str = os.path.join(DBPEDIA_DIR, "cores/redirects_en"),
+    indir: Optional[str] = None,
     infile: str = "step_0/redirects_lang=en.ttl.bz2",
 ):
+    if indir is None:
+        indir = os.path.join(DBpediaDirCfg.get_instance().datadir, "cores/redirects_en")
     sc = get_spark_context()
 
     step1_outfile = os.path.join(indir, "step_1")
@@ -224,7 +247,7 @@ def redirects_en(
 
 
 def pages_en(
-    indir: str = os.path.join(DBPEDIA_DIR, "cores/pages_en"),
+    indir: Optional[str] = None,
     infile: str = "step_0/page_lang=en_ids.ttl.bz2",
 ):
     """Load dataset of mapping between DBPedia resources and wiki article ID.
@@ -244,6 +267,8 @@ def pages_en(
     RDD
         spark RDD of this dataset
     """
+    if indir is None:
+        indir = os.path.join(DBpediaDirCfg.get_instance().datadir, "cores/pages_en")
     sc = get_spark_context()
 
     step1_outfile = os.path.join(indir, "step_1")
@@ -274,7 +299,9 @@ def merge_instances_en(
     mappingbased_literals_rdd=None,
     mappingbased_objects_rdd=None,
     pages_rdd=None,
-    outfile: str = os.path.join(DBPEDIA_DIR, "instances_en/step_0"),
+    outfile: str = os.path.join(
+        DBpediaDirCfg.get_instance().datadir, "instances_en/step_0"
+    ),
 ):
     def merge_triple_to_json(values):
         (s, p, o), b = values
@@ -350,7 +377,9 @@ def merge_instances_en(
 def merged_instances_fixed_wiki_id_en(
     merge_instances_rdd=None,
     id2groups_rdd=None,
-    outfile: str = os.path.join(DBPEDIA_DIR, "instances_en/step_1"),
+    outfile: str = os.path.join(
+        DBpediaDirCfg.get_instance().datadir, "instances_en/step_1"
+    ),
 ):
     """This dataset is a subset of `merge_instances_en` that keeps only resources which wikiPageID is found in Wikipedia dump. It's resolved the redirect issue as well.
 

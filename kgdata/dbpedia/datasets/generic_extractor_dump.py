@@ -1,8 +1,9 @@
-import orjson
+import re
+
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import aggregated_triples
-from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
+from kgdata.misc.ntriples_parser import ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
 from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.splitter import split_a_file
@@ -23,14 +24,16 @@ def generic_extractor_dump(lang: str = "en") -> Dataset[RDFResource]:
         for file in cfg.get_generic_extractor_dump_files(lang):
             split_a_file(
                 infile=file,
-                outfile=split_dump_dir / f"{file.stem}.part.gz",
+                outfile=split_dump_dir
+                / re.sub(r"[^a-zA-Z]", "-", file.name.split(".", 1)[0])
+                / "part.ttl.gz",
                 n_writers=8,
                 override=False,
             )
 
         (
             get_spark_context()
-            .textFile(str(split_dump_dir / "*.gz"))
+            .textFile(str(split_dump_dir / "*/*.gz"))
             .filter(ignore_comment)
             .map(ntriple_loads)
             .groupBy(lambda x: x[0])

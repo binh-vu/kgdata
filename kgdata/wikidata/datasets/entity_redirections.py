@@ -2,23 +2,18 @@ from __future__ import annotations
 
 import shutil
 from collections import defaultdict
-from operator import itemgetter
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Tuple
 
-import orjson
 import serde.csv
 import serde.textline
-from kgdata.config import WIKIDATA_DIR
+from tqdm import tqdm
+
 from kgdata.dataset import Dataset
 from kgdata.spark import get_spark_context, saveAsSingleTextFile
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids, is_entity_id
 from kgdata.wikidata.datasets.entity_redirection_dump import entity_redirection_dump
 from kgdata.wikidata.datasets.page_ids import page_ids, parse_sql_values
-from kgdata.wikidata.models.wdentity import WDEntity
-from pyspark.rdd import RDD
-from tqdm import tqdm
 
 
 def entity_redirections() -> Dataset[Tuple[str, str]]:

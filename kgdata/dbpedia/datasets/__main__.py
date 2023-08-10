@@ -27,22 +27,23 @@ Examples::
 from importlib import import_module
 
 import click
-import kgdata.dbpedia.datasets
-from kgdata.dbpedia.config import DBpediaDirCfg
-from loguru import logger
-from typing_extensions import Required
+
+from kgdata.config import init_dbdir_from_env
 
 
 @click.command("Generate a specific dataset")
-@click.option("-s", "--source", required=True, help="DBpedia directory")
 @click.option("-d", "--dataset", required=True, help="Dataset name")
-def main(source: str, dataset: str):
-    logger.info("DBpedia directory: {}", source)
-
-    DBpediaDirCfg.init(source)
+@click.option("-t", "--take", type=int, required=False, default=0, help="Take n rows")
+def main(dataset: str, take: int = 0):
+    init_dbdir_from_env()
 
     module = import_module(f"kgdata.dbpedia.datasets.{dataset}")
-    getattr(module, dataset)()
+    ds = getattr(module, dataset)()
+
+    if take > 0:
+        for record in ds.take(take):
+            print(record)
+            print("=" * 30)
 
 
 if __name__ == "__main__":

@@ -2,11 +2,11 @@ import glob
 import gzip
 import os
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import Dict, List, Optional
 
 import orjson
 
-from kgdata.config import WIKIDATA_DIR
+from kgdata.wikidata.config import WikidataDirCfg
 
 
 @dataclass
@@ -16,11 +16,12 @@ class WDQuantityPropertyStats:
     qualifiers: Dict[str, "QuantityStats"]
 
     @staticmethod
-    def from_dir(
-        indir: str = os.path.join(
-            WIKIDATA_DIR, "step_2/quantity_prop_stats/quantity_stats"
-        )
-    ) -> Dict[str, "WDQuantityPropertyStats"]:
+    def from_dir(indir: Optional[str] = None) -> Dict[str, "WDQuantityPropertyStats"]:
+        if indir is None:
+            indir = os.path.join(
+                WikidataDirCfg.get_instance().datadir,
+                "step_2/quantity_prop_stats/quantity_stats",
+            )
         odict = {}
         for infile in glob.glob(os.path.join(indir, "*.gz")):
             with gzip.open(infile, "rb") as f:

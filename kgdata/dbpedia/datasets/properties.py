@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import re
+from functools import partial
 from urllib.parse import urlparse
 
 import orjson
+from rdflib import OWL, RDF, RDFS, XSD, BNode, Literal, URIRef
+
 from kgdata.dataset import Dataset
+from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import RDFResource, ontology_dump
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
 from kgdata.spark import does_result_dir_exist
-from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
+from kgdata.splitter import split_a_list
+from kgdata.wikidata.datasets.classes import build_ancestors
 from sm.misc.funcs import assert_not_null
 
 rdf_type = str(RDF.type)
@@ -25,21 +30,17 @@ def properties() -> Dataset[OntologyProperty]:
     outdir = cfg.properties
 
     if not does_result_dir_exist(outdir):
-        (
-            ontology_dump()
-            .get_rdd()
-            .filter(is_prop)
-            .map(to_prop)
-            .map(lambda c: orjson.dumps(c.to_dict()))
-            .saveAsTextFile(
-                str(outdir),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
-        )
+        props = ontology_dump().get_rdd_alike().filter(is_prop).map(to_prop).collect()
+        id2ancestors = build_ancestors({prop.id: prop.parents for prop in props})
+        for p in props:
+            p.ancestors = id2ancestors[p.id]
+
+        # use this function, but it gonna keeps in one file
+        split_a_list([ser_to_dict(p) for p in props], outdir / "part.jl")
+        (outdir / "_SUCCESS").touch()
 
     return Dataset(
-        outdir / "*.gz",
-        deserialize=lambda x: OntologyProperty.from_dict(orjson.loads(x)),
+        outdir / "*.jl", deserialize=partial(deser_from_dict, OntologyProperty)
     )
 
 
@@ -98,16 +99,16 @@ def as_multilingual(terms: list[Literal], default_lang: str = "en"):
     return MultiLingualString(lang2value, next(iter(lang2value.keys())))
 
 
-def extract_datatype(resource: RDFResource) -> DataType:
+def extract_datatype(resource: RDFResource) -> str:
     if OWL.ObjectProperty in resource.props.get(str(RDF.type), []):
         return "entity"
 
     ranges = resource.props.get(str(RDFS.range), [])
     if len(ranges) > 0:
         assert len(ranges) == 1
-        return ranges[0]
+        return str(ranges[0])
 
-    assert False, resource.id
+    assert False, (resource.id, ranges)
 
 
 ID_TO_LANGUAGE = {

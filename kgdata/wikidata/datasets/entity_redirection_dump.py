@@ -1,16 +1,8 @@
 from bz2 import BZ2File
 from gzip import GzipFile
-from operator import itemgetter
 from typing import BinaryIO, Union
 
-from kgdata.config import WIKIDATA_DIR
 from kgdata.dataset import Dataset
-from kgdata.spark import (
-    does_result_dir_exist,
-    get_spark_context,
-    head,
-    saveAsSingleTextFile,
-)
 from kgdata.splitter import split_a_file
 from kgdata.wikidata.config import WikidataDirCfg
 
