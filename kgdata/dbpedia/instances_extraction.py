@@ -378,11 +378,7 @@ def merge_instances_en(
 
 
 def merged_instances_fixed_wiki_id_en(
-    merge_instances_rdd=None,
-    id2groups_rdd=None,
-    outfile: str = os.path.join(
-        DBpediaDirCfg.get_instance().datadir, "instances_en/step_1"
-    ),
+    merge_instances_rdd=None, id2groups_rdd=None, outfile: Optional[str] = None
 ):
     """This dataset is a subset of `merge_instances_en` that keeps only resources which wikiPageID is found in Wikipedia dump. It's resolved the redirect issue as well.
 
@@ -399,6 +395,10 @@ def merged_instances_fixed_wiki_id_en(
     outfile : str, optional
         output file, by default "${DATA_DIR}/dbpedia/cores/instances_en/step_1"
     """
+    if outfile is None:
+        outfile = os.path.join(
+            DBpediaDirCfg.get_instance().datadir, "instances_en/step_1"
+        )
     sc = get_spark_context()
     if not os.path.exists(outfile):
         merge_instances_rdd = merge_instances_rdd or merge_instances_en()
