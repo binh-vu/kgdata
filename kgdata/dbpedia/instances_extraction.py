@@ -299,10 +299,13 @@ def merge_instances_en(
     mappingbased_literals_rdd=None,
     mappingbased_objects_rdd=None,
     pages_rdd=None,
-    outfile: str = os.path.join(
-        DBpediaDirCfg.get_instance().datadir, "instances_en/step_0"
-    ),
+    outfile: Optional[str] = None,
 ):
+    if outfile is None:
+        outfile = os.path.join(
+            DBpediaDirCfg.get_instance().datadir, "instances_en/step_0"
+        )
+
     def merge_triple_to_json(values):
         (s, p, o), b = values
 
