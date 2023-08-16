@@ -27,6 +27,8 @@ class WikidataDirCfg:
         self.entity_wikilinks = datadir / "entity_wikilinks"
         self.entity_metadata = datadir / "entity_metadata"
         self.entity_pagerank = datadir / "entity_pagerank"
+        self.entity_degrees = datadir / "entity_degrees"
+        self.entity_types_and_degrees = datadir / "entity_types_and_degrees"
         self.page_ids = datadir / "page_ids"
         self.entities = datadir / "entities"
 
@@ -36,6 +38,7 @@ class WikidataDirCfg:
         self.property_count = datadir / "property_count"
         self.property_domains = datadir / "property_domains"
         self.property_ranges = datadir / "property_ranges"
+        self.cross_wiki_mapping = datadir / "cross_wiki_mapping"
         self.wp2wd = datadir / "wp2wd"
 
         self.search = datadir / "search"
