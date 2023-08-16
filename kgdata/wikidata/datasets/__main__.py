@@ -35,10 +35,16 @@ from kgdata.config import init_dbdir_from_env
 
 @click.command("Generate a specific dataset")
 @click.option("-d", "--dataset", required=True, help="Dataset name")
-def main(dataset: str):
+@click.option("-t", "--take", type=int, required=False, default=0, help="Take n rows")
+def main(dataset: str, take: int = 0):
     init_dbdir_from_env()
     module = import_module(f"kgdata.wikidata.datasets.{dataset}")
-    getattr(module, dataset)()
+    ds = getattr(module, dataset)()
+
+    if take > 0:
+        for record in ds.take(take):
+            print(record)
+            print("=" * 30)
 
 
 if __name__ == "__main__":
