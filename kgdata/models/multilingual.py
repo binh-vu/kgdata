@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from sm.misc.funcs import filter_duplication
 from typing import List
+
+from sm.misc.funcs import filter_duplication
 
 
 class MultiLingualString(str):
@@ -27,6 +28,10 @@ class MultiLingualString(str):
     @staticmethod
     def en(label: str):
         return MultiLingualString(lang2value={"en": label}, lang="en")
+
+    @staticmethod
+    def from_dict(obj: dict):
+        return MultiLingualString(obj["lang2value"], obj["lang"])
 
     def to_dict(self):
         return {"lang2value": self.lang2value, "lang": self.lang}
