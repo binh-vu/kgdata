@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Generic, TypeVar, Union
+from dataclasses import asdict, dataclass
+from typing import Generic, Self, TypeVar, Union
 
 import orjson
 from rdflib import BNode, Literal, URIRef
@@ -23,6 +23,13 @@ class Record:
     @classmethod
     def deser(cls, o: str):
         return cls(**orjson.loads(o))
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, obj: dict) -> Self:
+        return cls(**obj)
 
 
 @dataclass
