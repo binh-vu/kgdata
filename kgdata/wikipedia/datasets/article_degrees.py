@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from operator import add
 from typing import Optional
+from urllib.parse import urlparse
 
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
@@ -34,7 +35,12 @@ def article_degrees(lang: str = "en") -> Dataset[ArticleDegree]:
         ).reduceByKey(add)
 
         (
-            ds.map(lambda a: (a.url, len(a.targets)))
+            ds.map(
+                lambda a: (
+                    a.url,
+                    sum((int(is_article_url(target.url)) for target in a.targets)),
+                )
+            )
             .leftOuterJoin(indegree)
             .map(merge_degree)
             .map(ArticleDegree.ser)
@@ -50,3 +56,10 @@ def article_degrees(lang: str = "en") -> Dataset[ArticleDegree]:
 def merge_degree(tup: tuple[str, tuple[int, Optional[int]]]) -> ArticleDegree:
     url, (outdegree, indegree) = tup
     return ArticleDegree(url, indegree if indegree is not None else 0, outdegree)
+
+
+def is_article_url(url: str) -> bool:
+    parsed_url = urlparse(url)
+    return parsed_url.netloc.endswith("wikipedia.org") and parsed_url.path.startswith(
+        "/wiki/"
+    )
