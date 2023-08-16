@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import glob
+import os
+import re
 from dataclasses import dataclass
 from math import ceil
 from pathlib import Path
@@ -17,6 +19,7 @@ from typing import (
     Union,
     cast,
 )
+from uuid import uuid4
 
 import orjson
 import serde.byteline
@@ -104,7 +107,7 @@ class Dataset(Generic[T_co]):
 
     def get_rdd_alike(
         self, rstrip: bool = True, file_order: Optional[Literal["asc", "desc"]] = None
-    ) -> SparkLikeInterface[V]:
+    ) -> SparkLikeInterface[T_co]:
         assert (
             self.prefilter is None and self.postfilter is None
         ), "Does not support filtering for non-rdd usage yet."
@@ -121,7 +124,7 @@ class Dataset(Generic[T_co]):
 
     def get_list(
         self, rstrip: bool = True, file_order: Optional[Literal["asc", "desc"]] = None
-    ):
+    ) -> list[T_co]:
         assert (
             self.prefilter is None and self.postfilter is None
         ), "Does not support filtering for non-rdd usage yet."
@@ -233,6 +236,30 @@ class Dataset(Generic[T_co]):
         ):
             batch = records[i : i + n_records_per_file]
             serialize_fn(cast(Any, batch), outdir / f"part-{no:05d}.gz")
+
+    def get_signature(self) -> str:
+        """Return signature of the dataset"""
+        dirname = Path(os.path.dirname(self.file_pattern))
+        pattern = os.path.basename(self.file_pattern)
+
+        assert dirname.exists() and pattern.find("*") != -1
+
+        if (pattern[0] == "*" and pattern[-1] != "S") or (
+            pattern[0] != "*" and pattern[0] != "_"
+        ):
+            metadata = dirname / "_SUCCESS"
+            if metadata.exists():
+                signature = metadata.read_text().strip()
+                if len(signature) == 0:
+                    signature = str(uuid4())
+                    metadata.write_text(signature)
+            else:
+                signature = str(uuid4())
+                metadata.write_text(signature)
+        else:
+            raise NotImplementedError()
+
+        return signature
 
 
 class SparkLikeInterface(Generic[T_co]):
