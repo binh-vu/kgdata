@@ -22,6 +22,7 @@ class WikipediaDirCfg:
         self.grouped_articles = datadir / "grouped_articles"
         self.html_articles = datadir / "html_articles"
         self.html_tables = datadir / "html_tables"
+        self.article_metadata = datadir / "article_metadata"
         self.article_links = datadir / "article_links"
         self.article_aliases = datadir / "article_aliases"
         self.article_degrees = datadir / "article_degrees"

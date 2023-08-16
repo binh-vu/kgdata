@@ -27,25 +27,15 @@ Examples::
 from importlib import import_module
 
 import click
-from loguru import logger
-from typing_extensions import Required
 
-from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikipedia.config import WikipediaDirCfg
+from kgdata.config import init_dbdir_from_env
 
 
 @click.command("Generate a specific dataset")
-@click.option("--wp-dir", required=True, help="Wikipedia directory")
-@click.option("--wd-dir", default="", help="Wikidata directory")
 @click.option("-d", "--dataset", required=True, help="Dataset name")
 @click.option("-t", "--take", type=int, required=False, default=0, help="Take n rows")
-def main(wp_dir: str, wd_dir: str, dataset: str, take: int = 0):
-    logger.info("Wikipedia directory: {}", wp_dir)
-
-    WikipediaDirCfg.init(wp_dir)
-    if wd_dir.strip() != "":
-        logger.info("Wikidata directory: {}", wd_dir)
-        WikidataDirCfg.init(wd_dir)
+def main(dataset: str, take: int = 0):
+    init_dbdir_from_env()
 
     module = import_module(f"kgdata.wikipedia.datasets.{dataset}")
     ds = getattr(module, dataset)()
