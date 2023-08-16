@@ -40,6 +40,7 @@ class DBpediaDirCfg:
         self.entity_types = datadir / "entity_types"
         self.entity_all_types = datadir / "entity_all_types"
         self.entity_degrees = datadir / "entity_degrees"
+        self.entity_types_and_degrees = datadir / "entity_types_and_degrees"
 
         # mapping from dbpedia resource to wikipedia id
         self.page_id_dump = datadir / "page_id_dump"
