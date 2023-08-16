@@ -14,6 +14,7 @@ from kgdata.misc.resource import Record
 from kgdata.models.entity import Entity
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.datasets.article_degrees import ArticleDegree, article_degrees
+from kgdata.wikipedia.misc import get_title_from_url
 
 
 @dataclass
@@ -29,7 +30,7 @@ class EntityDegree(Record):
 def entity_degrees(lang: str = "en") -> Dataset[EntityDegree]:
     cfg = DBpediaDirCfg.get_instance()
 
-    if not does_result_dir_exist(cfg.entity_degrees):
+    if not does_result_dir_exist(cfg.entity_degrees / "step1"):
         ent_rdd = entities(lang).get_rdd()
 
         outdegree = ent_rdd.map(lambda e: (e.id, get_outdegree(e)))
@@ -38,21 +39,34 @@ def entity_degrees(lang: str = "en") -> Dataset[EntityDegree]:
         (
             outdegree.leftOuterJoin(indegree)
             .map(merge_degree)
-            .map(lambda e: (e.id, e))
-            .leftOuterJoin(
-                article_degrees(lang)
-                .get_rdd()
-                .map(lambda a: (wikipedia_to_dbpedia_url(a.url), a))
-            )
-            .map(merge_article_degree)
             .map(EntityDegree.ser)
+            .coalesce(128)
             .saveAsTextFile(
-                str(cfg.entity_degrees),
+                str(cfg.entity_degrees / "step1"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
             )
         )
 
-    return Dataset(cfg.entity_degrees / "*.gz", deserialize=EntityDegree.deser)
+    if not does_result_dir_exist(cfg.entity_degrees / "step2"):
+        (
+            Dataset(cfg.entity_degrees / "step1/*.gz", deserialize=EntityDegree.deser)
+            .get_rdd()
+            .map(lambda e: (get_title_from_url(e.id, "/resource/"), e))
+            .leftOuterJoin(
+                article_degrees(lang)
+                .get_rdd()
+                .map(lambda a: (get_title_from_url(a.url), a))
+            )
+            .map(merge_article_degree)
+            .map(EntityDegree.ser)
+            .coalesce(128)
+            .saveAsTextFile(
+                str(cfg.entity_degrees / "step2"),
+                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            )
+        )
+
+    return Dataset(cfg.entity_degrees / "step2/*.gz", deserialize=EntityDegree.deser)
 
 
 def wikipedia_to_dbpedia_url(url: str) -> str:
