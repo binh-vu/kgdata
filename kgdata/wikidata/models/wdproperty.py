@@ -83,7 +83,7 @@ class WDProperty(OntologyProperty):
             subjects=sorted(subjects),
             inverse_properties=sorted(inverse_properties),
             instanceof=sorted(instanceof),
-            ancestors=set(),
+            ancestors={},
         )
 
     def is_object_property(self):

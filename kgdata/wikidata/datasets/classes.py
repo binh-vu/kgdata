@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from collections import deque
+from functools import partial
 
 import orjson
-import serde.jl
-from tqdm import tqdm
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kgdata.db import deser_from_dict, ser_to_dict
+from kgdata.misc.hierarchy import build_ancestors
+from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.splitter import split_a_list
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
@@ -40,66 +40,27 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
             .get_rdd()
             .filter(lambda ent: ent.id in class_ids.value)
             .map(lambda x: orjson.dumps(extract_class(x).to_dict()))
+            .coalesce(128)
             .saveAsTextFile(
                 str(cfg.classes / "classes"),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
             )
         )
 
-    if not does_result_dir_exist(cfg.classes / "ancestors"):
-        sc = get_spark_context()
-        saveAsSingleTextFile(
-            sc.textFile(str(cfg.classes / "classes/*.gz"))
-            .map(orjson.loads)
-            .map(WDClass.from_dict)
-            .map(lambda x: (x.id, x.parents))
-            .map(orjson.dumps),
-            str(cfg.classes / "ancestors/id2parents.ndjson.gz"),
-            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-        )
-
-        id2parents = {
-            k: v
-            for k, v in serde.jl.deser(cfg.classes / "ancestors/id2parents.ndjson.gz")
-        }
-
-        id2ancestors = build_ancestors(id2parents)
-        split_a_list(
-            [orjson.dumps(x) for x in sorted(id2ancestors.items())],
-            (cfg.classes / "ancestors/id2ancestors/part.ndjson.gz"),
-        )
-        (cfg.classes / "ancestors" / "_SUCCESS").touch()
+    get_ds = lambda subdir: Dataset(
+        cfg.classes / subdir / "*.gz", deserialize=partial(deser_from_dict, WDClass)
+    )
 
     if not does_result_dir_exist(cfg.classes / "full_classes"):
-        sc = get_spark_context()
-        id2ancestors = sc.textFile(
-            str(cfg.classes / "ancestors/id2ancestors/*.gz")
-        ).map(orjson.loads)
-
-        def merge_ancestors(o):
-            id, (cls, ancestors) = o
-            cls.ancestors = set(ancestors)
-            return cls
-
-        (
-            sc.textFile(str(cfg.classes / "classes/*.gz"))
-            .map(orjson.loads)
-            .map(WDClass.from_dict)
-            .map(lambda x: (x.id, x))
-            .join(id2ancestors)
-            .map(merge_ancestors)
-            .map(WDClass.to_dict)
-            .map(orjson.dumps)
-            .saveAsTextFile(
-                str(cfg.classes / "full_classes"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+        classes = get_ds("classes").get_list()
+        build_ancestors(classes)
+        split_a_list(
+            [ser_to_dict(c) for c in classes],
+            cfg.classes / "full_classes" / "part.jl.gz",
         )
+        (cfg.classes / "full_classes" / "_SUCCESS").touch()
 
-    return Dataset(
-        cfg.classes / "full_classes/*.gz",
-        deserialize=lambda x: WDClass.from_dict(orjson.loads(x)),
-    )
+    return get_ds("full_classes")
 
 
 def extract_class(ent: WDEntity) -> WDClass:
@@ -107,28 +68,6 @@ def extract_class(ent: WDEntity) -> WDClass:
     # we do have cases where the class is a subclass of itself, which is wrong.
     cls.parents = [p for p in cls.parents if p != cls.id]
     return cls
-
-
-def build_ancestors(id2parents: dict) -> dict:
-    id2ancestors = {}
-    for id in tqdm(id2parents, desc="build ancestors"):
-        id2ancestors[id] = get_ancestors(id, id2parents)
-    return id2ancestors
-
-
-def get_ancestors(id: str, id2parents: dict) -> list[str]:
-    # preserved the order
-    ancestors = {}
-    queue = deque(id2parents[id])
-    while len(queue) > 0:
-        ptr = queue.popleft()
-        if ptr in ancestors:
-            continue
-
-        ancestors[ptr] = len(ancestors)
-        queue.extend(id2parents[ptr])
-
-    return list(ancestors.keys())
 
 
 def get_class_ids(ent: WDEntity) -> list[str]:

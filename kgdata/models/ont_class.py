@@ -30,14 +30,14 @@ class OntologyClass:
     properties: list[str]
     different_froms: list[str]
     equivalent_classes: list[str]
-    ancestors: set[str]
+    ancestors: dict[str, int]
 
     @classmethod
     def from_dict(cls, obj):
         obj["label"] = MultiLingualString(**obj["label"])
         obj["description"] = MultiLingualString(**obj["description"])
         obj["aliases"] = MultiLingualStringList(**obj["aliases"])
-        obj["ancestors"] = set(obj["ancestors"])
+        obj["ancestors"] = obj["ancestors"]
         return cls(**obj)
 
     def to_dict(self):
@@ -50,7 +50,7 @@ class OntologyClass:
             "properties": self.properties,
             "different_froms": self.different_froms,
             "equivalent_classes": self.equivalent_classes,
-            "ancestors": list(self.ancestors),
+            "ancestors": self.ancestors,
         }
 
     def get_ancestors(

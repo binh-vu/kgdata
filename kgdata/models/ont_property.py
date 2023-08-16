@@ -27,20 +27,20 @@ class OntologyProperty:
     description: MultiLingualString
     aliases: MultiLingualStringList
     datatype: str
-    parents: List[str]
-    related_properties: List[str]
-    equivalent_properties: List[str]
-    subjects: List[str]
-    inverse_properties: List[str]
-    instanceof: List[str]
-    ancestors: Set[str]
+    parents: list[str]
+    related_properties: list[str]
+    equivalent_properties: list[str]
+    subjects: list[str]
+    inverse_properties: list[str]
+    instanceof: list[str]
+    ancestors: dict[str, int]
 
     @classmethod
     def from_dict(cls, obj):
         obj["label"] = MultiLingualString(**obj["label"])
         obj["description"] = MultiLingualString(**obj["description"])
         obj["aliases"] = MultiLingualStringList(**obj["aliases"])
-        obj["ancestors"] = set(obj["ancestors"])
+        obj["ancestors"] = obj["ancestors"]
         return cls(**obj)
 
     def get_ancestors(
@@ -80,7 +80,7 @@ class OntologyProperty:
             "subjects": self.subjects,
             "inverse_properties": self.inverse_properties,
             "instanceof": self.instanceof,
-            "ancestors": list(self.ancestors),
+            "ancestors": self.ancestors,
         }
 
     def is_object_property(self):

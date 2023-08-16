@@ -19,11 +19,11 @@ from kgdata.dbpedia.datasets.properties import (
     rdf_type,
     rdfs_comment,
 )
+from kgdata.misc.hierarchy import build_ancestors
 from kgdata.models.multilingual import MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass, get_default_classes
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.splitter import split_a_list
-from kgdata.wikidata.datasets.classes import build_ancestors
 
 rdfs_subclassof = str(RDFS.subClassOf)
 owl_class = str(OWL.Class)
@@ -61,11 +61,7 @@ def classes() -> Dataset[OntologyClass]:
             .map(merge_domains)
             .collect()
         )
-
-        id2ancestors = build_ancestors({c.id: c.parents for c in classes})
-        for c in classes:
-            c.ancestors = id2ancestors[c.id]
-
+        build_ancestors(classes)
         split_a_list([ser_to_dict(c) for c in classes], cfg.classes / "part.jl")
         (cfg.classes / "_SUCCESS").touch()
 
@@ -73,50 +69,6 @@ def classes() -> Dataset[OntologyClass]:
         cfg.classes / "*.jl",
         deserialize=partial(deser_from_dict, OntologyClass),
     )
-
-    # deser_cls = partial(deser_from_dict, OntologyClass)
-
-    # if not does_result_dir_exist(cfg.classes / "ancestors"):
-    #     id2parents = (
-    #         Dataset(cfg.classes / "classes/*.gz", deserialize=deser_cls)
-    #         .map(lambda x: (x.id, x.parents))
-    #         .get_dict()
-    #     )
-    #     id2ancestors = build_ancestors(id2parents)
-    #     split_a_list(
-    #         [orjson.dumps(x) for x in sorted(id2ancestors.items())],
-    #         (cfg.classes / "ancestors/part.ndjson.gz"),
-    #         n_records_per_file=ceil(len(id2ancestors) / 8),
-    #     )
-    #     (cfg.classes / "ancestors" / "_SUCCESS").touch()
-
-    # if not does_result_dir_exist(cfg.classes / "full_classes"):
-    #     id2ancestors = Dataset(
-    #         cfg.classes / "ancestors/*.gz", deserialize=orjson.loads
-    #     ).get_rdd_alike()
-
-    #     def merge_ancestors(o):
-    #         id, (cls, ancestors) = o
-    #         cls.ancestors = set(ancestors)
-    #         return cls
-
-    #     (
-    #         Dataset(cfg.classes / "classes/*.gz", deserialize=deser_cls)
-    #         .get_rdd_alike()
-    #         .map(lambda x: (x.id, x))
-    #         .join(id2ancestors)
-    #         .map(merge_ancestors)
-    #         .map(ser_to_dict)
-    #         .saveAsTextFile(
-    #             str(cfg.classes / "full_classes"),
-    #             compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-    #         )
-    #     )
-
-    # return Dataset(
-    #     cfg.classes / "full_classes/*.gz",
-    #     deserialize=deser_cls,
-    # )
 
 
 def is_class(resource: RDFResource) -> bool:
@@ -154,5 +106,5 @@ def to_class(resource: RDFResource) -> OntologyClass:
         equivalent_classes=[
             str(term) for term in resource.props.get(str(OWL.equivalentClass), [])
         ],
-        ancestors=set(),
+        ancestors={},
     )

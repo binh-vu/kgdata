@@ -41,7 +41,7 @@ class WDClass(OntologyClass):
             properties=sorted(properties),
             different_froms=sorted(different_froms),
             equivalent_classes=sorted(equivalent_classes),
-            ancestors=set(),
+            ancestors={},
         )
 
     def __str__(self):

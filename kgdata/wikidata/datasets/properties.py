@@ -1,12 +1,14 @@
+from functools import partial
 from typing import List
 
 import orjson
-import serde.jl
+
 from kgdata.dataset import Dataset
+from kgdata.db import deser_from_dict, ser_to_dict
+from kgdata.misc.hierarchy import build_ancestors
 from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.splitter import split_a_list
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.classes import build_ancestors
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
@@ -57,64 +59,21 @@ def properties(lang="en") -> Dataset[WDProperty]:
             cfg.properties / "unknown_properties.txt",
         )
 
-    if not does_result_dir_exist(cfg.properties / "ancestors"):
-        sc = get_spark_context()
-
-        saveAsSingleTextFile(
-            sc.textFile(str(cfg.properties / "properties/*.gz"))
-            .map(orjson.loads)
-            .map(WDProperty.from_dict)
-            .map(lambda x: (x.id, x.parents))
-            .map(orjson.dumps),
-            str(cfg.properties / "ancestors/id2parents.ndjson.gz"),
-            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-        )
-
-        id2parents = {
-            k: v
-            for k, v in serde.jl.deser(
-                cfg.properties / "ancestors/id2parents.ndjson.gz"
-            )
-        }
-
-        id2ancestors = build_ancestors(id2parents)
-        split_a_list(
-            [orjson.dumps(x) for x in sorted(id2ancestors.items())],
-            (cfg.properties / "ancestors/id2ancestors/part.ndjson.gz"),
-        )
-        (cfg.properties / "ancestors" / "_SUCCESS").touch()
+    get_ds = lambda subdir: Dataset(
+        cfg.properties / subdir / "*.gz",
+        deserialize=partial(deser_from_dict, WDProperty),
+    )
 
     if not does_result_dir_exist(cfg.properties / "full_properties"):
-        sc = get_spark_context()
-        id2ancestors = sc.textFile(
-            str(cfg.properties / "ancestors/id2ancestors/*.gz")
-        ).map(orjson.loads)
-
-        def merge_ancestors(o):
-            id, (prop, ancestors) = o
-            prop.ancestors = set(ancestors)
-            return prop
-
-        (
-            sc.textFile(str(cfg.properties / "properties/*.gz"))
-            .map(orjson.loads)
-            .map(WDProperty.from_dict)
-            .map(lambda x: (x.id, x))
-            .join(id2ancestors)
-            .map(merge_ancestors)
-            .map(WDProperty.to_dict)
-            .map(orjson.dumps)
-            .coalesce(128, shuffle=True)
-            .saveAsTextFile(
-                str(cfg.properties / "full_properties"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+        properties = get_ds("properties").get_list()
+        build_ancestors(properties)
+        split_a_list(
+            [ser_to_dict(p) for p in properties],
+            cfg.classes / "full_properties" / "part.jl.gz",
         )
+        (cfg.classes / "full_properties" / "_SUCCESS").touch()
 
-    return Dataset(
-        cfg.properties / "full_properties/*.gz",
-        deserialize=lambda x: WDProperty.from_dict(orjson.loads(x)),
-    )
+    return get_ds("full_properties")
 
 
 def get_property_ids(ent: WDEntity) -> List[str]:
