@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Generic, Self, TypeVar, Union
+from typing import Generic, TypeVar, Union
 
 import orjson
 from rdflib import BNode, Literal, URIRef
@@ -28,7 +28,7 @@ class Record:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, obj: dict) -> Self:
+    def from_dict(cls: type[V], obj: dict) -> V:
         return cls(**obj)
 
 
