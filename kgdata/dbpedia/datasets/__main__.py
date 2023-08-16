@@ -29,12 +29,14 @@ from importlib import import_module
 import click
 
 from kgdata.config import init_dbdir_from_env
+from kgdata.misc.query import PropEqualQuery, every
 
 
 @click.command("Generate a specific dataset")
 @click.option("-d", "--dataset", required=True, help="Dataset name")
 @click.option("-t", "--take", type=int, required=False, default=0, help="Take n rows")
-def main(dataset: str, take: int = 0):
+@click.option("-q", "--query", type=str, required=False, default="", help="Query")
+def main(dataset: str, take: int = 0, query: str = ""):
     init_dbdir_from_env()
 
     module = import_module(f"kgdata.dbpedia.datasets.{dataset}")
@@ -42,6 +44,14 @@ def main(dataset: str, take: int = 0):
 
     if take > 0:
         for record in ds.take(take):
+            print(record)
+            print("=" * 30)
+
+    if query != "":
+        queries = [PropEqualQuery.from_string(s) for s in query.split(",")]
+        filter_fn = every(queries)
+
+        for record in ds.get_rdd().filter(filter_fn).collect():
             print(record)
             print("=" * 30)
 
