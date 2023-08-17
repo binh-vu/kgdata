@@ -1,6 +1,7 @@
 extern crate self as kgdata;
 
 pub mod conversions;
+pub mod datasets;
 pub mod db;
 pub mod error;
 pub mod models;

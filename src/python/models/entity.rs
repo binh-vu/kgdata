@@ -2,7 +2,7 @@ use super::multilingual::{MultiLingualStringListView, MultiLingualStringView};
 use super::value::{value_list_view, ValueView};
 use crate::conversions::WDEntity;
 use crate::error::into_pyerr;
-use crate::models::{Entity, EntityType, SiteLink, Statement, StatementRank, Value};
+use crate::models::{Entity, EntityType, Statement, StatementRank, Value};
 use crate::pyo3helper::unsafe_update_view_lifetime_signature;
 use crate::{pylist, pymap, pyview, pywrap};
 use pyo3::prelude::*;
@@ -10,32 +10,19 @@ use pyo3::prelude::*;
 pyview!(
     EntityView(module = "kgdata.core.models", name = "EntityView", cls = Entity, derive = (Clone, Debug)) {
         b(id: String),
-        b(entity_type: EntityType),
         v(label: MultiLingualStringView),
         v(description: MultiLingualStringView),
         v(aliases: MultiLingualStringListView),
-        v(sitelinks: sitelink_map_view::MapView),
         v(props: prop_map_view::MapView),
     }
 );
 pywrap!(
     PyEntity(module = "kgdata.core.models", name = "Entity", cls = Entity) {
         b(id: String),
-        b(entity_type: EntityType),
         v(label: MultiLingualStringView),
         v(description: MultiLingualStringView),
         v(aliases: MultiLingualStringListView),
-        v(sitelinks: sitelink_map_view::MapView),
         v(props: prop_map_view::MapView),
-    }
-);
-
-pyview!(
-    SiteLinkView(module = "kgdata.core.models", name = "SiteLinkView", cls = SiteLink, derive = (Clone, Debug)) {
-        b(site: String),
-        b(title: String),
-        v(badges: crate::pyo3helper::list_str_view::ListView),
-        r(url: Option<&String>),
     }
 );
 
@@ -47,12 +34,6 @@ pyview!(
         b(rank: StatementRank),
     }
 );
-
-pymap!(sitelink_map_view(
-    module = "kgdata.core.models",
-    key = String as crate::pyo3helper::PyStrView,
-    value = super::SiteLink as super::SiteLinkView
-));
 
 pylist!(statement_list_view(
     module = "kgdata.core.models",

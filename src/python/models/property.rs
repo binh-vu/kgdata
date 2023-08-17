@@ -1,7 +1,7 @@
 use super::multilingual::{MultiLingualStringListView, MultiLingualStringView};
 use crate::models::{DataType, Property};
 use crate::pyo3helper::unsafe_update_view_lifetime_signature;
-use crate::pyo3helper::{list_str_view, set_str_view};
+use crate::pyo3helper::{list_str_view, map_usize_view};
 use crate::{pyview, pywrap};
 use pyo3::prelude::*;
 
@@ -18,7 +18,7 @@ pyview!(
         v(subjects: list_str_view::ListView),
         v(inverse_properties: list_str_view::ListView),
         v(instanceof: list_str_view::ListView),
-        v(ancestors: set_str_view::SetView),
+        v(ancestors: map_usize_view::MapView),
         f(is_object_property: bool),
         f(is_data_property: bool),
     }
@@ -37,7 +37,7 @@ pywrap!(
         v(subjects: list_str_view::ListView),
         v(inverse_properties: list_str_view::ListView),
         v(instanceof: list_str_view::ListView),
-        v(ancestors: set_str_view::SetView),
+        v(ancestors: map_usize_view::MapView),
         f(is_object_property: bool),
         f(is_data_property: bool),
     }

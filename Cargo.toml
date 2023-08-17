@@ -25,6 +25,7 @@ flate2 = { version = "1.0.24", features = [
 ], default-features = false }
 hashbrown = { version = "0.13.2", features = ["serde"] }
 log = "0.4.17"
+petgraph = "0.6.3"
 pyo3 = { version = "0.19.1", features = ["anyhow", "multiple-pymethods"] }
 rayon = "1.5.3"
 rocksdb = "0.20.1"

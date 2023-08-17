@@ -1,6 +1,6 @@
 use crate::read_lines;
 use anyhow::Result;
-use kgdata::{conversions::WDEntity, models::entity::EntityType};
+use kgdata::conversions::WDEntity;
 
 #[test]
 fn parse_entity() -> Result<()> {
@@ -13,7 +13,6 @@ fn parse_entity() -> Result<()> {
     let lines = read_lines("wdentities.jl")?;
     let ent = serde_json::from_str::<WDEntity>(&lines[0])?.0;
     assert_eq!(ent.id, "P4274");
-    assert_eq!(ent.entity_type, EntityType::Property);
 
     for line in lines {
         assert!(

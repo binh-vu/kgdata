@@ -1,7 +1,7 @@
 use crate::error::KGDataError;
 
 use super::{MultiLingualString, MultiLingualStringList};
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -17,7 +17,7 @@ pub struct Property {
     pub subjects: Vec<String>,
     pub inverse_properties: Vec<String>,
     pub instanceof: Vec<String>,
-    pub ancestors: HashSet<String>,
+    pub ancestors: HashMap<String, usize>,
 }
 
 impl Property {
