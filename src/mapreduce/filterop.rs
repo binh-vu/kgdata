@@ -21,14 +21,14 @@ where
     }
 }
 
-impl<D, F> ParallelDataset for FilterOp<D, F>
-where
-    D: ParallelDataset + IntoParallelIterator<Item = <D as ParallelDataset>::Item>,
-    F: Fn(&<D as ParallelDataset>::Item) -> bool + Sync + Send,
-{
-    type Item = <D as ParallelDataset>::Item;
+// impl<D, F> ParallelDataset for FilterOp<D, F>
+// where
+//     D: ParallelDataset + IntoParallelIterator<Item = <D as ParallelDataset>::Item>,
+//     F: Fn(&<D as ParallelDataset>::Item) -> bool + Sync + Send,
+// {
+//     type Item = <D as ParallelDataset>::Item;
 
-    fn collect(self) -> Vec<Self::Item> {
-        self.into_par_iter().collect()
-    }
-}
+//     fn collect(self) -> Vec<Self::Item> {
+//         self.into_par_iter().collect()
+//     }
+// }

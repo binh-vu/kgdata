@@ -814,6 +814,7 @@ dependencies = [
  "criterion",
  "env_logger",
  "flate2",
+ "glob",
  "hashbrown 0.13.2",
  "log",
  "petgraph",
