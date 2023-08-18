@@ -1,5 +1,5 @@
 pub mod filterop;
-pub mod inmem;
+pub mod functions;
 pub mod mapop;
 pub mod sortop;
 
@@ -15,6 +15,8 @@ pub trait ParallelDataset: Sized + Send {
     {
         self::mapop::MapOp { base: self, op }
     }
+
+    // fn flat_map<F, R>
 
     fn filter<F>(self, op: F) -> self::filterop::FilterOp<Self, F>
     where
@@ -43,5 +45,20 @@ pub trait ParallelDataset: Sized + Send {
         let mut res = self.collect();
         res.truncate(n);
         res
+    }
+}
+
+pub struct Dataset<I> {
+    items: Vec<I>,
+}
+
+impl<I> ParallelDataset for Dataset<I>
+where
+    I: Send,
+{
+    type Item = I;
+
+    fn collect(self) -> Vec<Self::Item> {
+        self.items
     }
 }

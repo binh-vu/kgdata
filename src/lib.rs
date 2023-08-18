@@ -4,10 +4,10 @@ pub mod conversions;
 pub mod datasets;
 pub mod db;
 pub mod error;
+pub mod mapreduce;
 pub mod models;
 pub mod pyo3helper;
 pub mod python;
-
 use pyo3::prelude::*;
 
 #[pyfunction]
