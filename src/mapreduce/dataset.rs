@@ -10,19 +10,7 @@ pub struct Dataset<I> {
     items: Vec<I>,
 }
 
-impl<I> ParallelDataset for Dataset<I>
-where
-    I: Send,
-{
-    type Item = I;
-
-    // fn collect<C>(self) -> C
-    // where
-    //     C: FromParallelDataset<Self::Item>,
-    // {
-    //     C::from_par_dataset(self)
-    // }
-}
+impl<I> ParallelDataset for Dataset<I> where I: Send {}
 
 impl<I> IntoParallelIterator for Dataset<I>
 where
@@ -57,5 +45,19 @@ where
         Self {
             items: iter.into_par_iter().collect::<Vec<_>>(),
         }
+    }
+}
+
+impl<I, E> FromParallelDataset<Result<I, E>> for Result<Dataset<I>, E>
+where
+    I: Send,
+    E: Send,
+{
+    fn from_par_dataset<D>(iter: D) -> Self
+    where
+        D: IntoParallelIterator<Item = Result<I, E>>,
+    {
+        let items = iter.into_par_iter().collect::<Result<Vec<_>, _>>()?;
+        Ok(Dataset { items })
     }
 }

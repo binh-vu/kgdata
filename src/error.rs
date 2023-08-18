@@ -9,6 +9,9 @@ pub enum KGDataError {
     ValueError(String),
 
     #[error(transparent)]
+    IOError(#[from] std::io::Error),
+
+    #[error(transparent)]
     SerdeJsonErr(#[from] serde_json::Error),
 
     #[error(transparent)]

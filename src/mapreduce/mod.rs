@@ -15,25 +15,22 @@ pub use self::dataset::*;
 /// A note on the implementation: due to the trait methods required Sized on most of the methods,
 /// if we use as trait object, we can't use most of its methods. To prevent early boxing error, we required
 /// it to be Sized.
-pub trait ParallelDataset: Send {
-    // type Iter: ParallelIterator<Item = Self::Item>;
-    type Item: Send;
-
-    fn map<F, R>(self, op: F) -> self::mapop::MapOp<Self::Item, F>
+pub trait ParallelDataset: Sized + Send + IntoParallelIterator {
+    fn map<F, R>(self, op: F) -> self::mapop::MapOp<Self, F>
     where
-        F: Fn(Self::Item) -> R + Sync,
-        R: Send;
-    // {
-    //     self::mapop::MapOp { base: self, op }
-    // }
+        F: (Fn(Self::Item) -> R) + Sync + Send,
+        R: Send,
+    {
+        self::mapop::MapOp { base: self, op }
+    }
 
-    // fn flat_map<F, R>(self, op: F) -> self::mapop::FlatMapOp<Self, F>
-    // where
-    //     F: Fn(Self::Item) -> R,
-    //     R: IntoParallelIterator + Sync + Send,
-    // {
-    //     self::mapop::FlatMapOp { base: self, op }
-    // }
+    fn flat_map<F, R>(self, op: F) -> self::mapop::FlatMapOp<Self, F>
+    where
+        F: (Fn(Self::Item) -> R) + Sync + Send,
+        R: IntoParallelIterator,
+    {
+        self::mapop::FlatMapOp { base: self, op }
+    }
 
     // fn filter<F>(self, op: F) -> self::filterop::FilterOp<Self, F>
     // where
@@ -56,27 +53,27 @@ pub trait ParallelDataset: Send {
     //     }
     // }
 
-    // fn collect<C>(self) -> C
-    // where
-    //     C: FromParallelDataset<Self::Item>,
-    // {
-    //     C::from_par_dataset(self)
-    // }
+    fn collect<C>(self) -> C
+    where
+        C: FromParallelDataset<Self::Item>,
+    {
+        C::from_par_dataset(self)
+    }
 
-    // fn take(self, n: usize) -> Vec<Self::Item>
-    // where
-    //     Self: Sized,
-    // {
-    //     let mut res = self.collect::<Vec<_>>();
-    //     res.truncate(n);
-    //     res
-    // }
+    fn take(self, n: usize) -> Vec<Self::Item>
+    where
+        Self: Sized,
+    {
+        let mut res = self.collect::<Vec<_>>();
+        res.truncate(n);
+        res
+    }
 }
 
 pub trait FromParallelDataset<I> {
     fn from_par_dataset<D>(dataset: D) -> Self
     where
-        D: IntoParallelIterator<Item = I>;
+        D: ParallelDataset<Item = I>;
 }
 
 impl<I> FromParallelDataset<I> for Vec<I>
@@ -85,8 +82,21 @@ where
 {
     fn from_par_dataset<D>(dataset: D) -> Self
     where
-        D: IntoParallelIterator<Item = I>,
+        D: ParallelDataset<Item = I>,
     {
         dataset.into_par_iter().collect()
+    }
+}
+
+impl<I, E> FromParallelDataset<Result<I, E>> for Result<Vec<I>, E>
+where
+    I: Send,
+    E: Send,
+{
+    fn from_par_dataset<D>(dataset: D) -> Self
+    where
+        D: ParallelDataset<Item = Result<I, E>>,
+    {
+        dataset.into_par_iter().collect::<Result<Vec<_>, _>>()
     }
 }
