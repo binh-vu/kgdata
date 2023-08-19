@@ -2,12 +2,12 @@ use rayon::prelude::*;
 
 pub mod dataset;
 // pub mod filterop;
-// pub mod functions;
+pub mod functions;
 pub mod mapop;
 // pub mod sortop;
 
 // pub use self::filterop::*;
-// pub use self::functions::*;
+pub use self::functions::*;
 pub use self::mapop::*;
 // pub use self::sortop::*;
 pub use self::dataset::*;
@@ -97,6 +97,13 @@ where
     where
         D: ParallelDataset<Item = Result<I, E>>,
     {
-        dataset.into_par_iter().collect::<Result<Vec<_>, _>>()
+        dataset.into_par_iter().collect::<Result<Vec<I>, E>>()
     }
+}
+
+pub trait IntoParallelDataset {
+    type Dataset: ParallelDataset<Item = Self::Item>;
+    type Item: Send;
+
+    fn into_par_dataset(self) -> Self::Dataset;
 }

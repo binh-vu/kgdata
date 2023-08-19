@@ -36,24 +36,24 @@ where
 {
 }
 
-impl<D, F, R> IntoParallelIterator for FlatMapOp<D, F>
+impl<D, F, PI> IntoParallelIterator for FlatMapOp<D, F>
 where
     D: ParallelDataset,
-    F: (Fn(D::Item) -> R) + Sync + Send,
-    R: IntoParallelIterator,
+    F: (Fn(D::Item) -> PI) + Sync + Send,
+    PI: IntoParallelIterator,
 {
     type Iter = rayon::iter::FlatMap<D::Iter, F>;
-    type Item = R::Item;
+    type Item = PI::Item;
 
     fn into_par_iter(self) -> Self::Iter {
         self.base.into_par_iter().flat_map(self.op)
     }
 }
 
-impl<D, F, R> ParallelDataset for FlatMapOp<D, F>
+impl<D, F, PI> ParallelDataset for FlatMapOp<D, F>
 where
     D: ParallelDataset,
-    F: (Fn(D::Item) -> R) + Sync + Send,
-    R: IntoParallelIterator,
+    F: (Fn(D::Item) -> PI) + Sync + Send,
+    PI: IntoParallelIterator,
 {
 }
