@@ -1,5 +1,36 @@
-use super::entity::EntityType;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::error::KGDataError;
+
+#[pyclass(module = "kgdata.core.models", name = "EntityType")]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum EntityType {
+    #[serde(rename = "item")]
+    Item,
+    #[serde(rename = "property")]
+    Property,
+}
+
+impl EntityType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            EntityType::Item => "item",
+            EntityType::Property => "property",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Result<EntityType, KGDataError> {
+        match s {
+            "item" => Ok(EntityType::Item),
+            "property" => Ok(EntityType::Property),
+            _ => Err(KGDataError::ValueError(format!(
+                "Unknown entity type: {}",
+                s
+            ))),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EntityId {

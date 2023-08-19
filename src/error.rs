@@ -9,7 +9,16 @@ pub enum KGDataError {
     ValueError(String),
 
     #[error(transparent)]
+    IOError(#[from] std::io::Error),
+
+    #[error(transparent)]
     SerdeJsonErr(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    GlobPatternError(#[from] glob::PatternError),
+
+    #[error(transparent)]
+    GlobError(#[from] glob::GlobError),
 
     #[error(transparent)]
     TryFromSliceErro(#[from] std::array::TryFromSliceError),

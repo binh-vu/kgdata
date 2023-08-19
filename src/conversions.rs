@@ -39,11 +39,9 @@ impl<'de> Deserialize<'de> for WDEntity {
                 M: MapAccess<'de>,
             {
                 let mut id = None;
-                let mut entity_type = None;
                 let mut label = None;
                 let mut description = None;
                 let mut aliases = None;
-                let mut sitelinks = None;
                 let mut props: Option<WDEntityProps> = None;
 
                 while let Some(key) = map.next_key()? {
@@ -54,9 +52,9 @@ impl<'de> Deserialize<'de> for WDEntity {
                             })?;
                         }
                         "type" => {
-                            entity_type = map.next_value().map_err(|e| {
+                            map.next_value::<String>().map_err(|e| {
                                 Error::custom(format!("deser entity's type: {}", e.to_string()))
-                            })?
+                            })?;
                         }
                         "label" => {
                             label = map.next_value().map_err(|e| {
@@ -77,7 +75,7 @@ impl<'de> Deserialize<'de> for WDEntity {
                             })?;
                         }
                         "sitelinks" => {
-                            sitelinks = map.next_value().map_err(|e| {
+                            map.next_value::<serde_json::Value>().map_err(|e| {
                                 Error::custom(format!(
                                     "deser entity's sitelinks: {}",
                                     e.to_string()
@@ -111,19 +109,15 @@ impl<'de> Deserialize<'de> for WDEntity {
                     }
                 }
                 let id = id.ok_or_else(|| Error::missing_field("id"))?;
-                let entity_type = entity_type.ok_or_else(|| Error::missing_field("type"))?;
                 let label = label.ok_or_else(|| Error::missing_field("label"))?;
                 let description = description.ok_or_else(|| Error::missing_field("description"))?;
                 let aliases = aliases.ok_or_else(|| Error::missing_field("aliases"))?;
-                let sitelinks = sitelinks.ok_or_else(|| Error::missing_field("sitelinks"))?;
                 let props = props.ok_or_else(|| Error::missing_field("props"))?;
                 Ok(WDEntity(Entity {
                     id,
-                    entity_type,
                     label,
                     description,
                     aliases,
-                    sitelinks,
                     props: props.0,
                 }))
             }
