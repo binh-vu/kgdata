@@ -1,12 +1,12 @@
 use rayon::prelude::*;
 
 pub mod dataset;
-// pub mod filterop;
+pub mod filterop;
 pub mod functions;
 pub mod mapop;
 // pub mod sortop;
 
-// pub use self::filterop::*;
+pub use self::filterop::*;
 pub use self::functions::*;
 pub use self::mapop::*;
 // pub use self::sortop::*;
@@ -32,13 +32,13 @@ pub trait ParallelDataset: Sized + Send + IntoParallelIterator {
         self::mapop::FlatMapOp { base: self, op }
     }
 
-    // fn filter<F>(self, op: F) -> self::filterop::FilterOp<Self, F>
-    // where
-    //     F: Fn(&Self::Item) -> bool + Sync,
-    //     Self: Sized,
-    // {
-    //     self::filterop::FilterOp { base: self, op }
-    // }
+    fn filter<F>(self, op: F) -> self::filterop::FilterOp<Self, F>
+    where
+        F: Fn(&Self::Item) -> bool + Sync,
+        Self: Sized,
+    {
+        self::filterop::FilterOp { base: self, op }
+    }
 
     // fn sort_by_key<F, K>(self, op: F, ascending: bool) -> self::sortop::SortByKeyOp<Self, F>
     // where

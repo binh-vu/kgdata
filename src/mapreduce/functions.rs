@@ -22,27 +22,46 @@ where
     }
 }
 
-pub fn from_jl_files<'a, T: 'a>(
-    glob: &str,
-) -> Result<
-    FlatMapOp<Dataset<PathBuf>, impl Fn(PathBuf) -> Vec<Result<T, KGDataError>> + 'a>,
-    KGDataError,
->
+pub fn make_try_fn<I, O, E, F>(func: F) -> impl Fn(Result<I, E>) -> Result<O, E>
 where
-    // F: Fn(PathBuf) -> Result<Vec<T>, KGDataError>,
-    T: Deserialize<'a> + Send,
+    F: Fn(I) -> Result<O, E>,
+    E: Send,
+{
+    move |value| func(value?)
+}
+
+pub fn make_try_filter_fn<I, E, F>(func: F) -> impl Fn(&Result<I, E>) -> bool
+where
+    F: Fn(&I) -> bool,
+    E: Send,
+{
+    move |value| {
+        let out = value.as_ref();
+        match out {
+            Ok(v) => func(v),
+            Err(_) => true, // keep the error so we can collect it later
+        }
+    }
+}
+
+pub fn from_jl_files<T>(
+    glob: &str,
+) -> Result<FlatMapOp<Dataset<PathBuf>, impl Fn(PathBuf) -> Vec<Result<T, KGDataError>>>, KGDataError>
+where
+    for<'de> T: Deserialize<'de> + Send,
 {
     let ds = Dataset::files(glob)?.flat_map(make_try_flat_map_fn(deser_json_lines));
-
     Ok(ds)
 }
 
-fn deser_json_lines<'a, T: 'a>(path: PathBuf) -> Result<Vec<T>, KGDataError>
+fn deser_json_lines<T>(path: PathBuf) -> Result<Vec<T>, KGDataError>
 where
-    T: Deserialize<'a>,
+    for<'de> T: Deserialize<'de>,
 {
     let file = File::open(path)?;
-    BufReader::new(file)
+    let reader = BufReader::new(file);
+
+    reader
         .lines()
         .map(|line| serde_json::from_str::<T>(&line?).map_err(|err| err.into()))
         .collect::<Result<Vec<T>, _>>()

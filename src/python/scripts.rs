@@ -4,51 +4,37 @@ use crate::models::MultiLingualString;
 use crate::{error::into_pyerr, mapreduce::*};
 use hashbrown::{HashMap, HashSet};
 use pyo3::prelude::*;
-use rayon::prelude::IntoParallelIterator;
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
 
 #[pyclass]
 pub struct GetRepresentativeValue {
-    types_and_degrees: Dataset<EntityTypesAndDegrees>,
+    types_and_degrees: HashMap<String, EntityTypesAndDegrees>,
     id2labels: HashMap<String, EntityLabel>,
 }
 
 #[pymethods]
 impl GetRepresentativeValue {
     #[new]
-    pub fn new(data_dir: &str, class_ids: Vec<String>) -> PyResult<Self> {
-        let filtered_ids = HashSet::from(class_ids);
-        // let ds = Dataset::files(&format!("{}/entity_types_and_degrees/*.gz", data_dir))
-        //     .map_err(into_pyerr)?
-        //     .flat_map(test);
-        // let vec: Vec<EntityTypesAndDegrees> = ds.collect();
-        // let ds = Dataset::files(&format!("{}/entity_types_and_degrees/*.gz", data_dir))
-        //     .map_err(into_pyerr)?
-        //     .flat_map(deser_ent_types)
-        //     .collect();
-        // // .map(test4);
-        // // let vec: Result<Vec<EntityTypesAndDegrees>, usize> = ds.collect();
-        // // let vec2 = Result::<Vec<EntityTypesAndDegrees>, usize>::from_par_dataset(ds);
-        // // let ds = Dataset::files(&format!("{}/entity_types_and_degrees/*.gz", data_dir))
-        // //     .map_err(into_pyerr)?
-        // //     .map(test3);
-        // // let vec: PyResult<Vec<EntityTypesAndDegrees>> = ds.collect();
-        // unimplemented!()
+    pub fn new(data_dir: &str, class_ids: Vec<String>, kgname: &str) -> PyResult<Self> {
+        let filtered_ids: HashSet<String> = HashSet::from_iter(class_ids);
         let types_and_degrees = from_jl_files::<EntityTypesAndDegrees>(&format!(
             "{}/entity_types_and_degrees/*.gz",
             data_dir
-        ));
-        // Ok(Self {
-        //     types_and_degrees: Dataset::files(&format!(
-        //         "{}/entity_types_and_degrees/*.gz",
-        //         data_dir
-        //     ))
-        //     .map_err(into_pyerr)?
-        //     .flat_map(make_try_flat_map_fn(deser_ent_types))
-        //     .collect::<PyResult<Dataset<_>>>()?,
-        // })
+        ))
+        .map_err(into_pyerr)?
+        .filter(make_try_filter_fn(|x: &EntityTypesAndDegrees| {
+            !filtered_ids.is_disjoint(&x.types.keys().cloned().collect::<HashSet<_>>())
+        }))
+        .map(make_try_fn(|x: EntityTypesAndDegrees| {
+            Ok((x.id.clone(), x))
+        }))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(into_pyerr)?;
+
+        let types_and_degrees =
+            HashMap::<String, EntityTypesAndDegrees>::from_iter(types_and_degrees);
+
         unimplemented!()
     }
 
