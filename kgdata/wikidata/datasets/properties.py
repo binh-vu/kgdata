@@ -69,9 +69,9 @@ def properties(lang="en") -> Dataset[WDProperty]:
         build_ancestors(properties)
         split_a_list(
             [ser_to_dict(p) for p in properties],
-            cfg.classes / "full_properties" / "part.jl.gz",
+            cfg.properties / "full_properties" / "part.jl.gz",
         )
-        (cfg.classes / "full_properties" / "_SUCCESS").touch()
+        (cfg.properties / "full_properties" / "_SUCCESS").touch()
 
     return get_ds("full_properties")
 

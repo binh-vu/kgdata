@@ -2,6 +2,7 @@ from operator import add
 from typing import Tuple
 
 import orjson
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, saveAsSingleTextFile
 from kgdata.wikidata.config import WikidataDirCfg
