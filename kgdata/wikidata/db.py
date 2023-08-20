@@ -20,9 +20,9 @@ from typing import (
 import orjson
 import requests
 import serde.jl as jl
+
 from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
-
 from kgdata.db import (
     deser_from_dict,
     get_rocksdb,
@@ -237,28 +237,33 @@ class WikidataDB:
 
     instance = None
 
-    def __init__(self, database_dir: Union[str, Path]):
+    def __init__(self, database_dir: Path | str, read_only: bool = True):
         self.database_dir = Path(database_dir)
+        self.read_only = read_only
 
     @cached_property
     def entities(self):
-        return get_entity_db(self.database_dir / "entities.db", read_only=True)
+        return get_entity_db(
+            self.database_dir / "entities.db", read_only=self.read_only
+        )
 
     @cached_property
     def entity_metadata(self):
         return get_entity_metadata_db(
-            self.database_dir / "entity_metadata.db", read_only=True
+            self.database_dir / "entity_metadata.db", read_only=self.read_only
         )
 
     @cached_property
     def entity_labels(self):
         return get_entity_label_db(
-            self.database_dir / "entity_labels.db", read_only=True
+            self.database_dir / "entity_labels.db", read_only=self.read_only
         )
 
     @cached_property
     def classes(self):
-        wdclasses = get_class_db(self.database_dir / "classes.db", read_only=True)
+        wdclasses = get_class_db(
+            self.database_dir / "classes.db", read_only=self.read_only
+        )
         if (self.database_dir / "classes.fixed.jl").exists():
             wdclasses = wdclasses.cache()
             assert isinstance(wdclasses, CacheDict)
@@ -269,7 +274,7 @@ class WikidataDB:
 
     @cached_property
     def props(self):
-        wdprops = get_prop_db(self.database_dir / "props.db", read_only=True)
+        wdprops = get_prop_db(self.database_dir / "props.db", read_only=self.read_only)
         if (self.database_dir / "props.fixed.jl").exists():
             wdprops = wdprops.cache()
             assert isinstance(wdprops, CacheDict)
@@ -280,38 +285,44 @@ class WikidataDB:
 
     @cached_property
     def ontcount(self):
-        return get_ontcount_db(self.database_dir / "ontcount.db", read_only=True)
+        return get_ontcount_db(
+            self.database_dir / "ontcount.db", read_only=self.read_only
+        )
 
     @cached_property
     def prop_domains(self):
-        return get_prop_domain_db(self.database_dir / "prop_domains.db", read_only=True)
+        return get_prop_domain_db(
+            self.database_dir / "prop_domains.db", read_only=self.read_only
+        )
 
     @cached_property
     def prop_ranges(self):
-        return get_prop_range_db(self.database_dir / "prop_ranges.db", read_only=True)
+        return get_prop_range_db(
+            self.database_dir / "prop_ranges.db", read_only=self.read_only
+        )
 
     @cached_property
     def redirections(self):
         return get_entity_redirection_db(
-            self.database_dir / "entity_redirections.db", read_only=True
+            self.database_dir / "entity_redirections.db", read_only=self.read_only
         )
 
     @cached_property
     def wp2wd(self):
-        return get_wp2wd_db(self.database_dir / "wp2wd.db", read_only=True)
+        return get_wp2wd_db(self.database_dir / "wp2wd.db", read_only=self.read_only)
 
     @cached_property
     def pagerank(self):
         return get_entity_attr_db(
             self.database_dir / "entities_attr.db",
             "pagerank",
-            read_only=True,
+            read_only=self.read_only,
         )
 
     @cached_property
     def entity_wikilinks(self):
         return get_entity_wikilinks_db(
-            self.database_dir / "entity_wikilinks.db", read_only=True
+            self.database_dir / "entity_wikilinks.db", read_only=self.read_only
         )
 
     @overload
@@ -330,7 +341,7 @@ class WikidataDB:
         return get_entity_attr_db(
             self.database_dir / "entities_attr.db",
             attr,
-            read_only=True,
+            read_only=self.read_only,
         )
 
     @staticmethod

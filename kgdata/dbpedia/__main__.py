@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, List, Optional, cast
 
 import click
 from click.types import Choice
+
 from hugedict.prelude import RocksDBDict, init_env_logger, rocksdb_load
+from kgdata.config import init_dbdir_from_env
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets import import_dataset
@@ -18,33 +20,25 @@ if TYPE_CHECKING:
 
 def dataset2db(
     dataset: str,
-    dbname: str,
+    dbname: Optional[str] = None,
     format: Optional[FileFormat] = None,
     command_name: Optional[str] = None,
 ):
+    if dbname is None:
+        dbname = dataset
+
     @click.command(name=command_name or dataset)
-    @click.option("-d", "--directory", default="", help="dbpedia directory")
     @click.option("-o", "--output", help="Output directory")
-    @click.option(
-        "-e",
-        "--extra",
-        type=Choice([], case_sensitive=False),
-        multiple=True,
-    )
     @click.option(
         "-c",
         "--compact",
         is_flag=True,
         help="Whether to compact the results. May take a very very long time",
     )
-    @click.option("-l", "--lang", default="en", help="Default language of the dbpedia")
-    def command(
-        directory: str, output: str, extra: List[str], compact: bool, lang: str
-    ):
-        """Build databases storing DBpedia properties. It comes with a list of extra
-        options (sub databases) for building domains and ranges of properties.
-        """
-        DBpediaDirCfg.init(directory)
+    @click.option("-l", "--lang", default=None, help="Default language of the dbpedia")
+    def command(output: str, compact: bool, lang: Optional[str] = None):
+        """Build a key-value database for storing dataset."""
+        init_dbdir_from_env()
 
         def db_options():
             db: RocksDBDict = getattr(DBpediaDB(output, read_only=False), dbname)
@@ -58,10 +52,14 @@ def dataset2db(
             "is_sorted": False,
         }
 
+        ds_kwargs = {}
+        if lang is not None:
+            ds_kwargs["lang"] = lang
+
         rocksdb_load(
             dbpath=dbpath,
             dbopts=options,
-            files=import_dataset(dataset).get_files(),
+            files=import_dataset(dataset, ds_kwargs).get_files(),
             format=fileformat,
             verbose=True,
             compact=compact,
@@ -75,8 +73,8 @@ def dbpedia():
     pass
 
 
-dbpedia.add_command(dataset2db("entities", "entities"))
-dbpedia.add_command(dataset2db("classes", "classes"))
+dbpedia.add_command(dataset2db("entities"))
+dbpedia.add_command(dataset2db("classes"))
 dbpedia.add_command(dataset2db("properties", "props"))
 dbpedia.add_command(
     dataset2db(
