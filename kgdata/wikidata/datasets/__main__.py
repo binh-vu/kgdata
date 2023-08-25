@@ -31,29 +31,30 @@ from importlib import import_module
 import click
 
 from kgdata.config import init_dbdir_from_env
-from kgdata.misc.query import PropEqualQuery, every
+from kgdata.misc.query import PropQuery, every
 
 
 @click.command("Generate a specific dataset")
 @click.option("-d", "--dataset", required=True, help="Dataset name")
 @click.option("-t", "--take", type=int, required=False, default=0, help="Take n rows")
 @click.option("-q", "--query", type=str, required=False, default="", help="Query")
-def main(dataset: str, take: int = 0, query: str = ""):
+@click.option("-l", "--limit", type=int, required=False, default=20, help="Limit")
+def main(dataset: str, take: int = 0, query: str = "", limit: int = 20):
     init_dbdir_from_env()
     module = import_module(f"kgdata.wikidata.datasets.{dataset}")
     ds = getattr(module, dataset)()
 
     if take > 0:
         for record in ds.take(take):
-            print(record)
+            print(repr(record))
             print("=" * 30)
 
     if query != "":
-        queries = [PropEqualQuery.from_string(s) for s in query.split(",")]
+        queries = [PropQuery.from_string(s) for s in query.split(",")]
         filter_fn = every(queries)
 
-        for record in ds.get_rdd().filter(filter_fn).collect():
-            print(record)
+        for record in ds.get_rdd().filter(filter_fn).take(limit):
+            print(repr(record))
             print("=" * 30)
 
 
