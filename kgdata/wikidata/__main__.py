@@ -116,7 +116,6 @@ wikidata.add_command(
 
 
 @click.command(name="entity_attr")
-@click.option("-d", "--directory", default="", help="Wikidata directory")
 @click.option(
     "-a", "--attr", type=click.Choice(get_args(EntAttr)), help="Entity's attribute"
 )
@@ -128,11 +127,9 @@ wikidata.add_command(
     help="Whether to compact the results. May take a very very long time",
 )
 @click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def db_entities_attr(
-    directory: str, attr: EntAttr, output: str, compact: bool, lang: str
-):
+def db_entities_attr(attr: EntAttr, output: str, compact: bool, lang: str):
     """Build a key-value database of Wikidata entities"""
-    WikidataDirCfg.init(directory)
+    init_dbdir_from_env()
 
     dbpath = Path(output) / "entities_attr.db"
     build_extra_ent_db(dbpath, attr, lang=lang, compact=compact)

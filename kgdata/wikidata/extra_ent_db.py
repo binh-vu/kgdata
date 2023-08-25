@@ -1,6 +1,7 @@
 """Wikidata embedded key-value databases for each entity's attribute."""
 
 from __future__ import annotations
+
 import gc
 import os
 import shutil
@@ -12,6 +13,8 @@ from typing import Literal, TypedDict, cast, overload
 
 import orjson
 import serde.jl
+from timer import Timer
+
 from hugedict.prelude import (
     RocksDBCompressionOptions,
     RocksDBDict,
@@ -20,8 +23,6 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
 )
 from hugedict.types import HugeMutableMapping
-from timer import Timer
-
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 
 EntAttr = Literal["label", "description", "aliases", "instanceof", "pagerank"]
@@ -147,14 +148,11 @@ def build_extra_ent_db(
     gc.collect()
 
     import ray
-    from sm.misc.ray_helper import ray_map
 
     from kgdata.wikidata.datasets.entity_metadata import entity_metadata
     from kgdata.wikidata.datasets.entity_pagerank import entity_pagerank
+    from sm.misc.ray_helper import ray_map, ray_put
 
-    ray.init()
-
-    @ray.remote
     def _build_sst_file(
         infile: str, temp_dir: str, attr: EntAttr, options: RocksDBOptions
     ):
@@ -201,23 +199,24 @@ def build_extra_ent_db(
         rocksdb_build_sst_file(options, outfile, input_gen)
         return outfile
 
-    ray_opts = ray.put(options)
+    ray_opts = ray_put(options)
     with Timer().watch_and_report("Creating SST files"):
         if attr == "pagerank":
             dataset = entity_pagerank(lang=lang)
             # copy the statistics file to the temporary directory
             dataset_dir = Path(dataset.file_pattern).parent
             assert dataset_dir.exists()
-            statsfile = dataset_dir.parent / f"{dataset_dir.name}.json"
-            assert statsfile.exists()
-            shutil.copy2(statsfile, realdbpath / "pagerank_stats.json")
+            statsfile = dataset_dir.parent / f"{dataset_dir.name}.pkl"
+            assert statsfile.exists(), str(statsfile)
+            shutil.copy2(statsfile, realdbpath / "pagerank_stats.pkl")
         else:
             dataset = entity_metadata(lang=lang)
 
         sst_files = ray_map(
-            _build_sst_file.remote,
+            _build_sst_file,
             [(file, str(temp_dir), attr, ray_opts) for file in dataset.get_files()],
             verbose=True,
+            is_func_remote=False,
         )
 
     with Timer().watch_and_report("Ingesting SST files"):

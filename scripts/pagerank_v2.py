@@ -1,11 +1,13 @@
+import glob
 import math
-import os, glob, numpy as np
+import os
 import shutil
 from pathlib import Path
 
+import numpy as np
 from graph_tool.all import *
-from tqdm import tqdm
 from loguru import logger
+from tqdm.auto import tqdm
 
 wd_dir = Path(os.environ["WD_DIR"])
 working_dir = wd_dir / "entity_pagerank"
@@ -32,9 +34,9 @@ logger.info("Calculating pagerank...")
 ranks = pagerank(g, weight=eweight)
 logger.info("Calculating pagerank... done!")
 
-import IPython
+# import IPython
 
-IPython.embed()
+# IPython.embed()
 
 logger.info("Saving pagerank...")
 n_records_per_file = 64000

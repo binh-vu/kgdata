@@ -7,9 +7,9 @@ from typing import Callable, Generic, Iterable, List, Optional, Sequence, Tuple,
 
 import numpy as np
 import orjson
-import ray
 import serde.pickle
 import serde.textline
+
 from kgdata.dataset import Dataset
 from kgdata.spark import (
     does_result_dir_exist,
@@ -113,9 +113,7 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
 
     graphtool_indir = cfg.entity_pagerank / f"graphtool_{lang}"
     if not does_result_dir_exist(graphtool_indir, create_if_not_exist=True):
-        ray.init()
 
-        @ray.remote
         def create_edges_npy(infiles: List[str], outfile: str):
             edges = []
             eprops = []
@@ -140,10 +138,11 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
         assert sum(len(x) for x in outfiles.values()) == len(infiles)
 
         ray_map(
-            create_edges_npy.remote,
+            create_edges_npy,
             [(sub_infiles, outfile) for outfile, sub_infiles in outfiles.items()],
             verbose=True,
             poll_interval=0.5,
+            is_func_remote=False,
         )
         (graphtool_indir / "_SUCCESS").touch()
 
