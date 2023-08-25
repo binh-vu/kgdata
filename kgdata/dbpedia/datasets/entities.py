@@ -5,8 +5,6 @@ from functools import partial
 from typing import Iterable, Optional
 
 import orjson
-from rdflib import BNode, Literal, URIRef
-
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
@@ -24,6 +22,7 @@ from kgdata.models.entity import Entity, Statement
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.misc import get_title_from_url
+from rdflib import BNode, Literal, URIRef
 
 
 def entities(lang: str = "en") -> Dataset[Entity]:
@@ -147,6 +146,14 @@ prop2range = {
         "http://dbpedia.org/ontology/governmentType": "http://dbpedia.org/ontology/GovernmentType",
     }.items()
 }
+range_constraints = {
+    URIRef(k): {URIRef(v) for v in vs}
+    for k, vs in {
+        "http://dbpedia.org/ontology/GovernmentType": {
+            "http://dbpedia.org/ontology/Country"
+        }
+    }.items()
+}
 
 
 @dataclass
@@ -158,16 +165,23 @@ class NewTriple(Record):
 
 
 def infer_new_data(e: Entity):
-    out: list[NewTriple] = []
+    out: dict[str, NewTriple] = {}
     for k, newtype in prop2range.items():
-        for val in e.props.get(k, []):
-            if isinstance(val.value, URIRef):
-                out.append(
-                    NewTriple(
-                        str(val.value), rdf_type, newtype, type2contradictions[newtype]
-                    )
-                )
-    return out
+        if k not in e.props:
+            continue
+        if newtype in range_constraints:
+            if not any(
+                stmt.value in range_constraints[newtype]
+                for stmt in e.props.get(rdf_type, [])
+            ):
+                continue
+        for val in e.props[k]:
+            if not isinstance(val.value, URIRef):
+                continue
+            out[newtype] = NewTriple(
+                str(val.value), rdf_type, newtype, type2contradictions[newtype]
+            )
+    return list(out.values())
 
 
 def merge_new_triple(
@@ -182,6 +196,10 @@ def merge_new_triple(
             if triple.constraints.isdisjoint(
                 (stmt.value for stmt in ent.props[triple.predicate])
             ):
+                if any(
+                    triple.object == stmt.value for stmt in ent.props[triple.predicate]
+                ):
+                    continue
                 ent.props[triple.predicate].append(
                     Statement(value=triple.object, qualifiers={}, qualifiers_order=[])
                 )
