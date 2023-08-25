@@ -43,6 +43,30 @@ class MultiLingualString(str):
         return self.lang2value, self.lang
 
 
+class CompressedMultiLingualString(str):
+    """
+    Multilingual string may contain lots of duplicated data for different languages.
+
+    For example, results of using CompressedMultiLingualString vs MultiLingualString
+        - on Wikidata labels
+        62.92% (17.0GiB/27.0GiB)
+
+        - on Wikidata description
+        95.05% (95.7GiB/100.7GiB)
+    """
+
+    values: list[str]
+    lang2index: dict[str, int]
+    lang: str
+
+    def __new__(cls, lang2index: dict[str, int], lang: str, values: list[str]):
+        object = str.__new__(cls, values[lang2index[lang]])
+        object.lang2index = lang2index
+        object.lang = lang
+        object.values = values
+        return object
+
+
 # important to use List[str] as python 3.8 does not support inherit from list[str]
 class MultiLingualStringList(List[str]):
     def __init__(self, lang2values: dict[str, list[str]], lang):
