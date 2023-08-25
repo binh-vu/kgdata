@@ -63,6 +63,7 @@ def entity_all_types(lang: str = "en") -> Dataset[EntityAllTypes]:
             .groupByKey()
             .map(lambda x: EntityAllTypes(x[0], merge_type_dist(x[1])))
             .map(EntityAllTypes.ser)
+            .coalesce(256)
             .saveAsTextFile(
                 str(cfg.entity_all_types),
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
