@@ -4,6 +4,7 @@ import glob
 import os
 import re
 from dataclasses import dataclass
+from importlib import import_module
 from math import ceil
 from pathlib import Path
 from typing import (
@@ -24,13 +25,12 @@ from uuid import uuid4
 import orjson
 import serde.byteline
 import serde.textline
-from loguru import logger
-from pyspark import RDD
-from tqdm.auto import tqdm
-
 from hugedict.misc import Chain2, identity
 from kgdata.spark import get_spark_context
 from kgdata.splitter import split_a_list
+from loguru import logger
+from pyspark import RDD
+from tqdm.auto import tqdm
 
 V = TypeVar("V")
 V2 = TypeVar("V2")
@@ -374,3 +374,10 @@ class SparkLikeInterface(Generic[T_co]):
             n_records_per_file=ceil(len(data) / self.n_partitions),
         )
         (Path(outdir) / "_SUCCESS").touch()
+
+
+def import_dataset(dataset: str, kwargs: Optional[dict] = None) -> Dataset:
+    kgname, dataset = dataset.split(".")
+    module = import_module(f"kgdata.{kgname}.datasets.{dataset}")
+    kwargs = kwargs or {}
+    return getattr(module, dataset)(**kwargs)
