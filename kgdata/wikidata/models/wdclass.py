@@ -14,18 +14,15 @@ class WDClass(OntologyClass):
 
         parents = []
         for stmt in ent.props.get("P279", []):
-            assert stmt.value.is_entity_id(stmt.value)
-            parents.append(stmt.value.as_entity_id())
+            parents.append(stmt.value.as_entity_id_safe())
 
         properties = []
         for stmt in ent.props.get("P1963", []):
-            assert stmt.value.is_entity_id(stmt.value)
-            properties.append(stmt.value.as_entity_id())
+            properties.append(stmt.value.as_entity_id_safe())
 
         different_froms = []
         for stmt in ent.props.get("P1889", []):
-            assert stmt.value.is_entity_id(stmt.value)
-            different_froms.append(stmt.value.as_entity_id())
+            different_froms.append(stmt.value.as_entity_id_safe())
 
         equivalent_classes = []
         for stmt in ent.props.get("P1709", []):
