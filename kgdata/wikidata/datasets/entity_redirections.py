@@ -2,21 +2,26 @@ from __future__ import annotations
 
 import shutil
 from collections import defaultdict
+from functools import lru_cache
 from typing import Dict, Tuple
 
 import serde.csv
 import serde.textline
+from sm.misc.funcs import is_not_null
 from tqdm import tqdm
 
 from kgdata.dataset import Dataset
-from kgdata.spark import get_spark_context, saveAsSingleTextFile
+from kgdata.misc.funcs import split_tab_2
+from kgdata.spark import get_spark_context
+from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_ids import entity_ids, is_entity_id
 from kgdata.wikidata.datasets.entity_redirection_dump import entity_redirection_dump
 from kgdata.wikidata.datasets.page_ids import page_ids, parse_sql_values
 
 
-def entity_redirections() -> Dataset[Tuple[str, str]]:
+@lru_cache()
+def entity_redirections() -> Dataset[tuple[str, str]]:
     """Wikidata entity redirections. It combines two datasets: page_ids and entity_redirection_dump.
     The first one contains mapping from page_id => entity_id (can be old id).
     The second one contains mapping from page_id => final entity_id.
@@ -30,23 +35,45 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
     """
     cfg = WikidataDirCfg.get_instance()
 
-    if not (cfg.entity_redirections / "raw_redirections.tsv").exists():
+    raw_ds = Dataset(
+        cfg.entity_redirections / "raw/part-*",
+        deserialize=split_tab_2,
+        name="entity-redirections/raw",
+        dependencies=[entity_redirection_dump()],
+    )
+    redirection_ds = Dataset(
+        cfg.entity_redirections / "redirections/*.tsv",
+        deserialize=split_tab_2,
+        name="entity-redirections/redirections",
+        dependencies=[page_ids()],
+    )
+    fixed_ds = Dataset(
+        cfg.entity_redirections / "fixed/*.tsv",
+        deserialize=split_tab_2,
+        name="entity-redirections/fixed",
+        # to not store intermediate dependencies
+        dependencies=raw_ds.get_dependencies()
+        + redirection_ds.get_dependencies()
+        + [entity_ids()],
+    )
+
+    if not raw_ds.has_complete_data():
         # mapping from page id to the latest entity id
-        saveAsSingleTextFile(
+        (
             entity_redirection_dump()
-            .get_rdd()
+            .get_extended_rdd()
             .flatMap(parse_sql_values)
             .map(extract_id)
-            .filter(lambda x: x is not None)
-            .map(lambda x: "\t".join(x)),
-            cfg.entity_redirections / "raw_redirections.tsv",
+            .filter_update_type(is_not_null)
+            .map(lambda x: "\t".join(x))
+            .coalesce(1)
+            .save_like_dataset(raw_ds)
         )
 
-    if not (cfg.entity_redirections / "redirections.tsv").exists():
+    if not redirection_ds.has_complete_data():
         page2ent = page_ids().get_dict()
-        raw_redirections = serde.csv.deser(
-            cfg.entity_redirections / "raw_redirections.tsv", delimiter="\t"
-        )
+        (raw_redirect_file,) = raw_ds.get_files()
+        raw_redirections = serde.csv.deser(raw_redirect_file, delimiter="\t")
 
         redirections = defaultdict(set)
         for pageid, latest_ent in raw_redirections:
@@ -94,50 +121,56 @@ def entity_redirections() -> Dataset[Tuple[str, str]]:
                     stack.append(next_item)
             refined_redirections[before_item] = final_item
 
+        redirection_ds.get_data_directory().mkdir(parents=True, exist_ok=True)
         serde.csv.ser(
             [
                 [before, after]
                 for before, after in sorted(refined_redirections.items())
                 if before != after  # there is a case where this is equal: P2094
             ],
-            cfg.entity_redirections / "redirections.tsv",
+            redirection_ds.get_data_directory() / "redirection.tsv",
             delimiter="\t",
         )
-
-    if not (cfg.entity_redirections / "fixed_redirections.tsv").exists():
-        lst = serde.csv.deser(
-            cfg.entity_redirections / "redirections.tsv", delimiter="\t"
+        redirection_ds.sign(
+            redirection_ds.get_name(), redirection_ds.get_dependencies()
         )
 
-        saveAsSingleTextFile(
-            get_spark_context()
-            .parallelize(list(set(x[1] for x in lst)))
-            .subtract(entity_ids().get_rdd()),
-            cfg.entity_redirections / "unknown_target_entities.txt",
+    if not fixed_ds.has_complete_data():
+        (redirection_file,) = redirection_ds.get_files()
+        lst = serde.csv.deser(redirection_file, delimiter="\t")
+
+        unk_target_ds = Dataset.string(
+            cfg.entity_redirections / "unknown_target_entities/part-*"
         )
 
-        unknown_ents = set(
-            serde.textline.deser(
-                cfg.entity_redirections / "unknown_target_entities.txt", trim=True
+        if not unk_target_ds.has_complete_data():
+            (
+                ExtendedRDD.parallelize(list(set(x[1] for x in lst)))
+                .subtract(entity_ids().get_extended_rdd())
+                .save_as_dataset(
+                    cfg.entity_redirections / "unknown_target_entities",
+                    name="entity-redirections/unknown-target-entities",
+                    auto_coalesce=True,
+                    checksum=False,
+                )
             )
-        )
 
+        unknown_ents = unk_target_ds.get_set()
+        fixed_ds.get_data_directory().mkdir(parents=True, exist_ok=True)
         if len(unknown_ents) > 0:
             serde.csv.ser(
                 [[before, after] for before, after in lst if after not in unknown_ents],
-                cfg.entity_redirections / "fixed_redirections.tsv",
+                fixed_ds.get_data_directory() / "fixed_redirections.tsv",
                 delimiter="\t",
             )
         else:
             shutil.copyfile(
-                str(cfg.entity_redirections / "redirections.tsv"),
-                str(cfg.entity_redirections / "fixed_redirections.tsv"),
+                redirection_file,
+                fixed_ds.get_data_directory() / "fixed_redirections.tsv",
             )
+        fixed_ds.sign(fixed_ds.get_name(), fixed_ds.get_dependencies())
 
-    return Dataset(
-        file_pattern=cfg.entity_redirections / "fixed_redirections.tsv",
-        deserialize=lambda x: tuple(x.split("\t")),
-    )
+    return fixed_ds
 
 
 def extract_id(row: list) -> tuple[str, str] | None:

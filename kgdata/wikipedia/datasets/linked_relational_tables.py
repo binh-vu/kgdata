@@ -1,13 +1,14 @@
 from importlib import import_module
 from typing import Dict, Iterable, List, Literal, Tuple, Union
 
+from rsoup.core import Cell, Table
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable, WikiLink
-from rsoup.core import Cell, Table
 
 
 def linked_tables(
@@ -26,15 +27,21 @@ def linked_tables(
     else:
         raise NotImplementedError(table_dataset_name)
 
-    if not does_result_dir_exist(outdir):
+    ds = Dataset(file_pattern=outdir / "*.gz", deserialize=deser_linked_tables)
+
+    module = import_module(f"kgdata.wikipedia.datasets.{table_dataset_name}")
+    table_dataset: Dataset[Table] = getattr(module, table_dataset_name)()
+    ds.sign("linked-relational-tables", [table_dataset])
+
+    if not ds.has_complete_data():
         module = import_module(f"kgdata.wikipedia.datasets.{table_dataset_name}")
         table_dataset: Dataset[Table] = getattr(module, table_dataset_name)()
 
         tbl2titles = (
-            table_dataset.get_rdd()
+            table_dataset.get_extended_rdd()
             .flatMap(extract_title_to_tables)
             .groupByKey()
-            .leftOuterJoin(wp2wd(lang).get_rdd())
+            .leftOuterJoin(wp2wd(lang).get_extended_rdd())
             .flatMap(lambda x: [(tbl_id, (x[0], x[1][1])) for tbl_id in x[1][0]])
             .groupByKey()
         )
@@ -52,7 +59,6 @@ def linked_tables(
             )
         )
 
-    ds = Dataset(file_pattern=str(outdir / "*.gz"), deserialize=deser_linked_tables)
     return ds
 
 

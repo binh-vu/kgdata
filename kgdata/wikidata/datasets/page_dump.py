@@ -1,27 +1,33 @@
 from bz2 import BZ2File
+from functools import lru_cache
 from gzip import GzipFile
 from typing import BinaryIO, Union
 
 from kgdata.dataset import Dataset
-from kgdata.spark import get_spark_context
 from kgdata.splitter import split_a_file
 from kgdata.wikidata.config import WikidataDirCfg
 
 
+@lru_cache
 def page_dump() -> Dataset[str]:
     """mapping from Wikidata internal page id and Wikidata entity id (possible old id)"""
     cfg = WikidataDirCfg.get_instance()
+    dump_date = cfg.get_dump_date()
 
-    split_a_file(
-        infile=cfg.get_page_dump_file(),
-        outfile=cfg.page_dump / "part.sql.gz",
-        record_iter=_record_iter,
-        record_postprocess="kgdata.wikidata.datasets.page_dump._record_postprocess",
-        n_writers=8,
-        override=False,
+    ds = Dataset.string(
+        cfg.page_dump / "*.gz", name=f"page-dump/{dump_date}", dependencies=[]
     )
-
-    return Dataset.string(cfg.page_dump / "*.sql.gz")
+    if not ds.has_complete_data():
+        split_a_file(
+            infile=cfg.get_page_dump_file(),
+            outfile=cfg.page_dump / "part.sql.gz",
+            record_iter=_record_iter,
+            record_postprocess="kgdata.wikidata.datasets.page_dump._record_postprocess",
+            n_writers=8,
+            override=False,
+        )
+        ds.sign(ds.get_name(), ds.get_dependencies())
+    return ds
 
 
 def _record_iter(f: Union[BZ2File, GzipFile, BinaryIO]):

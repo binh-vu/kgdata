@@ -1,14 +1,26 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 from glob import glob
 from io import BytesIO
 from pathlib import Path
-from typing import Callable, Generic, Iterable, List, Optional, Sequence, Tuple, TypeVar
+from typing import (
+    Callable,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    cast,
+)
 
 import numpy as np
 import orjson
 import serde.pickle
 import serde.textline
+from sm.misc.ray_helper import ray_map
 
 from kgdata.dataset import Dataset
 from kgdata.spark import (
@@ -16,10 +28,11 @@ from kgdata.spark import (
     get_spark_context,
     left_outer_join_repartition,
 )
+from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
+from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.models.wdentity import WDEntity
-from sm.misc.ray_helper import ray_map
 
 KeyType = TypeVar("KeyType")
 
@@ -47,71 +60,55 @@ class Edge(Generic[KeyType]):
 EntityPageRank = Tuple[str, float]
 
 
-def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
+@lru_cache()
+def entity_pagerank() -> Dataset[EntityPageRank]:
     """Generate a weighted graph of Wikidata's entities. The graph can be used to calculate page rank to determine entity popularity"""
     cfg = WikidataDirCfg.get_instance()
 
-    idmap_outdir = cfg.entity_pagerank / f"idmap_{lang}"
-    if not does_result_dir_exist(idmap_outdir):
+    idmap_ds = Dataset(
+        cfg.entity_pagerank / "idmap/*.gz",
+        deserialize=kv_tab_deser,
+        name="entity-pagerank/idmap",
+        dependencies=[entity_ids()],
+    )
+    if not idmap_ds.has_complete_data():
         (
-            entities(lang=lang)
-            .get_rdd()
+            entities()
+            .get_extended_rdd()
             .map(lambda ent: ent.id)
             .sortBy(lambda x: (x[0], int(x[1:])))  # type: ignore
             .zipWithIndex()
             .map(tab_ser)
-            .saveAsTextFile(
-                str(idmap_outdir),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
-        )
-        # write the total number of entity
-        (cfg.entity_pagerank / (idmap_outdir.name + ".txt")).write_text(
-            str(
-                Dataset(
-                    idmap_outdir / "*.gz",
-                    deserialize=kv_tab_deser,
-                )
-                .get_rdd()
-                .count()
-            )
+            .save_like_dataset(idmap_ds, checksum=False)
         )
 
-    entity_idmap = Dataset(
-        idmap_outdir / "*.gz",
-        deserialize=kv_tab_deser,
+    edges_dataset = Dataset(
+        cfg.entity_pagerank / "graph/*.gz",
+        deserialize=Edge.deserialize_int,
+        name="entity-pagerank/graph",
+        dependencies=[entities(), idmap_ds],
     )
-
-    graph_outdir = cfg.entity_pagerank / f"graph_{lang}"
-    if not does_result_dir_exist(graph_outdir):
-        idmap_rdd = entity_idmap.get_rdd()
+    if not edges_dataset.has_complete_data():
+        idmap_rdd = idmap_ds.get_extended_rdd()
         (
-            left_outer_join_repartition(
-                entities(lang=lang)
-                .get_rdd()
-                .flatMap(get_edges)
-                .map(lambda x: (x.source, x))
-                .groupByKey()
-                .leftOuterJoin(idmap_rdd)
-                .flatMap(update_edge_ids_source)
-                .map(lambda x: (x.target, x)),
+            entities()
+            .get_extended_rdd()
+            .flatMap(get_edges)
+            .map(lambda x: (x.source, x))
+            .groupByKey()
+            .leftOuterJoin(idmap_rdd)
+            .flatMap(update_edge_ids_source)
+            .map(lambda x: (x.target, x))
+            .left_outer_join_repartition(
                 idmap_rdd,
                 num_partitions=3000,
             )
             .flatMap(update_edge_ids_target)
             .map(Edge.serialize)
-            .saveAsTextFile(
-                str(graph_outdir),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(edges_dataset, checksum=False)
         )
 
-    edges_dataset: Dataset[Edge[int]] = Dataset(
-        graph_outdir / "*.gz",
-        deserialize=Edge.deserialize_int,
-    )
-
-    graphtool_indir = cfg.entity_pagerank / f"graphtool_{lang}"
+    graphtool_indir = cfg.entity_pagerank / f"graphtool"
     if not does_result_dir_exist(graphtool_indir, create_if_not_exist=True):
 
         def create_edges_npy(infiles: List[str], outfile: str):
@@ -146,8 +143,13 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
         )
         (graphtool_indir / "_SUCCESS").touch()
 
-    pagerank_outdir = cfg.entity_pagerank / f"pagerank_{lang}"
-    if not does_result_dir_exist(pagerank_outdir):
+    pagerank_ds = Dataset(
+        cfg.entity_pagerank / "pagerank/*.gz",
+        deserialize=orjson.loads,
+        name="entity-pagerank/pagerank",
+        dependencies=[entities()],
+    )
+    if not pagerank_ds.has_complete_data():
         assert does_result_dir_exist(
             cfg.entity_pagerank / "graphtool_pagerank_en", allow_override=False
         ), "Must run graph-tool pagerank at `kgdata/scripts/pagerank_v2.py` first"
@@ -169,22 +171,18 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
             return x[1][1], float(x[1][0])
 
         (
-            get_spark_context()
-            .binaryFiles(
-                str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"),
+            ExtendedRDD.binaryFiles(
+                cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz",
             )
             .repartition(n_files)
             .flatMap(lambda x: deserialize_np(x[1]))
-            .fullOuterJoin(entity_idmap.get_rdd().map(lambda x: (int(x[1]), x[0])))
+            .fullOuterJoin(idmap_ds.get_extended_rdd().map(lambda x: (int(x[1]), x[0])))
             .map(process_join)
             .map(orjson.dumps)
-            .saveAsTextFile(
-                str(pagerank_outdir),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(pagerank_ds, trust_dataset_dependencies=True)
         )
 
-    pagerank_stat_outfile = cfg.entity_pagerank / f"pagerank_{lang}.pkl"
+    pagerank_stat_outfile = cfg.entity_pagerank / f"pagerank.pkl"
     if not pagerank_stat_outfile.exists():
         n_files = len(
             glob(str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"))
@@ -204,14 +202,14 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
             .map(lambda x: deserialize_np2(x[1]))
         )
 
-        total = rdd.map(lambda x: np.sum(x)).sum()
+        total = rdd.map(lambda x: np.sum(x)).sum()  # type: ignore
         size = rdd.map(lambda x: len(x)).sum()
         mean_pagerank = total / size
         std_pagerank = np.sqrt(
             rdd.map(lambda x: np.sum(np.square(x - mean_pagerank))).sum() / size
         )
-        max_pagerank = rdd.map(lambda x: np.max(x)).max()
-        min_pagerank = rdd.map(lambda x: np.min(x)).min()
+        max_pagerank = rdd.map(lambda x: np.max(x)).max()  # type: ignore
+        min_pagerank = rdd.map(lambda x: np.min(x)).min()  # type: ignore
 
         sumlog = rdd.map(lambda x: np.sum(np.log(x))).sum()
         meanlog = sumlog / size
@@ -233,7 +231,7 @@ def entity_pagerank(lang: str = "en") -> Dataset[EntityPageRank]:
             pagerank_stat_outfile,
         )
 
-    return Dataset(pagerank_outdir / "*.gz", deserialize=orjson.loads)
+    return pagerank_ds
 
 
 def get_edges(ent: WDEntity) -> List[Edge]:

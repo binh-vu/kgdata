@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Callable, List
 
+from rsoup.core import Table
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
@@ -11,7 +13,6 @@ from kgdata.wikipedia.datasets.linked_relational_tables import (
     ser_linked_tables,
 )
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable
-from rsoup.core import Table
 
 
 def easy_tables() -> Dataset[LinkedHTMLTable]:
@@ -19,11 +20,13 @@ def easy_tables() -> Dataset[LinkedHTMLTable]:
     The table is easy or not is determined by :py:func:`kgdata.wikipedia.easy_table.is_easy_table`.
     """
     cfg = WikipediaDirCfg.get_instance()
+    ds = Dataset(file_pattern=cfg.easy_tables / "*.gz", deserialize=deser_linked_tables)
+    ds.sign("easy-tables", [linked_relational_tables()])
 
     # step 1: generate stats of which tables passed which tests
 
     # step 2: filter the tables
-    if not does_result_dir_exist(cfg.easy_tables):
+    if not ds.has_complete_data():
         tests = [
             EasyTests.only_first_row_header,
             EasyTests.no_spanning_header_columns,
@@ -45,19 +48,18 @@ def easy_tables() -> Dataset[LinkedHTMLTable]:
         # )
         (
             linked_relational_tables()
-            .get_rdd()
+            .get_extended_rdd()
             .filter(partial(is_easy_table, tests=tests))
             .map(ser_linked_tables)
-            .coalesce(192, shuffle=True)
-            .saveAsTextFile(
-                str(cfg.easy_tables),
+            .save_as_dataset(
+                cfg.easy_tables,
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="easy-tables",
+                auto_coalesce=True,
             )
         )
 
-    return Dataset(
-        file_pattern=cfg.easy_tables / "*.gz", deserialize=deser_linked_tables
-    )
+    return ds
 
 
 def is_easy_table(

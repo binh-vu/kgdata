@@ -1,18 +1,16 @@
-import glob
-import os
 from bz2 import BZ2File
+from functools import lru_cache
 from gzip import GzipFile
-from pathlib import Path
-from typing import BinaryIO, Union, cast
+from typing import BinaryIO, Union
 
 import orjson
+
 from kgdata.dataset import Dataset
-from kgdata.spark import get_spark_context
 from kgdata.splitter import split_a_file
 from kgdata.wikidata.config import WikidataDirCfg
-from pyspark import RDD
 
 
+@lru_cache()
 def entity_dump() -> Dataset[dict]:
     """
     Split the Wikidata entity dumps into smaller files.
@@ -21,17 +19,25 @@ def entity_dump() -> Dataset[dict]:
         Dataset[dict]
     """
     cfg = WikidataDirCfg.get_instance()
-
-    split_a_file(
-        infile=cfg.get_entity_dump_file(),
-        outfile=cfg.entity_dump / "part.ndjson.gz",
-        record_iter=_record_iter,
-        record_postprocess="kgdata.wikidata.datasets.entity_dump._record_postprocess",
-        n_writers=8,
-        override=False,
+    dump_date = cfg.get_dump_date()
+    ds = Dataset(
+        file_pattern=cfg.entity_dump / "*.gz",
+        deserialize=orjson.loads,
+        name=f"entity-dump/{dump_date}",
+        dependencies=[],
     )
 
-    return Dataset(file_pattern=str(cfg.entity_dump / "*.gz"), deserialize=orjson.loads)
+    if not ds.has_complete_data():
+        split_a_file(
+            infile=cfg.get_entity_dump_file(),
+            outfile=cfg.entity_dump / "part.ndjson.gz",
+            record_iter=_record_iter,
+            record_postprocess="kgdata.wikidata.datasets.entity_dump._record_postprocess",
+            n_writers=8,
+            override=False,
+        )
+        ds.sign(ds.get_name(), ds.get_dependencies())
+    return ds
 
 
 def _record_iter(f: Union[BZ2File, GzipFile, BinaryIO]):

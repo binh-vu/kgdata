@@ -1,21 +1,23 @@
-from functools import partial
+from functools import lru_cache, partial
 from typing import Dict, Set, Union
 
 import orjson
-import serde.textline
+from loguru import logger
+from pyspark import Broadcast
+from sm.misc.funcs import filter_duplication
+
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kgdata.misc.funcs import split_tab_2
+from kgdata.spark import get_spark_context
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdstatement import WDStatement
-from loguru import logger
-from pyspark import Broadcast
-from sm.misc.funcs import filter_duplication
 
 
+@lru_cache()
 def entities(lang: str = "en") -> Dataset[WDEntity]:
     """Normalize Wikidata entity from Wikidata entity json dumps.
 
@@ -32,77 +34,79 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
         Dataset[WDEntity]
     """
     cfg = WikidataDirCfg.get_instance()
-    outdir = cfg.entities.parent / (cfg.entities.name + "_" + lang)
 
-    if not does_result_dir_exist(outdir / "all_ids"):
+    dangling_id_ds = Dataset.string(
+        cfg.entities / "dangling_ids" / "*.gz",
+        name="entities/dangling-ids",
+        dependencies=[entity_dump(), entity_ids()],
+    )
+    unk_id_ds = Dataset.string(
+        cfg.entities / "unknown_ids/part-*",
+        name="entities/unknown-ids",
+        dependencies=[dangling_id_ds, entity_redirections()],
+    )
+    redirected_id_ds = Dataset(
+        cfg.entities / "redirected_ids/part-*",
+        deserialize=split_tab_2,
+        name="entities/redirected-ids",
+        dependencies=[dangling_id_ds, entity_redirections()],
+    )
+    fixed_ds = Dataset(
+        cfg.entities / lang / "*.gz",
+        deserialize=deser_entity,
+        name=f"entities/{lang}/fixed",
+        dependencies=[entity_dump(), entity_ids(), entity_redirections()],
+    )
+
+    if not dangling_id_ds.has_complete_data():
         logger.info("Getting all entity ids in the dump (including properties)")
         (
             entity_dump()
-            .get_rdd()
-            .map(partial(WDEntity.from_wikidump, lang=lang))
+            .get_extended_rdd()
+            .map(partial(WDEntity.from_wikidump, lang="en"))
             .flatMap(get_child_entities)
             .distinct()
-            .saveAsTextFile(
-                str(outdir / "all_ids"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .subtract(entity_ids().get_extended_rdd())
+            .save_like_dataset(dangling_id_ds)
         )
 
-    if not (outdir / "unknown_entities.txt").exists():
+    if not unk_id_ds.has_complete_data():
         logger.info("Identifying unknown entities")
-        saveAsSingleTextFile(
-            get_spark_context()
-            .textFile(str(outdir / "all_ids/*.gz"))
-            .subtract(entity_ids().get_rdd())
-            .subtract(entity_redirections().get_rdd().map(lambda x: x[0])),
-            outdir / "unknown_entities.txt",
+        (
+            dangling_id_ds.get_extended_rdd()
+            .subtract(entity_redirections().get_extended_rdd().map(lambda x: x[0]))
+            .save_like_dataset(unk_id_ds, auto_coalesce=True)
         )
 
-    if not (outdir / "redirected_entities.tsv").exists():
+    if not redirected_id_ds.has_complete_data():
         logger.info("Identifying redirected entities")
-        saveAsSingleTextFile(
-            get_spark_context()
-            .textFile(str(outdir / "all_ids/*.gz"))
+        (
+            dangling_id_ds.get_extended_rdd()
             .map(lambda x: (x, 1))
-            .join(entity_redirections().get_rdd())
+            .join(entity_redirections().get_extended_rdd())
             .map(lambda x: (x[0], x[1][1]))
-            .map(lambda x: "\t".join(x)),
-            outdir / "redirected_entities.tsv",
+            .map(lambda x: "\t".join(x))
+            .save_like_dataset(redirected_id_ds, auto_coalesce=True)
         )
 
-    if not does_result_dir_exist(outdir / "fixed"):
+    if not fixed_ds.has_complete_data():
         logger.info("Normalizing and fixing the entities in the dump")
 
         sc = get_spark_context()
-        unknown_entities = sc.broadcast(
-            set(serde.textline.deser(outdir / "unknown_entities.txt", trim=True))
-        )
-        redirected_entities = sc.broadcast(
-            {
-                k: v
-                for k, v in (
-                    line.split("\t")
-                    for line in serde.textline.deser(
-                        outdir / "redirected_entities.tsv", trim=True
-                    )
-                )
-            }
-        )
+        unknown_entities = sc.broadcast(unk_id_ds.get_set())
+        redirected_entities = sc.broadcast(redirected_id_ds.get_dict())
 
         (
             entity_dump()
-            .get_rdd()
+            .get_extended_rdd()
             .map(partial(WDEntity.from_wikidump, lang=lang))
             .map(lambda x: fixed_entity(x, unknown_entities, redirected_entities))
             .map(lambda x: x[0])
             .map(ser_entity)
-            .saveAsTextFile(
-                str(outdir / "fixed"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(fixed_ds, trust_dataset_dependencies=True)
         )
 
-    return Dataset(file_pattern=outdir / "fixed/*.gz", deserialize=deser_entity)
+    return fixed_ds
 
 
 def deser_entity(line: Union[str, bytes]) -> WDEntity:
@@ -115,7 +119,7 @@ def ser_entity(ent: WDEntity):
 
 def get_child_entities(ent: WDEntity):
     """Get entities that are children of an entity and properties/qualifiers used by the entity."""
-    children = set()
+    children: set[str] = set()
     for pid, stmts in ent.props.items():
         children.add(pid)
         for stmt in stmts:

@@ -4,10 +4,12 @@ from functools import partial
 from typing import BinaryIO, Iterable, Union, cast
 
 import orjson
+import serde.json
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict
 from kgdata.spark import are_records_unique, does_result_dir_exist
+from kgdata.spark.extended_rdd import DatasetSignature
 from kgdata.splitter import split_a_file
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.models.html_article import HTMLArticle
@@ -22,10 +24,21 @@ def html_articles() -> Dataset[HTMLArticle]:
     """
     cfg = WikipediaDirCfg.get_instance()
 
+    dump_date = cfg.get_dump_date()
     dump_file = cfg.get_html_article_file()
     need_double_check = False
 
-    if not does_result_dir_exist(cfg.html_articles / "splitted"):
+    splitted_ds = Dataset(
+        cfg.html_articles / "splitted/*/*.gz",
+        deserialize=lambda line: HTMLArticle.from_dump_dict(orjson.loads(line)),
+    )
+
+    final_ds = Dataset(
+        cfg.html_articles / "final/*.gz",
+        deserialize=partial(deser_from_dict, HTMLArticle),
+    )
+
+    if not splitted_ds.has_complete_data():
         with tarfile.open(dump_file, "r:*") as archive:
             for file in archive:
                 split_a_file(
@@ -41,17 +54,14 @@ def html_articles() -> Dataset[HTMLArticle]:
                     override=True,
                     n_records_per_file=3000,
                 )
-        (cfg.html_articles / "_SUCCESS").touch()
 
-    if not does_result_dir_exist(cfg.html_articles / "final"):
+        splitted_ds.sign(f"html-articles/{dump_date}/splitted", checksum=False)
+
+    if not final_ds.has_complete_data():
         # sometimes, we may have multiple html of the same URL (for different revisions), we choose to keep the
         # latest one only.
         (
-            Dataset(
-                cfg.html_articles / "splitted/*/*.gz",
-                deserialize=lambda line: HTMLArticle.from_dump_dict(orjson.loads(line)),
-            )
-            .get_rdd()
+            splitted_ds.get_extended_rdd()
             .map(
                 lambda a: (a.url, a)
             )  # same url but may have different page id such as draft.
@@ -60,24 +70,20 @@ def html_articles() -> Dataset[HTMLArticle]:
             .reduceByKey(select_updated_article)
             .map(lambda tup: tup[1])
             .map(ser_html_articles)
-            .coalesce(1024, shuffle=True)
-            .saveAsTextFile(
-                str(cfg.html_articles / "final"),
+            .save_as_dataset(
+                cfg.html_articles / "final",
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name=f"html-articles/{dump_date}/final",
             )
         )
 
         need_double_check = True
 
-    ds = Dataset(
-        cfg.html_articles / "final/*.gz",
-        deserialize=partial(deser_from_dict, HTMLArticle),
-    )
     if need_double_check:
-        assert are_records_unique(ds.get_rdd(), lambda a: a.url)
-        assert are_records_unique(ds.get_rdd(), lambda a: a.page_id)
-        assert are_records_unique(ds.get_rdd(), lambda a: a.name)
-    return ds
+        assert are_records_unique(final_ds.get_rdd(), lambda a: a.url)
+        assert are_records_unique(final_ds.get_rdd(), lambda a: a.page_id)
+        assert are_records_unique(final_ds.get_rdd(), lambda a: a.name)
+    return final_ds
 
 
 def deser_html_articles(line: Union[str, bytes]) -> HTMLArticle:

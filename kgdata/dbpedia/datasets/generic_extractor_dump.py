@@ -5,7 +5,7 @@ from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import aggregated_triples
 from kgdata.misc.ntriples_parser import ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
-from kgdata.spark import does_result_dir_exist, get_spark_context
+from kgdata.spark import does_result_dir_exist, ExtendedRDD
 from kgdata.splitter import split_a_file
 
 
@@ -19,7 +19,12 @@ def generic_extractor_dump(lang: str = "en") -> Dataset[RDFResource]:
     """
     cfg = DBpediaDirCfg.get_instance()
 
-    if not does_result_dir_exist(cfg.generic_extractor_dump / lang / "final"):
+    ds = Dataset(
+        file_pattern=cfg.generic_extractor_dump / lang / "final" / "*.gz",
+        deserialize=RDFResource.deser
+    )
+
+    if not ds.has_complete_data():
         split_dump_dir = cfg.generic_extractor_dump / lang / "raw"
         for file in cfg.get_generic_extractor_dump_files(lang):
             split_a_file(
@@ -32,19 +37,18 @@ def generic_extractor_dump(lang: str = "en") -> Dataset[RDFResource]:
             )
 
         (
-            get_spark_context()
+            ExtendedRDD
             .textFile(str(split_dump_dir / "*/*.gz"))
             .filter(ignore_comment)
             .map(ntriple_loads)
             .groupBy(lambda x: x[0])
             .map(aggregated_triples)
             .map(RDFResource.ser)
-            .saveAsTextFile(
-                str(cfg.generic_extractor_dump / lang / "final"),
+            .save_as_dataset(
+                cfg.generic_extractor_dump / lang / "final",
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="generic_extractor_dump"
             )
         )
 
-    return Dataset.string(
-        file_pattern=str(cfg.generic_extractor_dump / lang / "final" / "*.gz")
-    ).map(RDFResource.deser)
+    return ds

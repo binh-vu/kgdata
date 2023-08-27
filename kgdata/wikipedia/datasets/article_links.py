@@ -55,23 +55,25 @@ class ArticleLinks:
 
 def article_links() -> Dataset[ArticleLinks]:
     cfg = WikipediaDirCfg.get_instance()
-
-    if not does_result_dir_exist(cfg.article_links):
-        (
-            html_articles()
-            .get_rdd()
-            .map(extract_links)
-            .map(ser_to_dict)
-            .saveAsTextFile(
-                str(cfg.article_links),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
-        )
-
-    return Dataset(
+    ds = Dataset(
         file_pattern=cfg.article_links / "*.gz",
         deserialize=partial(deser_from_dict, ArticleLinks),
     )
+
+    if not ds.has_complete_data():
+        (
+            html_articles()
+            .get_extended_rdd()
+            .map(extract_links)
+            .map(ser_to_dict)
+            .save_as_dataset(
+                cfg.article_links,
+                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="article-links",
+            )
+        )
+
+    return ds
 
 
 def extract_links(article: HTMLArticle) -> ArticleLinks:

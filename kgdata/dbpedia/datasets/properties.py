@@ -4,8 +4,7 @@ import re
 from functools import partial
 from urllib.parse import urlparse
 
-import orjson
-from rdflib import OWL, RDF, RDFS, XSD, BNode, Literal, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
@@ -13,7 +12,6 @@ from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import RDFResource, ontology_dump
 from kgdata.misc.hierarchy import build_ancestors
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
 from kgdata.spark import does_result_dir_exist
 from kgdata.splitter import split_a_list
@@ -28,18 +26,20 @@ rdfs_subpropertyof = str(RDFS.subPropertyOf)
 def properties() -> Dataset[OntologyProperty]:
     cfg = DBpediaDirCfg.get_instance()
     outdir = cfg.properties
+    ds = Dataset(
+        outdir / "*.jl", deserialize=partial(deser_from_dict, OntologyProperty)
+    )
 
     if not does_result_dir_exist(outdir):
-        props = ontology_dump().get_rdd_alike().filter(is_prop).map(to_prop).collect()
+        ont_ds = ontology_dump()
+        props = ont_ds.get_rdd_alike().filter(is_prop).map(to_prop).collect()
         build_ancestors(props)
 
         # use this function, but it gonna keeps in one file
         split_a_list([ser_to_dict(p) for p in props], outdir / "part.jl")
-        (outdir / "_SUCCESS").touch()
+        ds.sign("properties", [ont_ds])
 
-    return Dataset(
-        outdir / "*.jl", deserialize=partial(deser_from_dict, OntologyProperty)
-    )
+    return ds
 
 
 def is_prop(resource: RDFResource) -> bool:
@@ -78,7 +78,7 @@ def to_prop(resource: RDFResource, default_lang: str = "en") -> OntologyProperty
         subjects=[str(term) for term in resource.props.get(str(RDFS.domain), [])],
         inverse_properties=[],
         instanceof=[str(term) for term in resource.props.get(rdf_type, [])],
-        ancestors=set(),
+        ancestors={},
     )
 
 

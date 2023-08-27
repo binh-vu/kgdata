@@ -26,16 +26,17 @@ def article_degrees(lang: str = "en") -> Dataset[ArticleDegree]:
     """
 
     cfg = WikipediaDirCfg.get_instance()
+    ds = Dataset(cfg.article_degrees / "*.gz", deserialize=ArticleDegree.deser)
 
     if not does_result_dir_exist(cfg.article_degrees):
-        ds = article_links().get_rdd()
+        rdd = article_links().get_extended_rdd()
 
-        indegree = ds.flatMap(
+        indegree = rdd.flatMap(
             lambda a: ((target.url, 1) for target in a.targets)
         ).reduceByKey(add)
 
         (
-            ds.map(
+            rdd.map(
                 lambda a: (
                     a.url,
                     sum((int(is_article_url(target.url)) for target in a.targets)),
@@ -44,13 +45,14 @@ def article_degrees(lang: str = "en") -> Dataset[ArticleDegree]:
             .leftOuterJoin(indegree)
             .map(merge_degree)
             .map(ArticleDegree.ser)
-            .saveAsTextFile(
-                str(cfg.article_degrees),
+            .save_as_dataset(
+                cfg.article_degrees,
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="article-degrees",
             )
         )
 
-    return Dataset(cfg.article_degrees / "*.gz", deserialize=ArticleDegree.deser)
+    return ds
 
 
 def merge_degree(tup: tuple[str, tuple[int, Optional[int]]]) -> ArticleDegree:

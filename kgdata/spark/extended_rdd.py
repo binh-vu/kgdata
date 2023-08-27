@@ -7,6 +7,7 @@ import os
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
+from operator import add
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -25,9 +26,14 @@ from typing import (
 )
 
 import serde.json
+from loguru import logger
 from pyspark.rdd import RDD, portable_hash
 
-from kgdata.spark.common import estimate_num_partitions, get_spark_context
+from kgdata.spark.common import (
+    estimate_num_partitions,
+    get_spark_context,
+    left_outer_join_repartition,
+)
 
 if TYPE_CHECKING:
     from kgdata.dataset import Dataset
@@ -205,6 +211,7 @@ class ExtendedRDD(Generic[T_co]):
         auto_coalesce: bool = False,
         partition_size: int = 10 * 1024 * 1024,
         shuffle: bool = False,
+        trust_dataset_dependencies: bool = False,
     ) -> None:
         """Save this RDD as a dataset similar to the given dataset. By default, checksum of the dataset is computed
         so we can be confident that the data hasn't changed yet, or multiple copied are indeed equal.
@@ -216,6 +223,7 @@ class ExtendedRDD(Generic[T_co]):
             auto_coalesce: whether to automatically coalesce the RDD so that each partition has approximately the given partition size in bytes.
             partition_size: if auto_coalesce is enable, coalesce the RDD so that each partition has approximately the given partition size in bytes.
             shuffle: if auto_coalesce is enable, whether to shuffle the RDD.
+            trust_dataset_dependencies: whether to trust the dataset dependencies. If this is False, we will verify the dataset dependencies and ensure that they are equal.
         """
         file_pattern = Path(dataset.file_pattern)
         if file_pattern.suffix == ".gz":
@@ -228,16 +236,29 @@ class ExtendedRDD(Generic[T_co]):
             compressionCodecClass = None
 
         # verify dataset dependencies
-        if self.sig.name != NEW_DATASET_NAME:
-            dep_sigs = [self.sig]
+        if trust_dataset_dependencies:
+            self.sig = DatasetSignature(
+                name=NEW_DATASET_NAME,
+                created_at="",
+                checksum="",
+                dependencies={
+                    (s := dep.get_signature()).name: s
+                    for dep in dataset.get_dependencies()
+                },
+            )
         else:
-            dep_sigs = sorted(self.sig.dependencies.values(), key=lambda sig: sig.name)
+            if self.sig.name != NEW_DATASET_NAME:
+                dep_sigs = [self.sig]
+            else:
+                dep_sigs = sorted(
+                    self.sig.dependencies.values(), key=lambda sig: sig.name
+                )
 
-        given_dep_sigs = sorted(
-            [dep.get_signature() for dep in dataset.get_dependencies()],
-            key=lambda sig: sig.name,
-        )
-        assert dep_sigs == given_dep_sigs
+            given_dep_sigs = sorted(
+                [dep.get_signature() for dep in dataset.get_dependencies()],
+                key=lambda sig: sig.name,
+            )
+            assert dep_sigs == given_dep_sigs, (dep_sigs, given_dep_sigs)
 
         self.save_as_dataset(
             dataset.get_data_directory(),
@@ -359,8 +380,39 @@ class ExtendedRDD(Generic[T_co]):
         assert sig.is_valid()
         return sig
 
+    def filter_update_type(
+        self: ExtendedRDD[T], f: Callable[[T], TypeGuard[U]]
+    ) -> ExtendedRDD[U]:
+        return ExtendedRDD(self.rdd.filter(f), self.sig)  # type: ignore
+
+    def left_outer_join_repartition(
+        self: ExtendedRDD[tuple[K, V]],
+        other: ExtendedRDD[tuple[K, V2]],
+        threshold: int = 10000,
+        batch_size: int = 1000,
+        num_partitions: Optional[int] = None,
+    ):
+        """This join is useful in the following scenario:
+
+        1. rdd1 contains **duplicated** keys, and potentially high cardinality keys
+        2. rdd2 contains **unique** keys
+
+        To avoid high cardinality keys, we artificially generate new keys that have the following format (key, category)
+        where category is a number between [1, n], then perform the join.
+        """
+        return ExtendedRDD(
+            left_outer_join_repartition(
+                self.rdd, other.rdd, threshold, batch_size, num_partitions
+            ),
+            self.sig.use(other.sig),
+        )
+
+    # ======================================================================
+
     @staticmethod
-    def textFile(indir: StrPath):
+    def textFile(
+        indir: StrPath, minPartitions: Optional[int] = None, use_unicode: bool = True
+    ):
         sigfile = Path(indir) / "_SIGNATURE"
         if sigfile.exists():
             sig = serde.json.deser(sigfile, DatasetSignature)
@@ -372,11 +424,35 @@ class ExtendedRDD(Generic[T_co]):
                 checksum="",
                 dependencies={},
             )
-        return ExtendedRDD(get_spark_context().textFile(str(indir)), sig)
+        return ExtendedRDD(
+            get_spark_context().textFile(str(indir), minPartitions, use_unicode), sig
+        )
+
+    @staticmethod
+    def binaryFiles(
+        path: StrPath, minPartitions: Optional[int] = None
+    ) -> ExtendedRDD[tuple[str, bytes]]:
+        sigfile = Path(path) / "_SIGNATURE"
+        if sigfile.exists():
+            sig = serde.json.deser(sigfile, DatasetSignature)
+            assert sig.is_valid()
+        else:
+            sig = DatasetSignature(
+                name=NEW_DATASET_NAME,
+                created_at="",
+                checksum="",
+                dependencies={},
+            )
+
+        return ExtendedRDD(
+            get_spark_context().binaryFiles(str(path), minPartitions), sig
+        )
 
     @staticmethod
     def parallelize(
-        lst: Sequence[T_co], sig: Optional[DatasetSignature] = None
+        lst: Sequence[T_co],
+        numSlices: Optional[int] = None,
+        sig: Optional[DatasetSignature] = None,
     ) -> ExtendedRDD[T_co]:
         sig = sig or DatasetSignature(
             name=NEW_DATASET_NAME,
@@ -385,16 +461,9 @@ class ExtendedRDD(Generic[T_co]):
             dependencies={},
         )
         return ExtendedRDD(
-            get_spark_context().parallelize(lst),
+            get_spark_context().parallelize(lst, numSlices),
             DatasetSignature.intermediate_dataset("parallelize"),
         )
-
-    def filter_update_type(
-        self: ExtendedRDD[T], f: Callable[[T], TypeGuard[U]]
-    ) -> ExtendedRDD[U]:
-        return ExtendedRDD(self.rdd.filter(f), self.sig)  # type: ignore
-
-    # ======================================================================
 
     def map(
         self: ExtendedRDD[T], f: Callable[[T], U], preservesPartitioning: bool = False
@@ -498,3 +567,9 @@ class ExtendedRDD(Generic[T_co]):
         self: ExtendedRDD[T], numPartitions: int, shuffle: bool = False
     ) -> ExtendedRDD[T]:
         return ExtendedRDD(self.rdd.coalesce(numPartitions, shuffle), self.sig)
+
+    def zipWithIndex(self: ExtendedRDD[T]) -> ExtendedRDD[tuple[T, int]]:
+        return ExtendedRDD(self.rdd.zipWithIndex(), self.sig)
+
+    def repartition(self: ExtendedRDD[T], numPartitions: int) -> ExtendedRDD[T]:
+        return ExtendedRDD(self.rdd.repartition(numPartitions), self.sig)

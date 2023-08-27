@@ -4,11 +4,16 @@ from gzip import GzipFile
 from typing import BinaryIO, Union
 
 import orjson
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.splitter import split_a_file
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.models.page_article import WikiPageArticle
+
+# #############################################
+# DEPRECATED!!!
+# #############################################
 
 
 def articles() -> Dataset[WikiPageArticle]:

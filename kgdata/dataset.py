@@ -159,6 +159,23 @@ class Dataset(Generic[T_co]):
                     output.append(self.deserialize(line))
         return output
 
+    def get_set(
+        self, rstrip: bool = True, file_order: Optional[Literal["asc", "desc"]] = None
+    ) -> set[T_co]:
+        assert (
+            self.prefilter is None and self.postfilter is None
+        ), "Does not support filtering for non-rdd usage yet."
+        output = set()
+        if rstrip:
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
+                for line in serde.textline.deser(file):
+                    output.add(self.deserialize(line.rstrip()))
+        else:
+            for file in tqdm(self.get_files(file_order), desc="read dataset"):
+                for line in serde.textline.deser(file):
+                    output.add(self.deserialize(line))
+        return output
+
     def get_dict(
         self: Dataset[tuple[K, V]],
         rstrip: bool = True,

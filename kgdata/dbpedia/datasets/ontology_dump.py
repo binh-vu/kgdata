@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
 import orjson
+import serde.json
 from rdflib import OWL, RDF, RDFS, URIRef
 
 from kgdata.dataset import Dataset
@@ -13,7 +14,7 @@ from kgdata.db import ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kgdata.spark import ExtendedRDD, does_result_dir_exist, get_spark_context
 from kgdata.splitter import split_a_file, split_a_list
 
 rdf_type = str(RDF.type)
@@ -51,27 +52,27 @@ def ontology_dump() -> Dataset[RDFResource]:
         )
 
         (
-            get_spark_context()
-            .textFile(str(step1_dir / "*.gz"))
+            ExtendedRDD.textFile(str(step1_dir / "*.gz"))
             .filter(ignore_comment)
             .map(ntriple_loads)
             .groupBy(lambda x: x[0])
             .map(aggregated_triples)
             .map(RDFResource.ser)
-            .coalesce(16)
-            .saveAsTextFile(
-                str(cfg.ontology_dump / "step2"),
+            .auto_coalesce(cache=True)
+            .save_as_dataset(
+                cfg.ontology_dump / "step2",
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="ontology-dump/step-2",
+                checksum=False,
             )
         )
 
-    if not does_result_dir_exist(cfg.ontology_dump / "step3"):
-        ds = Dataset.string(file_pattern=str(cfg.ontology_dump / "step2" / "*.gz")).map(
-            RDFResource.deser
-        )
+    step2_ds = Dataset(cfg.ontology_dump / "step2" / "*.gz", RDFResource.deser)
+    final_ds = Dataset(cfg.ontology_dump / "step3" / "*.gz", RDFResource.deser)
 
+    if not final_ds.has_complete_data():
         # fix broken references
-        resources = ds.get_list()
+        resources = step2_ds.get_list()
 
         classes = {r.id: r for r in resources if is_class(r)}
         props = {r.id: r for r in resources if is_prop(r)}
@@ -120,18 +121,19 @@ def ontology_dump() -> Dataset[RDFResource]:
                 [line for id, lines in logs.items() for line in ["* " + id] + lines]
             )
         )
-        (cfg.ontology_dump / "step3/_SUCCESS").touch()
+        final_ds.sign("ontology-dump/final", [step2_ds])
 
-    ds = Dataset.string(file_pattern=str(cfg.ontology_dump / "step3" / "*.gz")).map(
-        RDFResource.deser
-    )
     if not (cfg.ontology_dump / "predicates.txt").exists():
-        saveAsSingleTextFile(
-            ds.get_rdd().flatMap(lambda x: x.props.keys()).distinct(),
-            cfg.ontology_dump / "predicates.txt",
+        (
+            final_ds.get_extended_rdd()
+            .flatMap(lambda x: x.props.keys())
+            .distinct()
+            .save_as_single_text_file(
+                cfg.ontology_dump / "predicates.txt",
+            )
         )
 
-    return ds
+    return final_ds
 
 
 def aggregated_triples(val: tuple[str, Iterable[Triple]]) -> RDFResource:

@@ -2,12 +2,13 @@ import gzip
 from typing import List, Tuple, TypedDict
 
 import orjson
+from serde.helper import get_open_fn
+from tqdm import tqdm
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.articles import articles
-from serde.helper import get_open_fn
-from tqdm import tqdm
 
 
 class GroupedArticles(TypedDict):

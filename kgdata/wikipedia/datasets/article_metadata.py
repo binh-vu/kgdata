@@ -49,16 +49,18 @@ class ArticleMetadata(Record):
 
 def article_metadata() -> Dataset[ArticleMetadata]:
     cfg = WikipediaDirCfg.get_instance()
+    ds = Dataset(cfg.article_metadata / "*.gz", deserialize=ArticleMetadata.deser)
 
-    if not does_result_dir_exist(cfg.article_metadata):
-        html_articles().get_rdd().map(extract_metadata).map(
+    if not ds.has_complete_data():
+        html_articles().get_extended_rdd().map(extract_metadata).map(
             ArticleMetadata.ser
-        ).saveAsTextFile(
-            str(cfg.article_metadata),
+        ).save_as_dataset(
+            cfg.article_metadata,
             compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            name="article-metadata",
         )
 
-    return Dataset(cfg.article_metadata / "*.gz", deserialize=ArticleMetadata.deser)
+    return ds
 
 
 def extract_metadata(article: HTMLArticle) -> ArticleMetadata:

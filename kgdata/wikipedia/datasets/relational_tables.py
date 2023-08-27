@@ -1,31 +1,36 @@
 import sm.misc as M
+from rsoup.core import Table
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_table
-from rsoup.core import Table
 
 
 def relational_tables() -> Dataset[Table]:
     cfg = WikipediaDirCfg.get_instance()
-
-    if not does_result_dir_exist(cfg.relational_tables):
-        (
-            html_tables()
-            .get_rdd()
-            .filter(is_relational_table)
-            .map(ser_table)
-            .coalesce(1024, shuffle=True)
-            .saveAsTextFile(
-                str(cfg.relational_tables),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
-        )
-
-    return Dataset(
+    ds = Dataset(
         file_pattern=cfg.relational_tables / "*.gz",
         deserialize=deser_table,
     )
+    ds.sign("relational-tables", [html_tables()])
+
+    if not ds.has_complete_data():
+        (
+            html_tables()
+            .get_extended_rdd()
+            .filter(is_relational_table)
+            .map(ser_table)
+            .save_as_dataset(
+                str(cfg.relational_tables),
+                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="relational-tables",
+                auto_coalesce=True,
+                shuffle=True,
+            )
+        )
+
+    return ds
 
 
 def is_relational_table(tbl: Table) -> bool:

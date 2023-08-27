@@ -15,7 +15,12 @@ from kgdata.dbpedia.datasets.classes import classes
 from kgdata.dbpedia.datasets.entity_types import entity_types
 from kgdata.misc.resource import Record
 from kgdata.models.ont_class import OntologyClass
-from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
+from kgdata.spark import (
+    are_records_unique,
+    auto_repartition,
+    does_result_dir_exist,
+    get_spark_context,
+)
 
 
 @dataclass
@@ -53,21 +58,20 @@ def entity_all_types(lang: str = "en") -> Dataset[EntityAllTypes]:
             .collect()
         )
 
-        (
+        rdd = (
             entity_types(lang)
             .get_rdd()
-            .flatMap(partial(flip_types, type_count=bc_id2count.value))
+            .flatMap(lambda x: flip_types(x, type_count=bc_id2count.value))
             .groupByKey()
             .leftOuterJoin(id2ancestors)
             .flatMap(merge_types)
             .groupByKey()
             .map(lambda x: EntityAllTypes(x[0], merge_type_dist(x[1])))
             .map(EntityAllTypes.ser)
-            .coalesce(256)
-            .saveAsTextFile(
-                str(cfg.entity_all_types),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+        )
+        auto_repartition(rdd, 4 * 1024 * 1024, cache=True, shuffle=True).saveAsTextFile(
+            str(cfg.entity_all_types),
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
         )
 
     ds = Dataset(

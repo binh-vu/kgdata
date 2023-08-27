@@ -1,6 +1,7 @@
 from typing import Tuple
 
 import orjson
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
@@ -13,20 +14,24 @@ def wp2wd(lang="en") -> Dataset[Tuple[str, str]]:
     cfg = WikidataDirCfg.get_instance()
     site = lang + "wiki"
 
-    if not does_result_dir_exist(cfg.wp2wd / lang):
+    ds = Dataset(cfg.wp2wd / lang / "*.gz", deserialize=orjson.loads)
+    ds.sign("wp2wd", [entities(lang)])
+
+    if not ds.has_complete_data():
         (
             entities(lang)
-            .get_rdd()
+            .get_extended_rdd()
             .map(lambda x: extract_link(x, site))
             .filter(lambda x: x is not None)
             .map(orjson.dumps)
-            .saveAsTextFile(
-                str(cfg.wp2wd / lang),
+            .save_as_dataset(
+                cfg.wp2wd / lang,
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="wp2wd",
             )
         )
 
-    return Dataset(cfg.wp2wd / lang / "*.gz", deserialize=lambda x: orjson.loads(x))
+    return ds
 
 
 def extract_link(ent: WDEntity, site: str):

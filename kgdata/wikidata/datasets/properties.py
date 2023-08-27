@@ -6,7 +6,8 @@ import orjson
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.misc.hierarchy import build_ancestors
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
+from kgdata.spark import does_result_dir_exist, get_spark_context
+from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.splitter import split_a_list
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
@@ -51,29 +52,31 @@ def properties(lang="en") -> Dataset[WDProperty]:
         )
 
     if not (cfg.properties / "unknown_properties.txt").exists():
-        saveAsSingleTextFile(
-            get_spark_context()
-            .textFile(str(cfg.properties / "ids/*.gz"))
-            .subtract(entity_ids().get_rdd())
-            .subtract(entity_redirections().get_rdd().map(lambda x: x[0])),
-            cfg.properties / "unknown_properties.txt",
+        (
+            ExtendedRDD.textFile(str(cfg.properties / "ids/*.gz"))
+            .subtract(entity_ids().get_extended_rdd())
+            .subtract(entity_redirections().get_extended_rdd().map(lambda x: x[0]))
+            .save_as_single_text_file(cfg.properties / "unknown_properties.txt")
         )
 
     get_ds = lambda subdir: Dataset(
-        cfg.properties / subdir / "*.gz",
+        cfg.properties / f"{subdir}/{lang}*.gz",
         deserialize=partial(deser_from_dict, WDProperty),
+        name=f"properties/{subdir}/{lang}",
+        dependencies=[entities(lang)],
     )
+    full_ds = get_ds("full")
 
-    if not does_result_dir_exist(cfg.properties / "full_properties"):
+    if not full_ds.has_complete_data():
         properties = get_ds("properties").get_list()
         build_ancestors(properties)
         split_a_list(
             [ser_to_dict(p) for p in properties],
-            cfg.properties / "full_properties" / "part.jl.gz",
+            full_ds.get_data_directory() / "part.jl.gz",
         )
-        (cfg.properties / "full_properties" / "_SUCCESS").touch()
+        full_ds.sign(full_ds.get_name(), full_ds.get_dependencies())
 
-    return get_ds("full_properties")
+    return full_ds
 
 
 def get_property_ids(ent: WDEntity) -> List[str]:

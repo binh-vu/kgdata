@@ -1,18 +1,15 @@
+from functools import lru_cache
 from operator import itemgetter
 
+from sm.misc.funcs import identity_func
+from tqdm import tqdm
+
 from kgdata.dataset import Dataset
-from kgdata.spark import (
-    does_result_dir_exist,
-    get_spark_context,
-    head,
-    saveAsSingleTextFile,
-)
+from kgdata.spark import does_result_dir_exist, get_spark_context, head
 from kgdata.splitter import default_currentbyte_constructor
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.models.wdentity import WDEntity
-from sm.misc.funcs import identity_func
-from tqdm import tqdm
 
 
 def is_entity_id(id: str) -> bool:
@@ -27,28 +24,28 @@ def is_entity_id(id: str) -> bool:
     )
 
 
+@lru_cache()
 def entity_ids() -> Dataset[str]:
     """Get Wikidata entity ids"""
     cfg = WikidataDirCfg.get_instance()
+    id_ds = Dataset.string(
+        cfg.entity_ids / "ids/*.gz", name="entity-ids", dependencies=[entity_dump()]
+    )
 
-    if not does_result_dir_exist(cfg.entity_ids / "ids"):
+    if not id_ds.has_complete_data():
         (
             entity_dump()
-            .get_rdd()
+            .get_extended_rdd()
             .map(itemgetter("id"))
-            .saveAsTextFile(
-                str(cfg.entity_ids / "ids"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(id_ds)
         )
 
-    dataset = Dataset.string(cfg.entity_ids / "ids/*.gz")
-
     if not (cfg.entity_ids / "identifiers.txt").exists():
-        saveAsSingleTextFile(
-            dataset.get_rdd().sortBy(identity_func).map(lambda x: x + "_"),
-            (cfg.entity_ids / "identifiers.txt"),
-            shuffle=False,
+        (
+            id_ds.get_extended_rdd()
+            .sortBy(identity_func)
+            .map(lambda x: x + "_")
+            .save_as_single_text_file((cfg.entity_ids / "identifiers.txt"))
         )
 
     if not (cfg.entity_ids / "metadata.txt").exists():
@@ -92,4 +89,4 @@ total number of ids: {n_ids}
 """.strip()
         )
 
-    return dataset
+    return id_ds

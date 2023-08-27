@@ -1,10 +1,9 @@
-import re
 
 from loguru import logger
 from rsoup.core import ContextExtractor, Table, TableExtractor
 
 from kgdata.dataset import Dataset
-from kgdata.spark import are_records_unique, does_result_dir_exist
+from kgdata.spark import are_records_unique
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle
@@ -15,26 +14,29 @@ def html_tables() -> Dataset[Table]:
 
     cfg = WikipediaDirCfg.get_instance()
 
-    need_double_check = False
-
-    if not does_result_dir_exist(cfg.html_tables):
-        (
-            html_articles()
-            .get_rdd()
-            .flatMap(extract_tables)
-            .saveAsTextFile(
-                str(cfg.html_tables),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
-        )
-        need_double_check = True
-
     ds = Dataset(
         file_pattern=cfg.html_tables / "*.gz",
         deserialize=deser_table,
         # can be json object, or string. it is string when we fail to extract tables from the articles
         prefilter=lambda x: x[0] == "{",
     )
+
+    need_double_check = False
+    if not ds.has_complete_data():
+        (
+            html_articles()
+            .get_extended_rdd()
+            .flatMap(extract_tables)
+            .save_as_dataset(
+                cfg.html_tables,
+                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="html-tables",
+            )
+        )
+        need_double_check = True
+
+    ds.sign("html-tables", [html_articles()])
+
     if need_double_check:
         assert are_records_unique(ds.get_rdd(), lambda tbl: tbl.id)
     return ds

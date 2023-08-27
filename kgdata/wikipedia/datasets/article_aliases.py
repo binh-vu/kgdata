@@ -36,24 +36,27 @@ def article_aliases() -> Dataset[ArticleAliases]:
 
     cfg = WikipediaDirCfg.get_instance()
 
-    if not does_result_dir_exist(cfg.article_aliases):
+    ds = Dataset(
+        file_pattern=cfg.article_aliases / "*.gz",
+        deserialize=partial(deser_from_dict, ArticleAliases),
+    )
+
+    if not ds.has_complete_data():
         (
             article_links()
-            .get_rdd()
+            .get_extended_rdd()
             .flatMap(extract_aliases)
             .map(lambda a: (a.url, a))
             .reduceByKey(merge_aliases)
             .map(lambda tup: orjson.dumps(tup[1].to_dict()))
-            .saveAsTextFile(
-                str(cfg.article_aliases),
+            .save_as_dataset(
+                cfg.article_aliases,
                 compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name="article-aliases",
             )
         )
 
-    return Dataset(
-        file_pattern=cfg.article_aliases / "*.gz",
-        deserialize=partial(deser_from_dict, ArticleAliases),
-    )
+    return ds
 
 
 def extract_aliases(article: ArticleLinks) -> list[ArticleAliases]:

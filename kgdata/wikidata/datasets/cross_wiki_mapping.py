@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Iterable, Optional, Tuple
 
 import orjson
+from sm.misc.funcs import assert_not_null
 
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
@@ -14,7 +15,6 @@ from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikipedia.datasets.article_metadata import ArticleMetadata
 from kgdata.wikipedia.misc import get_title_from_url
 from kgdata.wikipedia.models.html_article import HTMLArticle
-from sm.misc.funcs import assert_not_null
 
 
 @dataclass
@@ -30,28 +30,28 @@ def cross_wiki_mapping(
 ) -> Dataset[WikipediaWikidataMapping]:
     cfg = WikidataDirCfg.get_instance()
 
-    need_verification = False
-
-    if not does_result_dir_exist(cfg.cross_wiki_mapping / "step1"):
-        (
-            entities()
-            .get_rdd()
-            .flatMap(extract_sitelink)
-            .map(WikipediaWikidataMapping.ser)
-            .saveAsTextFile(
-                str(cfg.cross_wiki_mapping / "step1"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
-        )
-
-        need_verification = True
-
-    ds = Dataset(
-        cfg.cross_wiki_mapping / "step1/*.gz",
+    wd_ds = Dataset(
+        cfg.cross_wiki_mapping / "from-wikidata/*.gz",
         deserialize=WikipediaWikidataMapping.deser,
     )
+
+    need_verification = False
+    if not wd_ds.has_complete_data():
+        (
+            entities()
+            .get_extended_rdd()
+            .flatMap(extract_sitelink)
+            .map(WikipediaWikidataMapping.ser)
+            .save_as_dataset(
+                wd_ds.get_data_directory(),
+                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                name=f"cross-wiki-mapping/from-wikidata",
+            )
+        )
+        need_verification = True
+
     if need_verification:
-        rdd = ds.get_rdd().cache()
+        rdd = wd_ds.get_rdd().cache()
 
         # ensure that (title & entityid) is unique
         count = rdd.count()
@@ -62,48 +62,54 @@ def cross_wiki_mapping(
         )
         assert count == count1, f"count: {count}, count1: {count1}"
 
-    need_verification = False
     if wiki_articles is not None:
-        sig = wiki_articles.get_signature()
-        if not does_result_dir_exist(cfg.cross_wiki_mapping / "step2" / sig):
+        need_verification = False
+
+        wdwpds = Dataset(
+            cfg.cross_wiki_mapping / f"from-wikidata-wikipedia/*.gz",
+            deserialize=WikipediaWikidataMapping.deser,
+        )
+        if not wdwpds.has_complete_data():
             (
-                ds.get_rdd()
+                wd_ds.get_extended_rdd()
                 .map(lambda x: (x.wikipedia_title, x))
                 .groupByKey()
                 .join(
-                    wiki_articles.get_rdd().map(
+                    wiki_articles.get_extended_rdd().map(
                         lambda x: (get_title_from_url(x.url), x)
                     )
                 )
                 .map(resolve_multiple_mapping)
                 .filter(lambda x: x is not None)
                 .map(lambda e: WikipediaWikidataMapping.ser(assert_not_null(e)))
-                .saveAsTextFile(
-                    str(cfg.cross_wiki_mapping / "step2" / sig),
+                .save_as_dataset(
+                    wdwpds.get_data_directory(),
                     compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+                    name="cross-wiki-mapping/from-wikidata-wikipedia",
                 )
             )
             need_verification = True
-        ds = Dataset(
-            cfg.cross_wiki_mapping / f"step2/{sig}/*.gz",
-            deserialize=WikipediaWikidataMapping.deser,
-        )
 
-    if need_verification:
-        rdd = ds.get_rdd().cache()
+        if need_verification:
+            rdd = wdwpds.get_rdd().cache()
 
-        # ensure that (title & entityid) is unique after the list of articles are provided
-        count = rdd.count()
-        count1 = (
-            rdd.map(lambda x: orjson.dumps([x.wikipedia_title, x.wikidata_entityid]))
-            .distinct()
-            .count()
-        )
-        assert count == count1, f"count: {count}, count1: {count1}"
+            # ensure that (title & entityid) is unique after the list of articles are provided
+            count = rdd.count()
+            count1 = (
+                rdd.map(
+                    lambda x: orjson.dumps([x.wikipedia_title, x.wikidata_entityid])
+                )
+                .distinct()
+                .count()
+            )
+            assert count == count1, f"count: {count}, count1: {count1}"
 
-        count2 = rdd.map(lambda x: x.wikipedia_title).distinct().count()
-        assert count == count2, f"count: {count}, count1: {count2}"
+            count2 = rdd.map(lambda x: x.wikipedia_title).distinct().count()
+            assert count == count2, f"count: {count}, count1: {count2}"
+    else:
+        wdwpds = None
 
+    ds = wd_ds if wdwpds is None else wdwpds
     return ds
 
 

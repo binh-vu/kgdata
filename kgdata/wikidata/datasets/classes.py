@@ -30,37 +30,38 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
             )
         )
 
-    if not does_result_dir_exist(cfg.classes / "classes"):
+    get_ds = lambda subdir: Dataset(
+        cfg.classes / f"{subdir}-{lang}*.gz",
+        deserialize=partial(deser_from_dict, WDClass),
+        name=f"classes/{subdir}/{lang}",
+        dependencies=[entities(lang)],
+    )
+    basic_ds = get_ds("basic")
+    full_ds = get_ds("full")
+
+    if not basic_ds.has_complete_data():
         sc = get_spark_context()
         class_ids = sc.broadcast(
             set(sc.textFile(str(cfg.classes / "ids/*.gz")).collect())
         )
         (
             entities(lang)
-            .get_rdd()
+            .get_extended_rdd()
             .filter(lambda ent: ent.id in class_ids.value)
             .map(lambda x: orjson.dumps(extract_class(x).to_dict()))
-            .coalesce(128)
-            .saveAsTextFile(
-                str(cfg.classes / "classes"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(basic_ds, auto_coalesce=True, checksum=False)
         )
 
-    get_ds = lambda subdir: Dataset(
-        cfg.classes / subdir / "*.gz", deserialize=partial(deser_from_dict, WDClass)
-    )
-
-    if not does_result_dir_exist(cfg.classes / "full_classes"):
-        classes = get_ds("classes").get_list()
+    if not full_ds.has_complete_data():
+        classes = basic_ds.get_list()
         build_ancestors(classes)
         split_a_list(
             [ser_to_dict(c) for c in classes],
-            cfg.classes / "full_classes" / "part.jl.gz",
+            full_ds.get_data_directory() / "part.jl.gz",
         )
-        (cfg.classes / "full_classes" / "_SUCCESS").touch()
+        full_ds.sign(full_ds.get_name(), full_ds.get_dependencies())
 
-    return get_ds("full_classes")
+    return full_ds
 
 
 def extract_class(ent: WDEntity) -> WDClass:

@@ -4,8 +4,10 @@ from dataclasses import asdict, dataclass
 from typing import List, Optional
 
 import orjson
+
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist, left_outer_join
+from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.wikidata.datasets.entity_types import entity_types
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.easy_tables import easy_tables
@@ -20,31 +22,37 @@ class TableMetadata:
 
 def easy_tables_metadata() -> Dataset[TableMetadata]:
     cfg = WikipediaDirCfg.get_instance()
+    ds = Dataset(
+        file_pattern=cfg.easy_tables_metadata / "*.gz",
+        deserialize=deser_easy_tables_metadata,
+    )
+    ds.sign("easy-tables-metadata", [entity_types(), easy_tables()])
+
     if not does_result_dir_exist(cfg.easy_tables_metadata):
-        entity_type_rdd = entity_types().get_rdd()
+        entity_type_rdd = entity_types().get_extended_rdd()
         table_rdd = (
             easy_tables()
-            .get_rdd()
+            .get_extended_rdd()
             .map(lambda tbl: (tbl.table.id, tbl.table.n_rows(), tbl.page_wikidata_id))
         )
 
         new_table_rdd = left_outer_join(
-            rdd1=table_rdd,
-            rdd2=entity_type_rdd,
+            rdd1=table_rdd.rdd,
+            rdd2=entity_type_rdd.rdd,
             rdd1_keyfn=lambda x: x[0],
             rdd1_fk_fn=lambda x: [x[2]] if x[2] is not None else [],
             rdd2_keyfn=lambda x: x[0],
             join_fn=add_page_types,
         )
-        new_table_rdd.map(lambda tbl: orjson.dumps(asdict(tbl))).saveAsTextFile(
-            str(cfg.easy_tables_metadata),
+        ExtendedRDD(new_table_rdd, table_rdd.sig.use(entity_type_rdd.sig)).map(
+            lambda tbl: orjson.dumps(asdict(tbl))
+        ).save_as_dataset(
+            cfg.easy_tables_metadata,
             compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            name="easy-tables-metadata",
         )
 
-    return Dataset(
-        file_pattern=cfg.easy_tables_metadata / "*.gz",
-        deserialize=deser_easy_tables_metadata,
-    )
+    return ds
 
 
 def deser_easy_tables_metadata(line: str) -> TableMetadata:

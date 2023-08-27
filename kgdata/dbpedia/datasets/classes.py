@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from math import ceil
 
-import orjson
-import serde.jl
 from rdflib import OWL, RDFS
 
 from kgdata.dataset import Dataset
@@ -22,9 +19,7 @@ from kgdata.dbpedia.datasets.properties import (
 from kgdata.misc.hierarchy import build_ancestors
 from kgdata.models.multilingual import MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass, get_default_classes
-from kgdata.spark import does_result_dir_exist, get_spark_context, saveAsSingleTextFile
 from kgdata.splitter import split_a_list
-
 rdfs_subclassof = str(RDFS.subClassOf)
 owl_class = str(OWL.Class)
 owl_disjointwith = str(OWL.disjointWith)
@@ -32,12 +27,14 @@ owl_disjointwith = str(OWL.disjointWith)
 
 def classes() -> Dataset[OntologyClass]:
     cfg = DBpediaDirCfg.get_instance()
+    ds = Dataset(cfg.classes / "*.jl", partial(deser_from_dict, OntologyClass))
 
-    if not does_result_dir_exist(cfg.classes):
-        ont_ds = ontology_dump().get_rdd_alike()
+    if not ds.has_complete_data():
+        ont_ds = ontology_dump()
+        ont_ds_rdd = ont_ds.get_rdd_alike()
 
         domain2props = (
-            ont_ds.filter(is_prop)
+            ont_ds_rdd.filter(is_prop)
             .flatMap(
                 lambda r: [
                     (str(uri), r.id) for uri in r.props.get(str(RDFS.domain), [])
@@ -53,7 +50,7 @@ def classes() -> Dataset[OntologyClass]:
             return ontcls
 
         classes = (
-            ont_ds.filter(is_class)
+            ont_ds_rdd.filter(is_class)
             .map(to_class)
             .union(get_default_classes())
             .map(lambda x: (x.id, x))
@@ -64,11 +61,9 @@ def classes() -> Dataset[OntologyClass]:
         build_ancestors(classes)
         split_a_list([ser_to_dict(c) for c in classes], cfg.classes / "part.jl")
         (cfg.classes / "_SUCCESS").touch()
+        ds.sign("classes", [ont_ds])
 
-    return Dataset(
-        cfg.classes / "*.jl",
-        deserialize=partial(deser_from_dict, OntologyClass),
-    )
+    return ds
 
 
 def is_class(resource: RDFResource) -> bool:

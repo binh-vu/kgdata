@@ -1,35 +1,37 @@
+from functools import lru_cache
 from typing import Union
 
 import orjson
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 
 
+@lru_cache()
 def entity_metadata(lang: str = "en") -> Dataset[WDEntityMetadata]:
     """Keep all data of the entities but its properties (set it to empty dictionary)."""
 
     cfg = WikidataDirCfg.get_instance()
-    outdir = cfg.entity_metadata.parent / (cfg.entity_metadata.name + "_" + lang)
+    ds = Dataset(
+        cfg.entity_metadata / lang / "*.gz",
+        deserialize=deser_entity_metadata,
+        name=f"entity-metadata/{lang}",
+        dependencies=[entities(lang)],
+    )
 
-    if not does_result_dir_exist(outdir):
+    if not ds.has_complete_data():
         (
             entities()
-            .get_rdd()
+            .get_extended_rdd()
             .map(convert_to_entity_metadata)
             .map(ser_entity_metadata)
-            .coalesce(1024, shuffle=True)
-            .saveAsTextFile(
-                str(outdir),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(ds)
         )
 
-    return Dataset(file_pattern=outdir / "*.gz", deserialize=deser_entity_metadata)
+    return ds
 
 
 def deser_entity_metadata(b: Union[str, bytes]) -> WDEntityMetadata:
