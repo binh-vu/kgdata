@@ -1,6 +1,8 @@
 """Locations of Wikidata dumps and datasets on disk."""
 
+import re
 from dataclasses import dataclass
+from functools import lru_cache
 from glob import glob
 from pathlib import Path
 from typing import Union
@@ -44,6 +46,12 @@ class WikidataDirCfg:
         self.search = datadir / "search"
 
         self.entity_redirections = datadir / "entity_redirections"
+
+    @lru_cache
+    def get_dump_date(self):
+        res = re.findall(r"\d{8}", str(self.datadir))
+        assert len(res) == 1
+        return res[0]
 
     def get_entity_dump_file(self):
         return self._get_file(self.dumps / "*wikidata-*all*.json.bz2")

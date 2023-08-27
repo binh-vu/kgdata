@@ -3,17 +3,15 @@ from __future__ import annotations
 import glob
 import os
 import re
+import shutil
 from dataclasses import dataclass
 from importlib import import_module
-from math import ceil
 from pathlib import Path
 from typing import (
     Any,
     Callable,
     Generic,
     Hashable,
-    Iterable,
-    Iterator,
     Literal,
     Optional,
     TypeVar,
@@ -22,15 +20,17 @@ from typing import (
 )
 from uuid import uuid4
 
-import orjson
 import serde.byteline
+import serde.json
 import serde.textline
 from hugedict.misc import Chain2, identity
-from kgdata.spark import get_spark_context
-from kgdata.splitter import split_a_list
 from loguru import logger
 from pyspark import RDD
 from tqdm.auto import tqdm
+
+from kgdata.spark import ExtendedRDD, SparkLikeInterface, get_spark_context
+from kgdata.spark.common import does_result_dir_exist
+from kgdata.spark.extended_rdd import DatasetSignature
 
 V = TypeVar("V")
 V2 = TypeVar("V2")
@@ -53,15 +53,32 @@ class Dataset(Generic[T_co]):
     # just to avoid unnecessary function calls
     is_deser_identity: bool = False
 
+    name: Optional[str] = None
+    dependencies: Optional[list[Dataset]] = None
+
     @staticmethod
-    def string(file_pattern: Union[str, Path]) -> Dataset[str]:
+    def string(
+        file_pattern: Union[str, Path],
+        name: Optional[str] = None,
+        dependencies: Optional[list[Dataset]] = None,
+    ) -> Dataset[str]:
         """Create a dataset of string."""
         return Dataset(
             file_pattern,
             deserialize=identity,
             prefilter=None,
             is_deser_identity=True,
+            name=name,
+            dependencies=dependencies,
         )
+
+    def get_name(self) -> str:
+        assert self.name is not None
+        return self.name
+
+    def get_dependencies(self) -> list[Dataset]:
+        assert self.dependencies is not None
+        return self.dependencies
 
     def get_files(
         self, file_order: Optional[Literal["asc", "desc"]] = None
@@ -88,6 +105,9 @@ class Dataset(Generic[T_co]):
             rdd = rdd.filter(self.postfilter)
 
         return rdd
+
+    def get_extended_rdd(self) -> ExtendedRDD[T_co]:
+        return ExtendedRDD(self.get_rdd(), self.get_signature())
 
     def take(
         self,
@@ -237,143 +257,103 @@ class Dataset(Generic[T_co]):
             batch = records[i : i + n_records_per_file]
             serialize_fn(cast(Any, batch), outdir / f"part-{no:05d}.gz")
 
-    def get_signature(self) -> str:
-        """Return signature of the dataset"""
-        dirname = Path(os.path.dirname(self.file_pattern))
-        pattern = os.path.basename(self.file_pattern)
-
-        assert dirname.exists() and pattern.find("*") != -1
-
-        if (pattern[0] == "*" and pattern[-1] != "S") or (
-            pattern[0] != "*" and pattern[0] != "_"
-        ):
-            metadata = dirname / "_SUCCESS"
-            if metadata.exists():
-                signature = metadata.read_text().strip()
-                if len(signature) == 0:
-                    signature = str(uuid4())
-                    metadata.write_text(signature)
-            else:
-                signature = str(uuid4())
-                metadata.write_text(signature)
-        else:
-            raise NotImplementedError()
-
+    def get_signature(self) -> DatasetSignature:
+        """Return signature of the dataset. Only works if the file_pattern are in the form of /path/to/files/*.gz (spark format)"""
+        metadata = self.get_data_directory() / "_SIGNATURE"
+        signature = serde.json.deser(metadata, DatasetSignature)
+        assert signature.is_valid()
         return signature
 
-
-class SparkLikeInterface(Generic[T_co]):
-    """An implementation of Spark-like interface for non-distributed usage."""
-
-    def __init__(self, data: list | dict, n_partitions: int = 1):
-        self.data = data
-        self.size = len(data)
-        self.n_partitions = n_partitions
-
-    def _iter_records(self) -> Iterable[T_co]:
-        return cast(
-            Iterable[T_co],
-            tqdm(
-                self.data if isinstance(self.data, list) else self.data.items(),
-                total=self.size,
-                leave=False,
-            ),
-        )
-
-    def map(self, func: Callable[[T_co], V2]) -> SparkLikeInterface[V2]:
-        return SparkLikeInterface(
-            [func(x) for x in self._iter_records()], n_partitions=self.n_partitions
-        )
-
-    def filter(self, func: Callable[[T_co], bool]) -> SparkLikeInterface[T_co]:
-        return SparkLikeInterface(
-            [x for x in self._iter_records() if func(x)], n_partitions=self.n_partitions
-        )
-
-    def flatMap(self, func: Callable[[T_co], Iterable[V2]]) -> SparkLikeInterface[V2]:
-        return SparkLikeInterface(
-            [y for x in self._iter_records() for y in func(x)],
-            n_partitions=self.n_partitions,
-        )
-
-    def union(self, data: list) -> SparkLikeInterface[T_co]:
-        assert isinstance(self.data, list)
-        return SparkLikeInterface(self.data + data, n_partitions=self.n_partitions)
-
-    def groupByKey(
-        self: SparkLikeInterface[tuple[K, V]],
-    ) -> SparkLikeInterface[tuple[K, list[V]]]:
-        obj = {}
-        for k, v in self._iter_records():
-            if k not in obj:
-                obj[k] = []
-            obj[k].append(v)
-        return SparkLikeInterface(obj, n_partitions=self.n_partitions)
-
-    def leftOuterJoin(
-        self: SparkLikeInterface[tuple[K, V]],
-        other: SparkLikeInterface[tuple[K, V2]],
-    ) -> SparkLikeInterface[tuple[K, tuple[V, Optional[V2]]]]:
-        obj = {}
-        for k, v in self._iter_records():
-            obj[k] = (v, None)
-        for k, v in other._iter_records():
-            if k not in obj:
-                continue
-            else:
-                obj[k] = (obj[k][0], v)
-        return SparkLikeInterface(obj, n_partitions=self.n_partitions)
-
-    def join(
-        self: SparkLikeInterface[tuple[K, V]],
-        other: SparkLikeInterface[tuple[K, V2]],
-    ) -> SparkLikeInterface[tuple[K, tuple[V, V2]]]:
-        obj = {}
-        for k, v in self._iter_records():
-            obj[k] = (v, None)
-        for k, v in other._iter_records():
-            if k not in obj:
-                continue
-            else:
-                obj[k] = (obj[k][0], v)
-        for k in list(obj.keys()):
-            if obj[k][1] is None:
-                del obj[k]
-        return SparkLikeInterface(obj, n_partitions=self.n_partitions)
-
-    def coalesce(self, n: int) -> SparkLikeInterface[T_co]:
-        return SparkLikeInterface(self.data, n_partitions=n)
-
-    def collect(self) -> list[T_co]:
-        if isinstance(self.data, list):
-            return self.data
-        else:
-            return list(self._iter_records())
-
-    def saveAsTextFile(
-        self: SparkLikeInterface[str] | SparkLikeInterface[bytes],
-        outdir: str | Path,
-        compressionCodecClass: str,
+    def sign(
+        self,
+        name: str,
+        deps: Optional[list[DatasetSignature] | list[Dataset]] = None,
+        checksum: bool = True,
+        mark_success: bool = True,
     ):
-        assert isinstance(self.data, list)
-        is_bytes = isinstance(next(iter(self._iter_records())), bytes)
-
-        if not is_bytes:
-            data = [x.encode() for x in self.data]
-        else:
-            data = self.data
-
-        if compressionCodecClass == "org.apache.hadoop.io.compress.GzipCodec":
-            outfile = Path(outdir) / "part.gz"
-        else:
-            outfile = Path(outdir) / "part"
-
-        split_a_list(
-            data,
-            outfile,
-            n_records_per_file=ceil(len(data) / self.n_partitions),
+        """Create a signature of the dataset (and mark them as success if hasn't been done so)"""
+        sig = ExtendedRDD.textFile(self.file_pattern).create_sig(
+            name,
+            [
+                dep if isinstance(dep, DatasetSignature) else dep.get_signature()
+                for dep in (deps or [])
+            ],
+            checksum=checksum,
         )
-        (Path(outdir) / "_SUCCESS").touch()
+        outdir = self.get_data_directory()
+        serde.json.ser(sig.to_dict(), outdir / "_SIGNATURE", indent=2)
+
+        if mark_success:
+            if not (outdir / "_SUCCESS").exists():
+                (outdir / "_SUCCESS").touch()
+
+    def get_data_directory(self) -> Path:
+        """Return the directory containing the data. It supports two formats:
+        - <indir>/*.<extension> or <indir>/part-* (for spark) where extension is in [".gz"]
+        - <indir>/*/*.<extension> (for splitting -- then <indir>/_SUCCESS must exist)
+
+        If we use for spark, extension must the .gz
+        """
+        dirname = os.path.dirname(self.file_pattern)
+        pattern = os.path.basename(self.file_pattern)
+
+        if (
+            dirname.find("*") == -1
+            and re.match(r"^(\*.*)|(part-\*)", pattern) is not None
+        ):
+            return Path(dirname)
+
+        subdirname = os.path.basename(dirname)
+        dirname = os.path.dirname(dirname)
+
+        if (
+            dirname.find("*") == -1
+            and subdirname == "*"
+            and pattern[0] == "*"
+            and pattern[1:].find("*") == -1
+        ):
+            assert (
+                Path(dirname) / "_SUCCESS"
+            ).exists(), f"{dirname} does not contain _SUCCESS"
+            return Path(dirname)
+
+        raise ValueError(f"Cannot infer the data directory from {self.file_pattern}")
+
+    def has_complete_data(
+        self,
+        need_sig: bool = True,
+        allow_override: bool = True,
+        create_if_not_exist: bool = False,
+    ) -> bool:
+        """Check if the indir contains the completed dataset.
+
+        # Arguments
+            need_sig: whether to compute the signature of the dataset automatically if missing.
+            allow_override: whether to allow override the directory if the result is not success.
+            create_if_not_exist: whether to create the directory if it does not exist.
+        """
+        indir = self.get_data_directory()
+        if not does_result_dir_exist(
+            indir,
+            allow_override=allow_override,
+            create_if_not_exist=create_if_not_exist,
+        ):
+            return False
+
+        if need_sig:
+            if (indir / "_SIGNATURE").exists():
+                signature = serde.json.deser(indir / "_SIGNATURE", DatasetSignature)
+                if signature.is_valid():
+                    return True
+
+            # TODO: how to construct the signature -- we have no information about the dependents?
+            # for now, we can't do it so we just return False -- forcing the user to create the dataset again.
+            if allow_override:
+                shutil.rmtree(indir)
+            if create_if_not_exist:
+                Path(indir).mkdir(parents=True)
+            return False
+        return True
 
 
 def import_dataset(dataset: str, kwargs: Optional[dict] = None) -> Dataset:

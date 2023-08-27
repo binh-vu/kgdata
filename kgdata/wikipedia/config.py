@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import re
+from functools import lru_cache
 from glob import glob
 from pathlib import Path
 from typing import Union
@@ -30,6 +31,12 @@ class WikipediaDirCfg:
         self.linked_relational_tables = datadir / "linked_relational_tables"
         self.easy_tables = datadir / "easy_tables"
         self.easy_tables_metadata = datadir / "easy_tables_metadata"
+
+    @lru_cache
+    def get_dump_date(self):
+        res = re.findall(r"\d{8}", str(self.datadir))
+        assert len(res) == 1
+        return res[0]
 
     def get_article_file(self):
         return self._get_file(self.dumps / "*pages-articles*.xml.bz2")

@@ -24,6 +24,7 @@ from typing import (
 import orjson
 from loguru import logger
 from pyspark import RDD, SparkConf, SparkContext
+from rdflib import Literal
 
 # SparkContext singleton
 _sc = None
@@ -386,24 +387,6 @@ def head(rdd, n: int):
     return sc.parallelize(rdd.take(n))
 
 
-def saveAsSingleTextFile(
-    rdd, outfile: Union[str, Path], compressionCodecClass=None, shuffle=True
-):
-    rdd = rdd.coalesce(1, shuffle=shuffle)
-    outfile = str(outfile)
-    if os.path.exists(outfile + "_tmp"):
-        shutil.rmtree(outfile + "_tmp")
-
-    if compressionCodecClass is not None:
-        rdd.saveAsTextFile(
-            outfile + "_tmp", compressionCodecClass=compressionCodecClass
-        )
-    else:
-        rdd.saveAsTextFile(outfile + "_tmp")
-    shutil.move(glob.glob(os.path.join(outfile + "_tmp", "part-00000*"))[0], outfile)
-    shutil.rmtree(outfile + "_tmp")
-
-
 def cache_rdd(rdd, outfile, serfn: Callable[[Any], str], deserfn: Callable[[str], Any]):
     if not does_result_dir_exist(outfile):
         rdd.map(serfn).saveAsTextFile(
@@ -437,12 +420,15 @@ def fix_rdd():
     os.rename(newfile, infile)
 
 
+def estimate_num_partitions(rdd: RDD[str] | RDD[bytes], partition_size: int) -> int:
+    """Estimate the number of partitions needed to store the RDD with the given partition size (bytes)."""
+
+    def get_bytes(s: str | bytes) -> int:
+        return len(s.encode()) if isinstance(s, str) else len(s)
+
+    total_size = rdd.map(get_bytes).sum()
+    return math.ceil(total_size / partition_size)
+
 @dataclass
 class EmptyBroadcast(Generic[V]):
     value: V
-
-
-if __name__ == "__main__":
-    # fix RDD
-    # fix_rdd()
-    pass
