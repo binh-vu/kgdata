@@ -357,7 +357,10 @@ class Dataset(Generic[T_co]):
         ):
             return False
 
-        if need_sig:
+        if (
+            need_sig
+            and os.environ.get("KGDATA_FORCE_DISABLE_CHECK_SIGNATURE", "0") == "0"
+        ):
             if (indir / "_SIGNATURE").exists():
                 signature = serde.json.deser(indir / "_SIGNATURE", DatasetSignature)
                 if signature.is_valid():

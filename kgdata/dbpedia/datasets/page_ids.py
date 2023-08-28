@@ -21,30 +21,26 @@ class DBpediaPageId:
 
 def page_ids(lang: str = "en") -> Dataset[DBpediaPageId]:
     cfg = DBpediaDirCfg.get_instance()
+    ds = Dataset(
+        file_pattern=cfg.wikilinks / f"{lang}/*.gz", deserialize=deser_dbpedia_page_id
+    )
 
-    outdir = cfg.wikilinks / lang
-
-    if not does_result_dir_exist(outdir):
+    if not ds.has_complete_data():
         (
             page_id_dump(lang)
-            .get_rdd()
+            .get_extended_rdd()
             .map(parse_pageid_triple)
             .map(lambda x: DBpediaPageId(x[0], x[1]))
             .map(ser_dbpedia_page_id)
-            .saveAsTextFile(
-                str(outdir),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(ds)
         )
 
         # they are not unique, the following code is expected to fail
-        rdd = Dataset(
-            file_pattern=outdir / "*.gz", deserialize=deser_dbpedia_page_id
-        ).get_rdd()
+        rdd = ds.get_rdd()
         assert are_records_unique(rdd, lambda x: x.dbpedia_id)
         assert are_records_unique(rdd, lambda x: x.wikipedia_id)
 
-    return Dataset(file_pattern=outdir / "*.gz", deserialize=deser_dbpedia_page_id)
+    return ds
 
 
 def deser_dbpedia_page_id(line):

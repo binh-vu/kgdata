@@ -1,6 +1,8 @@
 """Locations of DBpedia dumps and datasets on disk."""
 
+import re
 from dataclasses import dataclass
+from functools import lru_cache
 from glob import glob
 from pathlib import Path
 from typing import Union
@@ -47,6 +49,12 @@ class DBpediaDirCfg:
         self.wikilink_dump = datadir / "wikilink_dump"
 
         self.wikilinks = datadir / "wikilinks"
+
+    @lru_cache
+    def get_dump_date(self):
+        res = re.findall(r"\d{8}", str(self.datadir))
+        assert len(res) == 1
+        return res[0]
 
     def get_ontology_dump_file(self):
         return self._get_file(self.dumps / "ontology*=parsed.nt")

@@ -31,25 +31,29 @@ class EntityTypeAndDegree(Record):
 
 def entity_types_and_degrees(lang: str = "en") -> Dataset[EntityTypeAndDegree]:
     cfg = DBpediaDirCfg.get_instance()
-
-    if not does_result_dir_exist(cfg.entity_types_and_degrees):
+    ds = Dataset(
+        cfg.entity_types_and_degrees / "*.gz",
+        deserialize=EntityTypeAndDegree.deser,
+        name=f"entity-types-and-degrees/{lang}",
+        dependencies=[entity_all_types(lang), entity_degrees(lang)],
+    )
+    if not ds.has_complete_data():
         (
             entity_all_types(lang)
-            .get_rdd()
+            .get_extended_rdd()
             .map(lambda e: (e.id, e))
-            .join(entity_degrees(lang).get_rdd().map(lambda e: (e.id, e)))
+            .join(entity_degrees(lang).get_extended_rdd().map(lambda e: (e.id, e)))
             .map(merge_type_degree)
             .map(EntityTypeAndDegree.ser)
-            .coalesce(128)
-            .saveAsTextFile(
-                str(cfg.entity_types_and_degrees),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                ds,
+                auto_coalesce=True,
+                shuffle=True,
+                max_num_partitions=512,
             )
         )
 
-    return Dataset(
-        cfg.entity_types_and_degrees / "*.gz", deserialize=EntityTypeAndDegree.deser
-    )
+    return ds
 
 
 def merge_type_degree(

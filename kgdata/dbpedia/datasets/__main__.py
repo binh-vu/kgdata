@@ -37,7 +37,17 @@ from kgdata.misc.query import PropQuery, every
 @click.option("-t", "--take", type=int, required=False, default=0, help="Take n rows")
 @click.option("-q", "--query", type=str, required=False, default="", help="Query")
 @click.option("-l", "--limit", type=int, required=False, default=20, help="Limit")
-def main(dataset: str, take: int = 0, query: str = "", limit: int = 20):
+@click.option(
+    "-s",
+    "--sign",
+    is_flag=True,
+    required=False,
+    default=False,
+    help="Sign the dataset if it hasn't been signed",
+)
+def main(
+    dataset: str, take: int = 0, query: str = "", limit: int = 20, sign: bool = False
+):
     init_dbdir_from_env()
 
     module = import_module(f"kgdata.dbpedia.datasets.{dataset}")
@@ -55,6 +65,26 @@ def main(dataset: str, take: int = 0, query: str = "", limit: int = 20):
         for record in ds.get_rdd().filter(filter_fn).take(limit):
             print(repr(record))
             print("=" * 30)
+
+    if sign:
+        for dep in ds.get_dependencies():
+            # make sure that the dependencies are all signed
+            try:
+                dep.get_signature()
+            except:
+                print(f"{dep.get_name()} doesn't have a signature")
+                if dep.get_name() in [
+                    "entities/merge-en",
+                    "ontology-dump/20230420/step-2",
+                ]:
+                    dep.sign(dep.get_name(), dep.get_dependencies(), checksum=False)
+                else:
+                    raise
+
+        ds.sign(
+            ds.get_name(),
+            ds.get_dependencies(),
+        )
 
 
 if __name__ == "__main__":

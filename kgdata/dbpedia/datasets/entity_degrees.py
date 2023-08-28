@@ -30,8 +30,21 @@ class EntityDegree(Record):
 def entity_degrees(lang: str = "en") -> Dataset[EntityDegree]:
     cfg = DBpediaDirCfg.get_instance()
 
-    if not does_result_dir_exist(cfg.entity_degrees / "step1"):
-        ent_rdd = entities(lang).get_rdd()
+    step1_ds = Dataset(
+        cfg.entity_degrees / "step1/*.gz",
+        deserialize=EntityDegree.deser,
+        name=f"entity-degrees/step1-{lang}",
+        dependencies=[entities(lang)],
+    )
+    step2_ds = Dataset(
+        cfg.entity_degrees / "step2/*.gz",
+        deserialize=EntityDegree.deser,
+        name=f"entity-degrees/{lang}",
+        dependencies=[entities(lang), article_degrees(lang)],
+    )
+
+    if not step1_ds.has_complete_data():
+        ent_rdd = entities(lang).get_extended_rdd()
 
         outdegree = ent_rdd.map(lambda e: (e.id, get_outdegree(e)))
         indegree = ent_rdd.flatMap(extract_indegree_links).reduceByKey(add)
@@ -40,33 +53,34 @@ def entity_degrees(lang: str = "en") -> Dataset[EntityDegree]:
             outdegree.leftOuterJoin(indegree)
             .map(merge_degree)
             .map(EntityDegree.ser)
-            .coalesce(128)
-            .saveAsTextFile(
-                str(cfg.entity_degrees / "step1"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                step1_ds,
+                checksum=False,
+                auto_coalesce=True,
+                max_num_partitions=512,
             )
         )
 
-    if not does_result_dir_exist(cfg.entity_degrees / "step2"):
+    if not step2_ds.has_complete_data():
         (
-            Dataset(cfg.entity_degrees / "step1/*.gz", deserialize=EntityDegree.deser)
-            .get_rdd()
+            step1_ds.get_extended_rdd()
             .map(lambda e: (get_title_from_url(e.id, "/resource/"), e))
             .leftOuterJoin(
                 article_degrees(lang)
-                .get_rdd()
+                .get_extended_rdd()
                 .map(lambda a: (get_title_from_url(a.url), a))
             )
             .map(merge_article_degree)
             .map(EntityDegree.ser)
-            .coalesce(128)
-            .saveAsTextFile(
-                str(cfg.entity_degrees / "step2"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                step2_ds,
+                auto_coalesce=True,
+                max_num_partitions=512,
+                trust_dataset_dependencies=True,
             )
         )
 
-    return Dataset(cfg.entity_degrees / "step2/*.gz", deserialize=EntityDegree.deser)
+    return step2_ds
 
 
 def wikipedia_to_dbpedia_url(url: str) -> str:

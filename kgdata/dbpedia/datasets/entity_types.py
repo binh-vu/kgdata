@@ -12,7 +12,12 @@ from kgdata.spark import does_result_dir_exist
 
 def entity_types(lang: str = "en") -> Dataset[tuple[str, list[str]]]:
     cfg = DBpediaDirCfg.get_instance()
-    ds = Dataset(cfg.entity_types / "*.gz", deserialize=orjson.loads)
+    ds = Dataset(
+        cfg.entity_types / "*.gz",
+        deserialize=orjson.loads,
+        name=f"entity_types/{lang}",
+        dependencies=[entities(lang)],
+    )
 
     if not does_result_dir_exist(cfg.entity_types):
         (
@@ -21,10 +26,8 @@ def entity_types(lang: str = "en") -> Dataset[tuple[str, list[str]]]:
             .map(get_instanceof)
             .map(orjson.dumps)
             .auto_coalesce(cache=True)
-            .save_as_dataset(
-                cfg.entity_types,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="entity_types",
+            .save_like_dataset(
+                ds, auto_coalesce=True, shuffle=True, max_num_partitions=512
             )
         )
 

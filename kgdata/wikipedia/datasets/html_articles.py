@@ -31,11 +31,15 @@ def html_articles() -> Dataset[HTMLArticle]:
     splitted_ds = Dataset(
         cfg.html_articles / "splitted/*/*.gz",
         deserialize=lambda line: HTMLArticle.from_dump_dict(orjson.loads(line)),
+        name=f"html-articles/{dump_date}/splitted",
+        dependencies=[],
     )
 
     final_ds = Dataset(
         cfg.html_articles / "final/*.gz",
         deserialize=partial(deser_from_dict, HTMLArticle),
+        name=f"html-articles/{dump_date}/final",
+        dependencies=[],
     )
 
     if not splitted_ds.has_complete_data():
@@ -55,7 +59,7 @@ def html_articles() -> Dataset[HTMLArticle]:
                     n_records_per_file=3000,
                 )
 
-        splitted_ds.sign(f"html-articles/{dump_date}/splitted", checksum=False)
+        splitted_ds.sign(splitted_ds.get_name(), checksum=False)
 
     if not final_ds.has_complete_data():
         # sometimes, we may have multiple html of the same URL (for different revisions), we choose to keep the
@@ -70,11 +74,7 @@ def html_articles() -> Dataset[HTMLArticle]:
             .reduceByKey(select_updated_article)
             .map(lambda tup: tup[1])
             .map(ser_html_articles)
-            .save_as_dataset(
-                cfg.html_articles / "final",
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name=f"html-articles/{dump_date}/final",
-            )
+            .save_like_dataset(final_ds, trust_dataset_dependencies=True)
         )
 
         need_double_check = True

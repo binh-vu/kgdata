@@ -20,6 +20,7 @@ from kgdata.misc.hierarchy import build_ancestors
 from kgdata.models.multilingual import MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass, get_default_classes
 from kgdata.splitter import split_a_list
+
 rdfs_subclassof = str(RDFS.subClassOf)
 owl_class = str(OWL.Class)
 owl_disjointwith = str(OWL.disjointWith)
@@ -27,7 +28,12 @@ owl_disjointwith = str(OWL.disjointWith)
 
 def classes() -> Dataset[OntologyClass]:
     cfg = DBpediaDirCfg.get_instance()
-    ds = Dataset(cfg.classes / "*.jl", partial(deser_from_dict, OntologyClass))
+    ds = Dataset(
+        cfg.classes / "*.jl",
+        partial(deser_from_dict, OntologyClass),
+        name="classes",
+        dependencies=[ontology_dump()],
+    )
 
     if not ds.has_complete_data():
         ont_ds = ontology_dump()

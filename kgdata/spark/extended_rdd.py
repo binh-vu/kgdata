@@ -211,6 +211,7 @@ class ExtendedRDD(Generic[T_co]):
         auto_coalesce: bool = False,
         partition_size: int = 10 * 1024 * 1024,
         shuffle: bool = False,
+        max_num_partitions: Optional[int] = None,
         trust_dataset_dependencies: bool = False,
     ) -> None:
         """Save this RDD as a dataset similar to the given dataset. By default, checksum of the dataset is computed
@@ -223,6 +224,7 @@ class ExtendedRDD(Generic[T_co]):
             auto_coalesce: whether to automatically coalesce the RDD so that each partition has approximately the given partition size in bytes.
             partition_size: if auto_coalesce is enable, coalesce the RDD so that each partition has approximately the given partition size in bytes.
             shuffle: if auto_coalesce is enable, whether to shuffle the RDD.
+            max_num_partitions: if auto_coalesce is enable and this variable is not None, this will be the maximum number of partitions to coalesce to.
             trust_dataset_dependencies: whether to trust the dataset dependencies. If this is False, we will verify the dataset dependencies and ensure that they are equal.
         """
         file_pattern = Path(dataset.file_pattern)
@@ -268,6 +270,7 @@ class ExtendedRDD(Generic[T_co]):
             auto_coalesce=auto_coalesce,
             partition_size=partition_size,
             shuffle=shuffle,
+            max_num_partitions=max_num_partitions,
         )
 
     def save_as_dataset(
@@ -279,6 +282,7 @@ class ExtendedRDD(Generic[T_co]):
         auto_coalesce: bool = False,
         partition_size: int = 10 * 1024 * 1024,
         shuffle: bool = False,
+        max_num_partitions: Optional[int] = None,
     ):
         """Save this RDD as a dataset. By default, checksum of the dataset is computed
         so we can be confident that the data hasn't changed yet, or multiple copied are indeed equal.
@@ -292,6 +296,7 @@ class ExtendedRDD(Generic[T_co]):
             auto_coalesce: whether to automatically coalesce the RDD so that each partition has approximately the given partition size in bytes.
             partition_size: if auto_coalesce is enable, coalesce the RDD so that each partition has approximately the given partition size in bytes.
             shuffle: if auto_coalesce is enable, whether to shuffle the RDD.
+            max_num_partitions: if auto_coalesce is enable and this variable is not None, this will be the maximum number of partitions to coalesce to.
         """
         outdir = str(outdir)
 
@@ -303,9 +308,13 @@ class ExtendedRDD(Generic[T_co]):
                 tmp_dir, compressionCodecClass=compressionCodecClass
             )
             rdd = get_spark_context().textFile(tmp_dir)
-            rdd.coalesce(
-                estimate_num_partitions(rdd, partition_size), shuffle
-            ).saveAsTextFile(outdir, compressionCodecClass=compressionCodecClass)
+            num_partitions = estimate_num_partitions(rdd, partition_size)
+            if max_num_partitions is not None:
+                num_partitions = min(num_partitions, max_num_partitions)
+
+            rdd.coalesce(num_partitions, shuffle).saveAsTextFile(
+                outdir, compressionCodecClass=compressionCodecClass
+            )
             shutil.rmtree(tmp_dir)
 
         name = name or os.path.basename(outdir)

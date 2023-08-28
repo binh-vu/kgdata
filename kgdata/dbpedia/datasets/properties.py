@@ -5,6 +5,7 @@ from functools import partial
 from urllib.parse import urlparse
 
 from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
+from sm.misc.funcs import assert_not_null
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
@@ -15,7 +16,6 @@ from kgdata.models.multilingual import MultiLingualString, MultiLingualStringLis
 from kgdata.models.ont_property import OntologyProperty
 from kgdata.spark import does_result_dir_exist
 from kgdata.splitter import split_a_list
-from sm.misc.funcs import assert_not_null
 
 rdf_type = str(RDF.type)
 rdfs_label = str(RDFS.label)
@@ -27,7 +27,10 @@ def properties() -> Dataset[OntologyProperty]:
     cfg = DBpediaDirCfg.get_instance()
     outdir = cfg.properties
     ds = Dataset(
-        outdir / "*.jl", deserialize=partial(deser_from_dict, OntologyProperty)
+        outdir / "*.jl",
+        deserialize=partial(deser_from_dict, OntologyProperty),
+        name="properties",
+        dependencies=[ontology_dump()],
     )
 
     if not does_result_dir_exist(outdir):

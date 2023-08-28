@@ -1,4 +1,5 @@
 import orjson
+
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.splitter import split_a_file

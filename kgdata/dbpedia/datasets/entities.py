@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial
+from functools import lru_cache, partial
 from typing import Iterable, Optional
+
+from rdflib import BNode, Literal, URIRef
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
@@ -21,17 +23,28 @@ from kgdata.models.entity import Entity, Statement
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.spark import DatasetSignature
 from kgdata.wikipedia.misc import get_title_from_url
-from rdflib import BNode, Literal, URIRef
 
 
+@lru_cache()
 def entities(lang: str = "en") -> Dataset[Entity]:
     cfg = DBpediaDirCfg.get_instance()
 
-    outdir = cfg.entities.parent / f"{cfg.entities.name}_{lang}"
+    merge_ds = Dataset(
+        cfg.entities / f"merge-{lang}/*.gz",
+        deserialize=partial(deser_from_dict, Entity),
+        name=f"entities/merge-{lang}",
+        dependencies=[
+            mapping_extractor_dump(lang),
+            generic_extractor_dump(lang),
+        ],
+    )
+    final_ds = Dataset(
+        cfg.entities / f"infer-{lang}/*.gz",
+        deserialize=partial(deser_from_dict, Entity),
+        name=f"entities/final-{lang}",
+        dependencies=[merge_ds],
+    )
 
-    merge_ds = Dataset(outdir / "merge/*.gz", deserialize=partial(deser_from_dict, Entity))
-    final_ds = Dataset(outdir / "infer/*.gz", deserialize=partial(deser_from_dict, Entity))
-    
     if not merge_ds.has_complete_data():
         part1 = mapping_extractor_dump(lang).get_extended_rdd().map(lambda r: (r.id, r))
         part2 = generic_extractor_dump(lang).get_extended_rdd().map(lambda r: (r.id, r))
@@ -41,18 +54,13 @@ def entities(lang: str = "en") -> Dataset[Entity]:
             .map(lambda x: merge_resources(x[1][0], x[1][1]))
             .map(partial(to_entity, dump_lang=lang))
             .map(ser_to_dict)
-            .save_as_dataset(
-                merge_ds.get_data_directory(),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="entities/step-0",
-                checksum=False
+            .save_like_dataset(
+                merge_ds, checksum=False, auto_coalesce=True, max_num_partitions=512
             )
         )
 
     if not final_ds.has_complete_data():
         rdd = merge_ds.get_extended_rdd()
-        rdd.sig = DatasetSignature.from_intermediate_dataset(rdd.sig)
-
         (
             rdd.map(lambda e: (e.id, e))
             .leftOuterJoin(
@@ -60,11 +68,8 @@ def entities(lang: str = "en") -> Dataset[Entity]:
             )
             .map(merge_new_triple)
             .map(ser_to_dict)
-            .auto_coalesce(cache=True)
-            .save_as_dataset(
-                final_ds.get_data_directory(),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="entities/final"
+            .save_like_dataset(
+                final_ds, auto_coalesce=True, shuffle=True, max_num_partitions=512
             )
         )
 

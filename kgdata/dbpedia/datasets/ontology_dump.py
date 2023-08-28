@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import math
+import re
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Callable, Iterable
 
 import orjson
@@ -29,6 +31,7 @@ owl_disjointwith = str(OWL.disjointWith)
 owl_thing = str(OWL.Thing)
 
 
+@lru_cache()
 def ontology_dump() -> Dataset[RDFResource]:
     """
     Process DBpedia ontology dump:
@@ -40,8 +43,23 @@ def ontology_dump() -> Dataset[RDFResource]:
     """
     cfg = DBpediaDirCfg.get_instance()
 
-    if not does_result_dir_exist(cfg.ontology_dump / "step2"):
-        infile = cfg.get_ontology_dump_file()
+    infile = cfg.get_ontology_dump_file()
+    (dump_date,) = re.findall(r"\d{8}", infile.name)
+
+    step2_ds = Dataset(
+        cfg.ontology_dump / "step2" / "*.gz",
+        RDFResource.deser,
+        name=f"ontology-dump/{dump_date}/step-2",
+        dependencies=[],
+    )
+    final_ds = Dataset(
+        cfg.ontology_dump / "step3" / "*.gz",
+        RDFResource.deser,
+        name=f"ontology-dump/{dump_date}/final",
+        dependencies=[step2_ds],
+    )
+
+    if not step2_ds.has_complete_data():
         step1_dir = cfg.ontology_dump / "step1"
         split_a_file(
             infile=infile,
@@ -59,16 +77,11 @@ def ontology_dump() -> Dataset[RDFResource]:
             .map(aggregated_triples)
             .map(RDFResource.ser)
             .auto_coalesce(cache=True)
-            .save_as_dataset(
-                cfg.ontology_dump / "step2",
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="ontology-dump/step-2",
+            .save_like_dataset(
+                step2_ds,
                 checksum=False,
             )
         )
-
-    step2_ds = Dataset(cfg.ontology_dump / "step2" / "*.gz", RDFResource.deser)
-    final_ds = Dataset(cfg.ontology_dump / "step3" / "*.gz", RDFResource.deser)
 
     if not final_ds.has_complete_data():
         # fix broken references

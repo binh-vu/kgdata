@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from functools import partial
+from functools import lru_cache, partial
 from random import randrange
 from typing import Iterable, Optional
 
@@ -15,12 +15,8 @@ from kgdata.dbpedia.datasets.classes import classes
 from kgdata.dbpedia.datasets.entity_types import entity_types
 from kgdata.misc.resource import Record
 from kgdata.models.ont_class import OntologyClass
-from kgdata.spark import (
-    are_records_unique,
-    auto_repartition,
-    does_result_dir_exist,
-    get_spark_context,
-)
+from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
+from kgdata.spark.extended_rdd import ExtendedRDD
 
 
 @dataclass
@@ -34,8 +30,17 @@ class EntityAllTypes(Record):
 PARTITION_SIZE = 10000
 
 
+@lru_cache()
 def entity_all_types(lang: str = "en") -> Dataset[EntityAllTypes]:
     cfg = DBpediaDirCfg.get_instance()
+    ds = Dataset(
+        cfg.entity_all_types / "*.gz",
+        deserialize=EntityAllTypes.deser,
+        name=f"entity-all-types/{lang}",
+        # no need to depend on class_count because the content of class_count won't change
+        # this dataset
+        dependencies=[classes(), entity_types(lang)],
+    )
 
     unique_check = False
 
@@ -51,16 +56,15 @@ def entity_all_types(lang: str = "en") -> Dataset[EntityAllTypes]:
         )
         bc_id2count = sc.broadcast(id2count)
 
-        id2ancestors = sc.parallelize(
+        id2ancestors = (
             classes()
-            .get_rdd_alike()
+            .get_extended_rdd()
             .flatMap(lambda c: extrapolate_class(c, type_count=id2count))
-            .collect()
         )
 
-        rdd = (
+        (
             entity_types(lang)
-            .get_rdd()
+            .get_extended_rdd()
             .flatMap(lambda x: flip_types(x, type_count=bc_id2count.value))
             .groupByKey()
             .leftOuterJoin(id2ancestors)
@@ -68,15 +72,14 @@ def entity_all_types(lang: str = "en") -> Dataset[EntityAllTypes]:
             .groupByKey()
             .map(lambda x: EntityAllTypes(x[0], merge_type_dist(x[1])))
             .map(EntityAllTypes.ser)
-        )
-        auto_repartition(rdd, 4 * 1024 * 1024, cache=True, shuffle=True).saveAsTextFile(
-            str(cfg.entity_all_types),
-            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                ds,
+                auto_coalesce=True,
+                shuffle=True,
+                max_num_partitions=512,
+            )
         )
 
-    ds = Dataset(
-        file_pattern=cfg.entity_all_types / "*.gz", deserialize=EntityAllTypes.deser
-    )
     if unique_check:
         assert are_records_unique(ds.get_rdd(), lambda x: x.id)
 

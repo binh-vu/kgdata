@@ -58,6 +58,8 @@ def article_links() -> Dataset[ArticleLinks]:
     ds = Dataset(
         file_pattern=cfg.article_links / "*.gz",
         deserialize=partial(deser_from_dict, ArticleLinks),
+        name="article-links",
+        dependencies=[html_articles()],
     )
 
     if not ds.has_complete_data():
@@ -66,11 +68,7 @@ def article_links() -> Dataset[ArticleLinks]:
             .get_extended_rdd()
             .map(extract_links)
             .map(ser_to_dict)
-            .save_as_dataset(
-                cfg.article_links,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="article-links",
-            )
+            .save_like_dataset(ds)
         )
 
     return ds
