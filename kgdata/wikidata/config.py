@@ -24,6 +24,7 @@ class WikidataDirCfg:
         self.entity_redirection_dump = datadir / "entity_redirection_dump"
 
         self.entity_ids = datadir / "entity_ids"
+        self.entity_labels = datadir / "entity_labels"
         self.entity_types = datadir / "entity_types"
         self.entity_all_types = datadir / "entity_all_types"
         self.entity_wikilinks = datadir / "entity_wikilinks"

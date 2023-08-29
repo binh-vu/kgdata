@@ -28,6 +28,7 @@ python -m kgdata.wikidata.datasets -d entity_all_types
 python -m kgdata.wikidata.datasets -d cross_wiki_mapping
 python -m kgdata.wikidata.datasets -d entity_degrees
 python -m kgdata.wikidata.datasets -d entity_types_and_degrees
+python -m kgdata.wikidata.datasets -d entity_labels
 
 # python -m kgdata.wikidata entity_labels -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
 # python -m kgdata.wikidata classes -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
