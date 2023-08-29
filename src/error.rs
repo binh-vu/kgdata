@@ -39,3 +39,5 @@ pub fn into_pyerr<E: Into<KGDataError>>(err: E) -> PyErr {
         anyerror.into()
     }
 }
+
+pub type KGResult<T> = Result<T, KGDataError>;

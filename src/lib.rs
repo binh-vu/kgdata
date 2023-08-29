@@ -23,6 +23,7 @@ fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(init_env_logger, m)?)?;
     python::models::register(py, m)?;
+    m.add_class::<python::scripts::GetRepresentativeValue>()?;
 
     Ok(())
 }

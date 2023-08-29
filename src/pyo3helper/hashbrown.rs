@@ -1,7 +1,7 @@
 use hashbrown::HashSet;
 use pyo3::{
     prelude::*,
-    types::{PyDict, PyList, PySet},
+    types::{PyList, PySet},
 };
 
 /// An zero-cost abstraction for automatically receiving HashSet<String> from Python.

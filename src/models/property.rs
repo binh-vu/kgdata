@@ -1,7 +1,7 @@
 use crate::error::KGDataError;
 
 use super::{MultiLingualString, MultiLingualStringList};
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

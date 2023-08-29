@@ -1,24 +1,44 @@
-use std::{fs::File, io::BufRead, io::BufReader, path::PathBuf};
+use std::{ffi::OsStr, fs::File, io::BufRead, io::BufReader, path::PathBuf};
 
-use rayon::prelude::*;
+use flate2::read::GzDecoder;
 use serde::Deserialize;
 
 use crate::error::KGDataError;
 
 use super::*;
 
-pub fn make_try_flat_map_fn<T, E, F, OPI>(func: F) -> impl Fn(T) -> Vec<Result<OPI::Item, E>>
+pub fn make_begin_try_flat_map_fn<I, E, F, OPI>(func: F) -> impl Fn(I) -> Vec<Result<OPI::Item, E>>
 where
-    F: Fn(T) -> Result<OPI, E>,
-    OPI: IntoParallelIterator,
+    F: Fn(I) -> Result<OPI, E>,
+    OPI: IntoIterator,
     E: Send,
 {
     move |value| {
         let out = func(value);
         match out {
-            Ok(v) => v.into_par_iter().map(Ok).collect::<Vec<_>>(),
+            Ok(v) => v.into_iter().map(Ok).collect::<Vec<_>>(),
             Err(e) => vec![Err(e)],
         }
+    }
+}
+
+pub fn make_try_flat_map_fn<I, E, F, OPI>(
+    func: F,
+) -> impl Fn(Result<I, E>) -> Vec<Result<OPI::Item, E>>
+where
+    F: Fn(I) -> Result<OPI, E>,
+    OPI: IntoIterator,
+    E: Send,
+{
+    move |value| match value {
+        Ok(value) => {
+            let out = func(value);
+            match out {
+                Ok(v) => v.into_iter().map(Ok).collect::<Vec<_>>(),
+                Err(e) => vec![Err(e)],
+            }
+        }
+        Err(e) => vec![Err(e)],
     }
 }
 
@@ -50,19 +70,45 @@ pub fn from_jl_files<T>(
 where
     for<'de> T: Deserialize<'de> + Send,
 {
-    let ds = Dataset::files(glob)?.flat_map(make_try_flat_map_fn(deser_json_lines));
+    let ds = Dataset::files(glob)?.flat_map(make_begin_try_flat_map_fn(deser_json_lines));
     Ok(ds)
 }
 
-fn deser_json_lines<T>(path: PathBuf) -> Result<Vec<T>, KGDataError>
+pub fn deser_json_lines<T>(path: PathBuf) -> Result<Vec<T>, KGDataError>
 where
     for<'de> T: Deserialize<'de>,
 {
+    let ext = path.extension().and_then(OsStr::to_str).map(str::to_owned);
     let file = File::open(path)?;
-    let reader = BufReader::new(file);
 
+    let reader: Box<dyn BufRead> = if let Some(ext) = ext {
+        match ext.as_str() {
+            "gz" => Box::new(BufReader::new(GzDecoder::new(file))),
+            _ => unimplemented!(),
+        }
+    } else {
+        Box::new(BufReader::new(file))
+    };
     reader
         .lines()
         .map(|line| serde_json::from_str::<T>(&line?).map_err(|err| err.into()))
         .collect::<Result<Vec<T>, _>>()
+}
+
+pub fn merge_map_list<K, V>(
+    mut map: HashMap<K, Vec<V>>,
+    another: HashMap<K, Vec<V>>,
+) -> HashMap<K, Vec<V>>
+where
+    K: Hash + Eq,
+{
+    for (k, v) in another.into_iter() {
+        match map.get_mut(&k) {
+            Some(lst) => lst.extend(v),
+            None => {
+                map.insert(k, v);
+            }
+        }
+    }
+    map
 }
