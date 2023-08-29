@@ -87,7 +87,7 @@ impl GetRepresentativeValue {
                     .into_iter()
                     .map(|ent| (ent, self.get_score(ent, item.0)))
                     .collect::<Vec<_>>();
-                newents.sort_unstable_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+                newents.sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
                 newents.truncate(self.topk);
                 (item.0, newents.into_iter().map(|x| x.0).collect::<Vec<_>>())
             })
