@@ -5,10 +5,10 @@ from functools import partial
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
+from kgdata.dbpedia.config import DBpediaDirCfg
+from kgdata.dbpedia.datasets.entities import entities
+from kgdata.models.entity import Entity
 from kgdata.models.multilingual import MultiLingualString
-from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.entities import entities
-from kgdata.wikidata.models.wdentity import WDEntity
 
 
 @dataclass
@@ -26,7 +26,7 @@ class EntityLabel:
 
 def entity_labels() -> Dataset[EntityLabel]:
     """Extract entities' labels."""
-    cfg = WikidataDirCfg.get_instance()
+    cfg = DBpediaDirCfg.get_instance()
 
     ds = Dataset(
         cfg.entity_labels / "*.gz",
@@ -48,5 +48,5 @@ def entity_labels() -> Dataset[EntityLabel]:
     return ds
 
 
-def get_labels(ent: WDEntity) -> EntityLabel:
+def get_labels(ent: Entity) -> EntityLabel:
     return EntityLabel(ent.id, ent.label)

@@ -40,6 +40,7 @@ class DBpediaDirCfg:
         self.properties = datadir / "properties"
         self.entities = datadir / "entities"
         self.entity_types = datadir / "entity_types"
+        self.entity_labels = datadir / "entity_labels"
         self.entity_all_types = datadir / "entity_all_types"
         self.entity_degrees = datadir / "entity_degrees"
         self.entity_types_and_degrees = datadir / "entity_types_and_degrees"

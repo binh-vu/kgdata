@@ -15,6 +15,7 @@ export RUST_LOG=info
 # python -m kgdata.dbpedia.datasets -d entity_degrees
 # python -m kgdata.dbpedia.datasets -d entity_types_and_degrees
 # python -m kgdata.dbpedia.datasets -d redirection_dump
+python -m kgdata.dbpedia.datasets -d entity_labels
 
 # ======================================================================
 # WIKIDATA Datasets
