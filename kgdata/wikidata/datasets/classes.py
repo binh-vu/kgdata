@@ -31,7 +31,7 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
         )
 
     get_ds = lambda subdir: Dataset(
-        cfg.classes / f"{subdir}-{lang}*.gz",
+        cfg.classes / f"{subdir}-{lang}/*.gz",
         deserialize=partial(deser_from_dict, WDClass),
         name=f"classes/{subdir}/{lang}",
         dependencies=[entities(lang)],

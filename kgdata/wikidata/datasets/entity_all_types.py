@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from functools import partial
+from functools import lru_cache, partial
 
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.datasets.entity_all_types import (
@@ -21,14 +21,21 @@ from kgdata.wikidata.datasets.entity_types import entity_types
 PARTITION_SIZE = 10000
 
 
-def entity_all_types(lang="en") -> Dataset[EntityAllTypes]:
+@lru_cache()
+def entity_all_types() -> Dataset[EntityAllTypes]:
     cfg = WikidataDirCfg.get_instance()
+    ds = Dataset(
+        file_pattern=cfg.entity_all_types / "*.gz",
+        deserialize=EntityAllTypes.deser,
+        name="entity-all-types",
+        dependencies=[classes(), entity_types()],
+    )
 
     unique_check = False
 
     if not does_result_dir_exist(cfg.entity_all_types):
         id2count = (
-            class_count(lang)
+            class_count()
             .get_rdd()
             .filter(lambda tup: tup[1] > PARTITION_SIZE)
             .map(lambda tup: (tup[0], math.ceil(tup[1] / PARTITION_SIZE)))
@@ -41,13 +48,13 @@ def entity_all_types(lang="en") -> Dataset[EntityAllTypes]:
 
         id2ancestors = (
             classes()
-            .get_rdd()
+            .get_extended_rdd()
             .flatMap(lambda c: extrapolate_class(c, bc_id2count.value))
         )
 
         (
-            entity_types(lang)
-            .get_rdd()
+            entity_types()
+            .get_extended_rdd()
             .flatMap(partial(flip_types, type_count=bc_id2count.value))
             .groupByKey()
             .leftOuterJoin(id2ancestors)
@@ -55,17 +62,15 @@ def entity_all_types(lang="en") -> Dataset[EntityAllTypes]:
             .groupByKey()
             .map(lambda x: EntityAllTypes(x[0], merge_type_dist(x[1])))
             .map(EntityAllTypes.ser)
-            .saveAsTextFile(
-                str(cfg.entity_all_types),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                ds,
+                auto_coalesce=True,
+                max_num_partitions=1024,
             )
         )
 
         unique_check = True
 
-    ds = Dataset(
-        file_pattern=cfg.entity_all_types / "*.gz", deserialize=EntityAllTypes.deser
-    )
     if unique_check:
         assert are_records_unique(ds.get_rdd(), lambda x: x.id)
 

@@ -33,21 +33,33 @@ def properties(lang="en") -> Dataset[WDProperty]:
             )
         )
 
-    if not does_result_dir_exist(cfg.properties / "properties"):
+    get_ds = lambda subdir: Dataset(
+        cfg.properties / f"{subdir}-{lang}/*.gz",
+        deserialize=partial(deser_from_dict, WDProperty),
+        name=f"properties/{subdir}/{lang}",
+        dependencies=[entities(lang)],
+    )
+    basic_ds = get_ds("basic")
+    full_ds = get_ds("full")
+
+    if not basic_ds.has_complete_data():
         sc = get_spark_context()
         prop_ids = sc.broadcast(
             set(sc.textFile(str(cfg.properties / "ids/*.gz")).collect())
         )
         (
             entities(lang)
-            .get_rdd()
+            .get_extended_rdd()
             .filter(lambda ent: ent.id in prop_ids.value)
             .map(lambda x: WDProperty.from_entity(x).to_dict())
             .map(orjson.dumps)
             .coalesce(128, shuffle=True)
-            .saveAsTextFile(
-                str(cfg.properties / "properties"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                basic_ds,
+                auto_coalesce=True,
+                partition_size=4 * 1024 * 1024,
+                shuffle=True,
+                max_num_partitions=512,
             )
         )
 
@@ -59,16 +71,8 @@ def properties(lang="en") -> Dataset[WDProperty]:
             .save_as_single_text_file(cfg.properties / "unknown_properties.txt")
         )
 
-    get_ds = lambda subdir: Dataset(
-        cfg.properties / f"{subdir}/{lang}*.gz",
-        deserialize=partial(deser_from_dict, WDProperty),
-        name=f"properties/{subdir}/{lang}",
-        dependencies=[entities(lang)],
-    )
-    full_ds = get_ds("full")
-
     if not full_ds.has_complete_data():
-        properties = get_ds("properties").get_list()
+        properties = basic_ds.get_list()
         build_ancestors(properties)
         split_a_list(
             [ser_to_dict(p) for p in properties],

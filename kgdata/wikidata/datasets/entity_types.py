@@ -9,23 +9,28 @@ from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def entity_types(lang="en") -> Dataset[tuple[str, list[str]]]:
+def entity_types() -> Dataset[tuple[str, list[str]]]:
     """Extract types of entities. Mapping from entity id to its type"""
     cfg = WikidataDirCfg.get_instance()
 
-    if not does_result_dir_exist(cfg.entity_types):
+    ds = Dataset(
+        cfg.entity_types / "*.gz",
+        deserialize=orjson.loads,
+        name="entity-types",
+        dependencies=[entities()],
+    )
+    if not ds.has_complete_data():
         (
-            entities(lang)
-            .get_rdd()
+            entities()
+            .get_extended_rdd()
             .map(get_instanceof)
             .map(orjson.dumps)
-            .saveAsTextFile(
-                str(cfg.entity_types),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
             )
         )
 
-    return Dataset(cfg.entity_types / "*.gz", deserialize=orjson.loads)
+    return ds
 
 
 def get_instanceof(ent: WDEntity) -> tuple[str, list[str]]:

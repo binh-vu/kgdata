@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Optional
 
 from kgdata.dataset import Dataset
@@ -47,18 +48,20 @@ class ArticleMetadata(Record):
     redirects: list[NameAndURL]
 
 
+@lru_cache()
 def article_metadata() -> Dataset[ArticleMetadata]:
     cfg = WikipediaDirCfg.get_instance()
-    ds = Dataset(cfg.article_metadata / "*.gz", deserialize=ArticleMetadata.deser)
+    ds = Dataset(
+        cfg.article_metadata / "*.gz",
+        deserialize=ArticleMetadata.deser,
+        name="article-metadata",
+        dependencies=[html_articles()],
+    )
 
     if not ds.has_complete_data():
         html_articles().get_extended_rdd().map(extract_metadata).map(
             ArticleMetadata.ser
-        ).save_as_dataset(
-            cfg.article_metadata,
-            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            name="article-metadata",
-        )
+        ).save_like_dataset(ds)
 
     return ds
 

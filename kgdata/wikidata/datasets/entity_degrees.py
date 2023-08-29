@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from operator import add
 from typing import Optional
 
@@ -15,52 +16,67 @@ from kgdata.wikipedia.datasets.article_metadata import article_metadata
 from kgdata.wikipedia.misc import get_title_from_url
 
 
-def entity_degrees(lang: str = "en") -> Dataset[EntityDegree]:
+@lru_cache
+def entity_degrees() -> Dataset[EntityDegree]:
     cfg = WikidataDirCfg.get_instance()
 
-    if not does_result_dir_exist(cfg.entity_degrees / "step1"):
-        ent_rdd = entities(lang).get_rdd()
+    step1_ds = Dataset(
+        cfg.entity_degrees / "step1/*.gz",
+        deserialize=EntityDegree.deser,
+        name="entity-degrees/step1",
+        dependencies=[
+            entities(),
+        ],
+    )
+    ds = Dataset(
+        cfg.entity_degrees / "step2/*.gz",
+        deserialize=EntityDegree.deser,
+        name="entity-degrees",
+        dependencies=[
+            entities(),
+            article_degrees(),
+            cross_wiki_mapping(article_metadata()),
+        ],
+    )
+    if not step1_ds.has_complete_data():
+        ent_rdd = entities().get_extended_rdd()
 
         outdegree = ent_rdd.map(lambda e: (e.id, get_outdegree(e)))
         indegree = ent_rdd.flatMap(extract_indegree_links).reduceByKey(add)
-
         (
             outdegree.leftOuterJoin(indegree)
             .map(merge_degree)
             .map(EntityDegree.ser)
-            .coalesce(128)
-            .saveAsTextFile(
-                str(cfg.entity_degrees / "step1"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(step1_ds, checksum=False)
         )
 
     if not does_result_dir_exist(cfg.entity_degrees / "step2"):
         (
-            Dataset(cfg.entity_degrees / "step1/*.gz", deserialize=EntityDegree.deser)
-            .get_rdd()
+            step1_ds.get_extended_rdd()
             .map(lambda e: (e.id, e))
             .leftOuterJoin(
                 cross_wiki_mapping(article_metadata())
-                .get_rdd()
+                .get_extended_rdd()
                 .map(lambda x: (x.wikipedia_title, x))
                 .join(
-                    article_degrees(lang)
-                    .get_rdd()
+                    article_degrees()
+                    .get_extended_rdd()
                     .map(lambda a: (get_title_from_url(a.url), a))
                 )
                 .map(lambda tup: (tup[1][0].wikidata_entityid, tup[1][1]))
             )
             .map(merge_article_degree)
             .map(EntityDegree.ser)
-            .coalesce(128)
-            .saveAsTextFile(
-                str(cfg.entity_degrees / "step2"),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                ds,
+                auto_coalesce=True,
+                shuffle=True,
+                max_num_partitions=1024,
+                trust_dataset_dependencies=True,
             )
         )
 
-    return Dataset(cfg.entity_degrees / "step2/*.gz", deserialize=EntityDegree.deser)
+    return ds
 
 
 def merge_article_degree(

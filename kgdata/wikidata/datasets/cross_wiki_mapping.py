@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Iterable, Optional, Tuple
 
 import orjson
@@ -33,6 +34,8 @@ def cross_wiki_mapping(
     wd_ds = Dataset(
         cfg.cross_wiki_mapping / "from-wikidata/*.gz",
         deserialize=WikipediaWikidataMapping.deser,
+        name="cross-wiki-mapping/from-wikidata",
+        dependencies=[entities()],
     )
 
     need_verification = False
@@ -42,10 +45,8 @@ def cross_wiki_mapping(
             .get_extended_rdd()
             .flatMap(extract_sitelink)
             .map(WikipediaWikidataMapping.ser)
-            .save_as_dataset(
-                wd_ds.get_data_directory(),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name=f"cross-wiki-mapping/from-wikidata",
+            .save_like_dataset(
+                wd_ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
             )
         )
         need_verification = True
@@ -68,6 +69,8 @@ def cross_wiki_mapping(
         wdwpds = Dataset(
             cfg.cross_wiki_mapping / f"from-wikidata-wikipedia/*.gz",
             deserialize=WikipediaWikidataMapping.deser,
+            name="cross-wiki-mapping/from-wikidata-wikipedia",
+            dependencies=[wd_ds, wiki_articles],
         )
         if not wdwpds.has_complete_data():
             (
@@ -82,10 +85,8 @@ def cross_wiki_mapping(
                 .map(resolve_multiple_mapping)
                 .filter(lambda x: x is not None)
                 .map(lambda e: WikipediaWikidataMapping.ser(assert_not_null(e)))
-                .save_as_dataset(
-                    wdwpds.get_data_directory(),
-                    compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                    name="cross-wiki-mapping/from-wikidata-wikipedia",
+                .save_like_dataset(
+                    wdwpds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
                 )
             )
             need_verification = True

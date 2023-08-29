@@ -95,7 +95,6 @@ class DatasetSignature:
         if self == other:
             return self
 
-        assert other.name != NEW_DATASET_NAME
         if self.name == NEW_DATASET_NAME:
             newone = DatasetSignature(
                 name=self.name,
@@ -103,17 +102,25 @@ class DatasetSignature:
                 checksum=self.checksum,
                 dependencies=self.dependencies.copy(),
             )
-            if other.name in newone.dependencies:
-                assert other == newone.dependencies[other.name]
+            if other.name == NEW_DATASET_NAME:
+                newone.dependencies.update(other.dependencies)
             else:
-                newone.dependencies[other.name] = other
+                if other.name in newone.dependencies:
+                    assert other == newone.dependencies[other.name]
+                else:
+                    newone.dependencies[other.name] = other
             return newone
         else:
+            deps: dict[str, DatasetSignature] = {self.name: self}
+            if other.name == NEW_DATASET_NAME:
+                deps.update(other.dependencies)
+            else:
+                deps[other.name] = other
             return DatasetSignature(
                 name=NEW_DATASET_NAME,
                 created_at="",
                 checksum="",
-                dependencies={self.name: self, other.name: other},
+                dependencies=deps,
             )
 
     def without_dependencies(self) -> DatasetSignature:

@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from functools import partial
+from functools import lru_cache, partial
 from random import randrange
 from typing import Iterable, Optional
 
 import orjson
+
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
 from kgdata.models.ont_class import OntologyClass
@@ -28,27 +29,29 @@ class EntityTypeAndDegree(Record):
     wikipedia_outdegree: Optional[int] = None
 
 
-def entity_types_and_degrees(lang: str = "en") -> Dataset[EntityTypeAndDegree]:
+@lru_cache()
+def entity_types_and_degrees() -> Dataset[EntityTypeAndDegree]:
     cfg = WikidataDirCfg.get_instance()
-
+    ds = Dataset(
+        cfg.entity_types_and_degrees / "*.gz",
+        deserialize=EntityTypeAndDegree.deser,
+        name="entity-types-and-degrees",
+        dependencies=[entity_all_types(), entity_degrees()],
+    )
     if not does_result_dir_exist(cfg.entity_types_and_degrees):
         (
-            entity_all_types(lang)
-            .get_rdd()
+            entity_all_types()
+            .get_extended_rdd()
             .map(lambda e: (e.id, e))
-            .join(entity_degrees(lang).get_rdd().map(lambda e: (e.id, e)))
+            .join(entity_degrees().get_extended_rdd().map(lambda e: (e.id, e)))
             .map(merge_type_degree)
             .map(EntityTypeAndDegree.ser)
-            .coalesce(128)
-            .saveAsTextFile(
-                str(cfg.entity_types_and_degrees),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
             )
         )
 
-    return Dataset(
-        cfg.entity_types_and_degrees / "*.gz", deserialize=EntityTypeAndDegree.deser
-    )
+    return ds
 
 
 def merge_type_degree(
