@@ -388,7 +388,11 @@ def import_dataset(dataset: str, kwargs: Optional[dict] = None) -> Dataset:
 @click.argument("dir1")
 @click.argument("dir2")
 def compare(dir1: Path, dir2: Path):
+    dir1 = Path(dir1)
+    dir2 = Path(dir2)
+
     rootdir1 = dir1
+    rootdir2 = dir2
     dir1new = []
     dir2new = []
     dirdiff = []
@@ -420,14 +424,16 @@ def compare(dir1: Path, dir2: Path):
 
             if sig1 != sig2:
                 dirdiff.append(subdir1.relative_to(rootdir1))
+                break
             elif sig1 is None:
                 # this is not a dataset, we want to compare the content of
                 # that directory
                 files1 = list(subdir1.iterdir())
                 files2 = list(subdir2.iterdir())
 
-                if set(files1) != set(files2):
+                if {f.relative_to(rootdir1) for f in files1} != {f.relative_to(rootdir2) for f in files2}:
                     dirdiff.append(subdir1.relative_to(rootdir1))
+                    break
                 else:
                     for file1 in files1:
                         file2 = subdir2 / file1.name
@@ -448,20 +454,23 @@ def compare(dir1: Path, dir2: Path):
 
     logger.info("# Directories that are similar: {}", len(dirsimi))
 
-    print("\n")
-    logger.info("New directories at: {}", dir1)
-    for dir in dir1new:
-        print(f"- {dir}")
+    if len(dir1new) > 0:
+        print("\n")
+        logger.info("New directories at: {}", dir1)
+        for dir in dir1new:
+            print(f"- {dir}")
 
-    print("\n")
-    logger.info("New directories at: {}", dir2)
-    for dir in dir2new:
-        print(f"- {dir}")
+    if len(dir2new) > 0:
+        print("\n")
+        logger.info("New directories at: {}", dir2)
+        for dir in dir2new:
+            print(f"- {dir}")
 
-    print("\n")
-    logger.info("Different directories")
-    for dir in dirdiff:
-        print(f"- {dir}")
+    if len(dirdiff) > 0:
+        print("\n")
+        logger.info("Different directories")
+        for dir in dirdiff:
+            print(f"- {dir}")
 
 
 if __name__ == "__main__":
