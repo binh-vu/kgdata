@@ -20,14 +20,15 @@ from typing import (
 )
 from uuid import uuid4
 
+import click
 import serde.byteline
 import serde.json
 import serde.textline
-from hugedict.misc import Chain2, identity
 from loguru import logger
 from pyspark import RDD
 from tqdm.auto import tqdm
 
+from hugedict.misc import Chain2, identity
 from kgdata.spark import ExtendedRDD, SparkLikeInterface, get_spark_context
 from kgdata.spark.common import does_result_dir_exist
 from kgdata.spark.extended_rdd import DatasetSignature
@@ -381,3 +382,87 @@ def import_dataset(dataset: str, kwargs: Optional[dict] = None) -> Dataset:
     module = import_module(f"kgdata.{kgname}.datasets.{dataset}")
     kwargs = kwargs or {}
     return getattr(module, dataset)(**kwargs)
+
+
+@click.command()
+@click.argument("dir1")
+@click.argument("dir2")
+def compare(dir1: Path, dir2: Path):
+    rootdir1 = dir1
+    dir1new = []
+    dir2new = []
+    dirdiff = []
+    dirsimi = []
+
+    def _compare(dir1: Path, dir2: Path):
+        subdirs1 = {subdir.name: subdir for subdir in dir1.iterdir() if subdir.is_dir()}
+        subdirs2 = {subdir.name: subdir for subdir in dir2.iterdir() if subdir.is_dir()}
+
+        # get folders that are new
+        for name in set(subdirs1.keys()).difference(subdirs2.keys()):
+            dir1new.append(subdirs1[name])
+
+        for name in set(subdirs2.keys()).difference(subdirs1.keys()):
+            dir2new.append(subdirs2[name])
+
+        # get folders that are different
+        for name in set(subdirs1.keys()).intersection(subdirs2.keys()):
+            subdir1 = subdirs1[name]
+            subdir2 = subdirs2[name]
+
+            sig1 = None
+            if (subdir1 / "_SIGNATURE").exists():
+                sig1 = serde.json.deser(subdir1 / "_SIGNATURE")
+
+            sig2 = None
+            if (subdir2 / "_SIGNATURE").exists():
+                sig2 = serde.json.deser(subdir2 / "_SIGNATURE")
+
+            if sig1 != sig2:
+                dirdiff.append(subdir1.relative_to(rootdir1))
+            elif sig1 is None:
+                # this is not a dataset, we want to compare the content of
+                # that directory
+                files1 = list(subdir1.iterdir())
+                files2 = list(subdir2.iterdir())
+
+                if set(files1) != set(files2):
+                    dirdiff.append(subdir1.relative_to(rootdir1))
+                else:
+                    for file1 in files1:
+                        file2 = subdir2 / file1.name
+
+                        if file1.is_dir():
+                            if not file2.is_dir():
+                                dirdiff.append(subdir1.relative_to(rootdir1))
+                                break
+                            else:
+                                _compare(file1, file2)
+                        elif file2.is_dir():
+                            dirdiff.append(subdir1.relative_to(rootdir1))
+                            break
+            else:
+                dirsimi.append((subdir1, subdir2))
+
+    _compare(dir1, dir2)
+
+    logger.info("# Directories that are similar: {}", len(dirsimi))
+
+    print("\n")
+    logger.info("New directories at: {}", dir1)
+    for dir in dir1new:
+        print(f"- {dir}")
+
+    print("\n")
+    logger.info("New directories at: {}", dir2)
+    for dir in dir2new:
+        print(f"- {dir}")
+
+    print("\n")
+    logger.info("Different directories")
+    for dir in dirdiff:
+        print(f"- {dir}")
+
+
+if __name__ == "__main__":
+    compare()
