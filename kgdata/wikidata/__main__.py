@@ -309,11 +309,11 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
             _build_sst_file,
             [
                 (file, str(temp_dir), "-c", ray_opts)
-                for file in class_count(lang=lang).get_files()
+                for file in class_count().get_files()
             ]
             + [
                 (file, str(temp_dir), "-p", ray_opts)
-                for file in property_count(lang=lang).get_files()
+                for file in property_count().get_files()
             ],
             verbose=True,
             desc="Creating SST files",
@@ -332,7 +332,6 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
 
 wikidata.add_command(db_entities_attr)
 wikidata.add_command(db_entity_labels)
-wikidata.add_command(db_wp2wd)
 wikidata.add_command(db_ontcount)
 
 if __name__ == "__main__":

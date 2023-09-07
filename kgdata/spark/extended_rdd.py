@@ -17,6 +17,7 @@ from typing import (
     Protocol,
     Sequence,
     TypeVar,
+    Union,
 )
 
 import serde.json
@@ -49,7 +50,7 @@ V3 = TypeVar("V3")
 
 
 S = TypeVar("S", bound=SupportsOrdering)
-StrPath = Path | str
+StrPath = Union[Path, str]
 NEW_DATASET_NAME = "__new__"
 NO_CHECKSUM = (b"\x00" * 32).hex()
 

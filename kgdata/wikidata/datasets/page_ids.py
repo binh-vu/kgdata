@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 from functools import lru_cache
 from operator import itemgetter
