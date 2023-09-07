@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from functools import lru_cache, partial
-from random import randrange
-from typing import Iterable, Optional
-
-import orjson
+from functools import lru_cache
+from typing import Optional
 
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
-from kgdata.models.ont_class import OntologyClass
-from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.entity_all_types import EntityAllTypes, entity_all_types
 from kgdata.wikidata.datasets.entity_degrees import EntityDegree, entity_degrees
 
@@ -38,7 +31,7 @@ def entity_types_and_degrees() -> Dataset[EntityTypeAndDegree]:
         name="entity-types-and-degrees",
         dependencies=[entity_all_types(), entity_degrees()],
     )
-    if not does_result_dir_exist(cfg.entity_types_and_degrees):
+    if not ds.has_complete_data():
         (
             entity_all_types()
             .get_extended_rdd()

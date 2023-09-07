@@ -3,13 +3,12 @@ from typing import Dict, List, Tuple
 import orjson
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def property_domains(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
+def property_domains() -> Dataset[Tuple[str, Dict[str, int]]]:
     """Extract the domains of a property.
 
     NOTE: it does not returns children of a domain class but only the class that appears
@@ -19,22 +18,23 @@ def property_domains(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
     class Men, which is a child of the class Human.
     """
     cfg = WikidataDirCfg.get_instance()
-
-    if not does_result_dir_exist(cfg.property_domains):
+    ds = Dataset(
+        cfg.property_domains / "*.gz",
+        deserialize=orjson.loads,
+        name="property-domains",
+        dependencies=[entities()],
+    )
+    if not ds.has_complete_data():
         (
-            entities(lang)
-            .get_rdd()
+            entities()
+            .get_extended_rdd()
             .flatMap(get_property_domains)
             .reduceByKey(merge_counters)
-            .coalesce(256)
             .map(orjson.dumps)
-            .saveAsTextFile(
-                str(cfg.property_domains),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(ds, auto_coalesce=True, max_num_partitions=512)
         )
 
-    return Dataset(cfg.property_domains / "*.gz", deserialize=orjson.loads)
+    return ds
 
 
 def merge_counters(a: Dict[str, int], b: Dict[str, int]):

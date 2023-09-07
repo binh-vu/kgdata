@@ -5,7 +5,7 @@ from rsoup.core import Cell, Table
 
 from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
-from kgdata.wikidata.datasets.wp2wd import wp2wd
+from kgdata.wikidata.datasets.deprecated.wp2wd import wp2wd
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable, WikiLink

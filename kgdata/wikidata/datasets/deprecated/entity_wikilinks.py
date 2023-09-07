@@ -7,7 +7,7 @@ from kgdata.dataset import Dataset
 from kgdata.dbpedia.datasets.wikilinks import WikiLink, wikilinks
 from kgdata.spark import does_result_dir_exist, left_outer_join
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.wp2wd import wp2wd
+from kgdata.wikidata.datasets.deprecated.wp2wd import wp2wd
 from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
 
 

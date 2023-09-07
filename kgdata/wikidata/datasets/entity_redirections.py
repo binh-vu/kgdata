@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from collections import defaultdict
 from functools import lru_cache
-from typing import Dict, Tuple
+from typing import Dict
 
 import serde.csv
 import serde.textline
@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 from kgdata.dataset import Dataset
 from kgdata.misc.funcs import split_tab_2
-from kgdata.spark import get_spark_context
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_ids import entity_ids, is_entity_id

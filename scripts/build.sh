@@ -20,16 +20,31 @@ python -m kgdata.dbpedia.datasets -d entity_labels
 # ======================================================================
 # WIKIDATA Datasets
 
-python -m kgdata.wikidata.datasets -d entities
-python -m kgdata.wikidata.datasets -d classes
-python -m kgdata.wikidata.datasets -d properties
-python -m kgdata.wikidata.datasets -d entity_types
 python -m kgdata.wikidata.datasets -d class_count
-python -m kgdata.wikidata.datasets -d entity_all_types
+python -m kgdata.wikidata.datasets -d classes
 python -m kgdata.wikidata.datasets -d cross_wiki_mapping
+python -m kgdata.wikidata.datasets -d entities
+python -m kgdata.wikidata.datasets -d entity_all_types
 python -m kgdata.wikidata.datasets -d entity_degrees
-python -m kgdata.wikidata.datasets -d entity_types_and_degrees
+python -m kgdata.wikidata.datasets -d entity_ids
 python -m kgdata.wikidata.datasets -d entity_labels
+python -m kgdata.wikidata.datasets -d entity_metadata
+python -m kgdata.wikidata.datasets -d entity_pagerank
+python -m kgdata.wikidata.datasets -d entity_redirections
+python -m kgdata.wikidata.datasets -d entity_types_and_degrees
+python -m kgdata.wikidata.datasets -d entity_types
+python -m kgdata.wikidata.datasets -d page_ids
+python -m kgdata.wikidata.datasets -d properties
+python -m kgdata.wikidata.datasets -d property_count
+python -m kgdata.wikidata.datasets -d property_domains
+python -m kgdata.wikidata.datasets -d property_ranges
+
+
+
+
+
+
+
 
 # python -m kgdata.wikidata entity_labels -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
 # python -m kgdata.wikidata classes -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en

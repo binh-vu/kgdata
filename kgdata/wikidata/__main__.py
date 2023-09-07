@@ -11,8 +11,6 @@ import click
 import orjson
 import ray
 import serde.jl
-from timer import Timer
-
 from hugedict.cachedict import CacheDict
 from hugedict.prelude import (
     RocksDBDict,
@@ -22,23 +20,23 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
     rocksdb_load,
 )
+from sm.misc.ray_helper import ray_map
+from timer import Timer
+
 from kgdata.config import init_dbdir_from_env
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets import import_dataset
 from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.entity_metadata import entity_metadata
 from kgdata.wikidata.datasets.property_count import property_count
-from kgdata.wikidata.datasets.wp2wd import wp2wd
 from kgdata.wikidata.db import (
     WikidataDB,
     get_entity_label_db,
     get_ontcount_db,
-    get_wp2wd_db,
     pack_int,
 )
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
-from sm.misc.ray_helper import ray_map
 
 if TYPE_CHECKING:
     from hugedict.hugedict.rocksdb import FileFormat
@@ -247,42 +245,6 @@ wikidata.add_command(
 )
 
 
-@click.command(name="wp2wd")
-@click.option("-d", "--directory", default="", help="Wikidata directory")
-@click.option("-o", "--output", help="Output directory")
-@click.option(
-    "-c",
-    "--compact",
-    is_flag=True,
-    help="Whether to compact the results. May take a very very long time",
-)
-@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def db_wp2wd(directory: str, output: str, compact: bool, lang: str):
-    """Mapping from Wikipedia articles to Wikidata entities"""
-    WikidataDirCfg.init(directory)
-
-    dbpath = Path(output) / "wp2wd.db"
-    dbpath.mkdir(exist_ok=True, parents=True)
-
-    options = cast(
-        RocksDBDict,
-        get_wp2wd_db(dbpath, create_if_missing=True, read_only=False),
-    ).options
-    gc.collect()
-
-    rocksdb_load(
-        dbpath=str(dbpath),
-        dbopts=options,
-        files=wp2wd(lang=lang).get_files(),
-        format={
-            "record_type": {"type": "tuple2", "key": None, "value": None},
-            "is_sorted": False,
-        },
-        verbose=True,
-        compact=True,
-    )
-
-
 @click.command(name="ontcount")
 @click.option("-d", "--directory", default="", help="Wikidata directory")
 @click.option("-o", "--output", help="Output directory")
@@ -311,7 +273,6 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
     gc.collect()
 
     import ray
-
     from sm.misc.ray_helper import ray_map, ray_put
 
     ray.init()

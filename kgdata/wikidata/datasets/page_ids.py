@@ -1,13 +1,13 @@
 import csv
 from functools import lru_cache
 from operator import itemgetter
-from typing import Optional, Tuple
+from typing import Optional
 
 from sm.misc.funcs import is_not_null
 
 from kgdata.dataset import Dataset
 from kgdata.misc.funcs import split_tab_2
-from kgdata.spark import are_records_unique, does_result_dir_exist
+from kgdata.spark import are_records_unique
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_ids import is_entity_id
 from kgdata.wikidata.datasets.page_dump import page_dump
@@ -33,7 +33,7 @@ def page_ids() -> Dataset[tuple[str, str]]:
         dependencies=[page_dump_ds],
     )
 
-    if not does_result_dir_exist(cfg.page_ids):
+    if not ds.has_complete_data():
         (
             page_dump_ds.get_extended_rdd()
             .flatMap(parse_sql_values)

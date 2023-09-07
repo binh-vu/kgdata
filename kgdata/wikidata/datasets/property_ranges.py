@@ -12,35 +12,35 @@ from kgdata.wikidata.datasets.property_domains import merge_counters
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def property_ranges(lang="en") -> Dataset[Tuple[str, Dict[str, int]]]:
+def property_ranges() -> Dataset[Tuple[str, Dict[str, int]]]:
     """Extract the ranges of a property.
 
     NOTE: it does not returns children of a range class but only the class that is typed of an entity
     in the statement target with the property.
     """
     cfg = WikidataDirCfg.get_instance()
+    ds = Dataset(
+        cfg.property_ranges / "*.gz",
+        deserialize=orjson.loads,
+        name="property-ranges",
+        dependencies=[entities(), entity_types()],
+    )
 
     if not does_result_dir_exist(cfg.property_ranges):
         # mapping from entity id to the incoming properties with counts
-        ent_prop_counts = (
-            entities(lang)
-            .get_rdd()
+        (
+            entities()
+            .get_extended_rdd()
             .flatMap(get_target_property_entity)
             .reduceByKey(merge_counters)
-        )
-        (
-            ent_prop_counts.join(entity_types(lang).get_rdd())
+            .join(entity_types().get_extended_rdd())
             .flatMap(lambda x: join_prop_counts_and_types(x[1][0], x[1][1]))
             .reduceByKey(merge_counters)
-            .coalesce(256)
             .map(orjson.dumps)
-            .saveAsTextFile(
-                str(cfg.property_ranges),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            )
+            .save_like_dataset(ds, auto_coalesce=True, max_num_partitions=512)
         )
 
-    return Dataset(cfg.property_ranges / "*.gz", deserialize=orjson.loads)
+    return ds
 
 
 def join_prop_counts_and_types(

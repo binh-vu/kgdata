@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import glob
 import hashlib
-import math
 import os
 import shutil
 from dataclasses import dataclass
 from datetime import datetime
-from operator import add
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
-    Any,
     Callable,
     Generic,
     Hashable,
@@ -19,15 +16,12 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
-    TypeGuard,
     TypeVar,
-    Union,
-    overload,
 )
 
 import serde.json
-from loguru import logger
 from pyspark.rdd import RDD, portable_hash
+from typing_extensions import TypeGuard
 
 from kgdata.spark.common import (
     estimate_num_partitions,
