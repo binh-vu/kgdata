@@ -4,12 +4,10 @@ from functools import partial
 from typing import BinaryIO, Iterable, Union, cast
 
 import orjson
-import serde.json
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict
-from kgdata.spark import are_records_unique, does_result_dir_exist
-from kgdata.spark.extended_rdd import DatasetSignature
+from kgdata.spark import are_records_unique
 from kgdata.splitter import split_a_file
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.models.html_article import HTMLArticle

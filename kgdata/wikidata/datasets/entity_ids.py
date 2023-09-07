@@ -5,11 +5,8 @@ from sm.misc.funcs import identity_func
 from tqdm import tqdm
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, get_spark_context, head
-from kgdata.splitter import default_currentbyte_constructor
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
-from kgdata.wikidata.models.wdentity import WDEntity
 
 
 def is_entity_id(id: str) -> bool:

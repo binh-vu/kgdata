@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from functools import partial
-from random import randrange
-from typing import Iterable, Optional
+from typing import Optional
 
-import orjson
 
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
-from kgdata.dbpedia.datasets.class_count import class_count
 from kgdata.dbpedia.datasets.entity_all_types import EntityAllTypes, entity_all_types
 from kgdata.dbpedia.datasets.entity_degrees import EntityDegree, entity_degrees
 from kgdata.misc.resource import Record
-from kgdata.models.ont_class import OntologyClass
-from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
 
 
 @dataclass

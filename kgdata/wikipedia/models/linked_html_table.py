@@ -1,7 +1,7 @@
 from __future__ import annotations
-import copy, orjson
+import orjson
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 from rsoup.core import Table
 from sm.dataset import FullTable, Context

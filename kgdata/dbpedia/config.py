@@ -1,7 +1,6 @@
 """Locations of DBpedia dumps and datasets on disk."""
 
 import re
-from dataclasses import dataclass
 from functools import lru_cache
 from glob import glob
 from pathlib import Path

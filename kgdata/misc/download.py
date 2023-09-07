@@ -9,10 +9,9 @@ import subprocess
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
-from functools import lru_cache, reduce
-from operator import add
+from functools import lru_cache
 from pathlib import Path
-from typing import MutableSequence, Optional, Sequence, cast
+from typing import Optional, cast
 from urllib.parse import urlparse
 
 import requests

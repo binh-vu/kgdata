@@ -1,4 +1,3 @@
-import orjson
 
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg

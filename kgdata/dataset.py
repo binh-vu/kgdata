@@ -18,7 +18,6 @@ from typing import (
     Union,
     cast,
 )
-from uuid import uuid4
 
 import click
 import serde.byteline

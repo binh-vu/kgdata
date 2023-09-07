@@ -1,6 +1,5 @@
 """Utility functions for Apache Spark."""
 
-import glob
 import math
 import os
 import random
@@ -24,7 +23,6 @@ from typing import (
 import orjson
 from loguru import logger
 from pyspark import RDD, SparkConf, SparkContext
-from rdflib import Literal
 
 # SparkContext singleton
 _sc = None

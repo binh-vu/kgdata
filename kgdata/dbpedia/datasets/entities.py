@@ -21,7 +21,6 @@ from kgdata.dbpedia.datasets.properties import (
 from kgdata.misc.resource import RDFResource, Record
 from kgdata.models.entity import Entity, Statement
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from kgdata.spark import DatasetSignature
 from kgdata.wikipedia.misc import get_title_from_url
 
 

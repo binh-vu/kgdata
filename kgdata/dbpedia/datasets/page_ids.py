@@ -9,8 +9,7 @@ from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.page_id_dump import page_id_dump
 from kgdata.misc.ntriples_parser import ntriple_loads
-from kgdata.spark import are_records_unique, does_result_dir_exist
-from kgdata.splitter import split_a_file
+from kgdata.spark import are_records_unique
 
 
 @dataclass

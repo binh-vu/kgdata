@@ -147,7 +147,6 @@ def build_extra_ent_db(
     ).options
     gc.collect()
 
-    import ray
 
     from kgdata.wikidata.datasets.entity_metadata import entity_metadata
     from kgdata.wikidata.datasets.entity_pagerank import entity_pagerank

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from kgdata.misc.ntriples_parser import node_from_dict, node_to_dict
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from rdflib import BNode, Literal, URIRef
+from rdflib import Literal, URIRef
 
 
 @dataclass

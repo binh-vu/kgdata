@@ -3,20 +3,16 @@ from __future__ import annotations
 import math
 import re
 from collections import defaultdict
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Callable, Iterable
 
-import orjson
-import serde.json
 from rdflib import OWL, RDF, RDFS, URIRef
 
 from kgdata.dataset import Dataset
-from kgdata.db import ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
-from kgdata.spark import ExtendedRDD, does_result_dir_exist, get_spark_context
+from kgdata.spark import ExtendedRDD
 from kgdata.splitter import split_a_file, split_a_list
 
 rdf_type = str(RDF.type)

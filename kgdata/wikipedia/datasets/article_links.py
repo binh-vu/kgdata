@@ -8,7 +8,6 @@ from rsoup.core import Document, RichText, RichTextConfig
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from functools import lru_cache, partial
+from functools import lru_cache
 from random import randrange
 from typing import Iterable, Optional
 
@@ -16,7 +16,6 @@ from kgdata.dbpedia.datasets.entity_types import entity_types
 from kgdata.misc.resource import Record
 from kgdata.models.ont_class import OntologyClass
 from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
-from kgdata.spark.extended_rdd import ExtendedRDD
 
 
 @dataclass

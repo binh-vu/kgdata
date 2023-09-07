@@ -1,8 +1,6 @@
-import sm.misc as M
 from rsoup.core import Table
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_tables import deser_table, html_tables, ser_table
 

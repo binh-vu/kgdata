@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import gc
-from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, cast
+from typing import TYPE_CHECKING, Optional
 
 import click
-from click.types import Choice
 
 from hugedict.prelude import RocksDBDict, init_env_logger, rocksdb_load
 from kgdata.config import init_dbdir_from_env
-from kgdata.dataset import Dataset
-from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets import import_dataset
 from kgdata.dbpedia.db import DBpediaDB
 

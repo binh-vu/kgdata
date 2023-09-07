@@ -7,7 +7,6 @@ from kgdata.dataset import Dataset
 from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
-from kgdata.wikidata.datasets.entity_types import entity_types, get_instanceof
 from kgdata.wikidata.datasets.properties import properties
 from kgdata.wikidata.models import WDEntity
 

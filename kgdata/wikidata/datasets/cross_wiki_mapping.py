@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import lru_cache
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional
 
 import orjson
 from sm.misc.funcs import assert_not_null
 
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity

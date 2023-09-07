@@ -1,11 +1,9 @@
-from dataclasses import dataclass
 from functools import partial
 from typing import Callable, List
 
 from rsoup.core import Table
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.linked_relational_tables import (
     deser_linked_tables,

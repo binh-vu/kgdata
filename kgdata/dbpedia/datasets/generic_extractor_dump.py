@@ -6,7 +6,7 @@ from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.ontology_dump import aggregated_triples
 from kgdata.misc.ntriples_parser import ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
-from kgdata.spark import ExtendedRDD, does_result_dir_exist
+from kgdata.spark import ExtendedRDD
 from kgdata.splitter import split_a_file
 
 

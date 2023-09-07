@@ -8,8 +8,7 @@ import orjson
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.classes import classes
-from kgdata.dbpedia.datasets.entities import entities
-from kgdata.dbpedia.datasets.entity_types import entity_types, get_instanceof
+from kgdata.dbpedia.datasets.entity_types import entity_types
 from kgdata.spark import does_result_dir_exist
 
 

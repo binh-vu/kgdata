@@ -4,7 +4,6 @@ from typing import Dict, Iterable, List, Literal, Tuple, Union
 from rsoup.core import Cell, Table
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.datasets.deprecated.wp2wd import wp2wd
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url

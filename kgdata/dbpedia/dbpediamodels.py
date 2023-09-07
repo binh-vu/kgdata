@@ -1,9 +1,9 @@
+import copy
 from dataclasses import dataclass, field
 from operator import itemgetter
-from typing import Set, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
-import copy
 import orjson
 import pandas as pd
 
@@ -122,15 +122,11 @@ class Row:
 class OverlapSpanException(Exception):
     """Indicating the table has cell rowspan and cell colspan overlaps"""
 
-    pass
-
 
 class InvalidColumnSpanException(Exception):
     """Indicating that the column span is not used in a standard way. In particular, the total of columns' span is beyond the maximum number of columns is considered
     to be non standard with one exception that only the last column spans more than the maximum number of columns
     """
-
-    pass
 
 
 @dataclass
@@ -213,7 +209,7 @@ class Table:
         # I try to make its behaviour as much closer to the browser as possible.
         # one thing I notice that to find the correct value of colspan, they takes into account the #cells of rows below the current row
         # so we may have to iterate several times
-        cols = [0 for _ in range(len(self.rows))]
+        cols: list[int] = [0 for _ in range(len(self.rows))]
         for i, row in enumerate(self.rows):
             cols[i] += len(row.cells)
             for cell in row.cells:

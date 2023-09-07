@@ -4,10 +4,7 @@ from rdflib import URIRef
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entities import entities
-from kgdata.dbpedia.datasets.ontology_dump import aggregated_triples
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
-from kgdata.misc.resource import RDFResource
-from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.splitter import split_a_file
 

@@ -6,7 +6,6 @@ from typing import Optional
 
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import (

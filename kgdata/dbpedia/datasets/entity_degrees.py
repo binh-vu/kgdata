@@ -12,7 +12,6 @@ from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entities import entities
 from kgdata.misc.resource import Record
 from kgdata.models.entity import Entity
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.datasets.article_degrees import ArticleDegree, article_degrees
 from kgdata.wikipedia.misc import get_title_from_url
 

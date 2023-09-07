@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.article_links import article_links
 

@@ -11,7 +11,6 @@ from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.wikilink_dump import wikilink_dump
 from kgdata.misc.ntriples_parser import ntriple_loads
 from kgdata.spark import are_records_unique, does_result_dir_exist
-from kgdata.splitter import split_a_file
 
 
 @dataclass

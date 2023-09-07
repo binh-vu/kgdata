@@ -13,7 +13,6 @@ from typing import (
     Sequence,
     Tuple,
     TypeVar,
-    cast,
 )
 
 import numpy as np
@@ -26,7 +25,6 @@ from kgdata.dataset import Dataset
 from kgdata.spark import (
     does_result_dir_exist,
     get_spark_context,
-    left_outer_join_repartition,
 )
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.wikidata.config import WikidataDirCfg

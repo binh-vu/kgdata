@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional
+from typing import List
 
-import orjson
 
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from kgdata.wikidata.models.wdstatement import WDStatement
-from kgdata.wikidata.models.wdvalue import WDValue
 
 
 # A stripped wikidata entity without its properties (except for instanceof, subclassof, subpropertyof)

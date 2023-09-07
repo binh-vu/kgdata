@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Literal, Mapping, Set
+from typing import Mapping
 
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 

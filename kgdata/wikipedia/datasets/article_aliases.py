@@ -7,7 +7,6 @@ import orjson
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.article_links import ArticleLinks, article_links
 
