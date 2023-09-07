@@ -11,12 +11,12 @@ from tqdm.auto import tqdm
 
 wd_dir = Path(os.environ["WD_DIR"])
 working_dir = wd_dir / "entity_pagerank"
-pagerank_outdir = working_dir / "graphtool_pagerank_en"
-edge_files = sorted(glob.glob(str((working_dir / "graphtool_en" / "part-*.npz"))))
+pagerank_outdir = working_dir / "graphtool_pagerank"
+edge_files = sorted(glob.glob(str((working_dir / "graphtool" / "part-*.npz"))))
 
 logger.info("Creating graph from data...")
 g = Graph(directed=True)
-n_vertices = int((working_dir / "idmap_en.txt").read_text())
+n_vertices = int((working_dir / "idmap.txt").read_text())
 g.add_vertex(n=n_vertices)
 logger.info("Creating graph... added vertices")
 

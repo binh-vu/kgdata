@@ -65,8 +65,15 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
             .sortBy(lambda x: (x[0], int(x[1:])))  # type: ignore
             .zipWithIndex()
             .map(tab_ser)
-            .save_like_dataset(idmap_ds, checksum=False)
+            .save_like_dataset(
+                idmap_ds,
+                checksum=False,
+                auto_coalesce=True,
+                max_num_partitions=512,
+            )
         )
+        # write the total number of entity
+        (cfg.entity_pagerank / "idmap.txt").write_text(str(idmap_ds.get_rdd().count()))
 
     edges_dataset = Dataset(
         cfg.entity_pagerank / "graph/*.gz",
@@ -137,12 +144,10 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
     )
     if not pagerank_ds.has_complete_data():
         assert does_result_dir_exist(
-            cfg.entity_pagerank / "graphtool_pagerank_en", allow_override=False
+            cfg.entity_pagerank / "graphtool_pagerank", allow_override=False
         ), "Must run graph-tool pagerank at `kgdata/scripts/pagerank_v2.py` first"
 
-        n_files = len(
-            glob(str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"))
-        )
+        n_files = len(glob(str(cfg.entity_pagerank / "graphtool_pagerank" / "*.npz")))
 
         def deserialize_np(dat: bytes) -> List[Tuple[int, float]]:
             f = BytesIO(dat)
@@ -158,7 +163,7 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
 
         (
             ExtendedRDD.binaryFiles(
-                cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz",
+                cfg.entity_pagerank / "graphtool_pagerank" / "*.npz",
             )
             .repartition(n_files)
             .flatMap(lambda x: deserialize_np(x[1]))
@@ -170,9 +175,7 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
 
     pagerank_stat_outfile = cfg.entity_pagerank / f"pagerank.pkl"
     if not pagerank_stat_outfile.exists():
-        n_files = len(
-            glob(str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"))
-        )
+        n_files = len(glob(str(cfg.entity_pagerank / "graphtool_pagerank" / "*.npz")))
 
         def deserialize_np2(dat: bytes) -> np.ndarray:
             f = BytesIO(dat)
@@ -182,7 +185,7 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
         rdd = (
             get_spark_context()
             .binaryFiles(
-                str(cfg.entity_pagerank / "graphtool_pagerank_en" / "*.npz"),
+                str(cfg.entity_pagerank / "graphtool_pagerank" / "*.npz"),
             )
             .repartition(n_files)
             .map(lambda x: deserialize_np2(x[1]))
