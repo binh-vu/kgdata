@@ -4,16 +4,7 @@ from functools import lru_cache
 from glob import glob
 from io import BytesIO
 from pathlib import Path
-from typing import (
-    Callable,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-)
+from typing import Callable, Generic, Iterable, List, Optional, Sequence, Tuple, TypeVar
 
 import numpy as np
 import orjson
@@ -22,10 +13,7 @@ import serde.textline
 from sm.misc.ray_helper import ray_map
 
 from kgdata.dataset import Dataset
-from kgdata.spark import (
-    does_result_dir_exist,
-    get_spark_context,
-)
+from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
@@ -67,7 +55,7 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
         cfg.entity_pagerank / "idmap/*.gz",
         deserialize=kv_tab_deser,
         name="entity-pagerank/idmap",
-        dependencies=[entity_ids()],
+        dependencies=[entities()],
     )
     if not idmap_ds.has_complete_data():
         (

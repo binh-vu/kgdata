@@ -4,8 +4,9 @@ from typing import Dict, Iterable, List, Literal, Tuple, Union
 from rsoup.core import Cell, Table
 
 from kgdata.dataset import Dataset
-from kgdata.wikidata.datasets.deprecated.wp2wd import wp2wd
+from kgdata.wikidata.datasets.cross_wiki_mapping import cross_wiki_mapping
 from kgdata.wikipedia.config import WikipediaDirCfg
+from kgdata.wikipedia.datasets.article_metadata import article_metadata
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable, WikiLink
 
@@ -26,11 +27,14 @@ def linked_tables(
     else:
         raise NotImplementedError(table_dataset_name)
 
-    ds = Dataset(file_pattern=outdir / "*.gz", deserialize=deser_linked_tables)
-
     module = import_module(f"kgdata.wikipedia.datasets.{table_dataset_name}")
     table_dataset: Dataset[Table] = getattr(module, table_dataset_name)()
-    ds.sign("linked-relational-tables", [table_dataset])
+    ds = Dataset(
+        file_pattern=outdir / "*.gz",
+        deserialize=deser_linked_tables,
+        name="linked-relational-tables",
+        dependencies=[table_dataset, cross_wiki_mapping(article_metadata())],
+    )
 
     if not ds.has_complete_data():
         module = import_module(f"kgdata.wikipedia.datasets.{table_dataset_name}")
@@ -40,21 +44,23 @@ def linked_tables(
             table_dataset.get_extended_rdd()
             .flatMap(extract_title_to_tables)
             .groupByKey()
-            .leftOuterJoin(wp2wd(lang).get_extended_rdd())
+            .leftOuterJoin(
+                cross_wiki_mapping(article_metadata())
+                .get_extended_rdd()
+                .map(lambda x: (x.wikipedia_title, x.wikidata_entityid))
+            )
             .flatMap(lambda x: [(tbl_id, (x[0], x[1][1])) for tbl_id in x[1][0]])
             .groupByKey()
         )
 
         (
-            table_dataset.get_rdd()
+            table_dataset.get_extended_rdd()
             .map(lambda tbl: (tbl.id, tbl))
             .leftOuterJoin(tbl2titles)
             .map(merge_link_to_table)
             .map(ser_linked_tables)
-            .coalesce(1024, shuffle=True)
-            .saveAsTextFile(
-                str(outdir),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
+            .save_like_dataset(
+                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
             )
         )
 

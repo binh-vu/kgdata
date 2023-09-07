@@ -10,8 +10,9 @@ def relational_tables() -> Dataset[Table]:
     ds = Dataset(
         file_pattern=cfg.relational_tables / "*.gz",
         deserialize=deser_table,
+        name="relational-tables",
+        dependencies=[html_tables()],
     )
-    ds.sign("relational-tables", [html_tables()])
 
     if not ds.has_complete_data():
         (
@@ -19,12 +20,8 @@ def relational_tables() -> Dataset[Table]:
             .get_extended_rdd()
             .filter(is_relational_table)
             .map(ser_table)
-            .save_as_dataset(
-                str(cfg.relational_tables),
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="relational-tables",
-                auto_coalesce=True,
-                shuffle=True,
+            .save_like_dataset(
+                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
             )
         )
 

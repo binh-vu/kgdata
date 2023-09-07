@@ -39,11 +39,19 @@ python -m kgdata.wikidata.datasets -d property_count
 python -m kgdata.wikidata.datasets -d property_domains
 python -m kgdata.wikidata.datasets -d property_ranges
 
+# ======================================================================
+# WIKIPEDIA Datasets
 
-
-
-
-
+python -m kgdata.wikipedia.datasets -d article_aliases
+python -m kgdata.wikipedia.datasets -d article_degrees
+python -m kgdata.wikipedia.datasets -d article_links
+python -m kgdata.wikipedia.datasets -d article_metadata
+python -m kgdata.wikipedia.datasets -d easy_tables_metadata
+python -m kgdata.wikipedia.datasets -d easy_tables
+python -m kgdata.wikipedia.datasets -d html_articles
+python -m kgdata.wikipedia.datasets -d html_tables
+python -m kgdata.wikipedia.datasets -d linked_relational_tables
+python -m kgdata.wikipedia.datasets -d relational_tables
 
 
 # python -m kgdata.wikidata entity_labels -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en

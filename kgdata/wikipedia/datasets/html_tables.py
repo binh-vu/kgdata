@@ -1,4 +1,3 @@
-
 from loguru import logger
 from rsoup.core import ContextExtractor, Table, TableExtractor
 
@@ -19,6 +18,8 @@ def html_tables() -> Dataset[Table]:
         deserialize=deser_table,
         # can be json object, or string. it is string when we fail to extract tables from the articles
         prefilter=lambda x: x[0] == "{",
+        name="html-tables",
+        dependencies=[html_articles()],
     )
 
     need_double_check = False
@@ -27,15 +28,9 @@ def html_tables() -> Dataset[Table]:
             html_articles()
             .get_extended_rdd()
             .flatMap(extract_tables)
-            .save_as_dataset(
-                cfg.html_tables,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="html-tables",
-            )
+            .save_like_dataset(ds)
         )
         need_double_check = True
-
-    ds.sign("html-tables", [html_articles()])
 
     if need_double_check:
         assert are_records_unique(ds.get_rdd(), lambda tbl: tbl.id)

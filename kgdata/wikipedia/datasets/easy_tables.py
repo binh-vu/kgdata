@@ -18,8 +18,12 @@ def easy_tables() -> Dataset[LinkedHTMLTable]:
     The table is easy or not is determined by :py:func:`kgdata.wikipedia.easy_table.is_easy_table`.
     """
     cfg = WikipediaDirCfg.get_instance()
-    ds = Dataset(file_pattern=cfg.easy_tables / "*.gz", deserialize=deser_linked_tables)
-    ds.sign("easy-tables", [linked_relational_tables()])
+    ds = Dataset(
+        file_pattern=cfg.easy_tables / "*.gz",
+        deserialize=deser_linked_tables,
+        name="easy-tables",
+        dependencies=[linked_relational_tables()],
+    )
 
     # step 1: generate stats of which tables passed which tests
 
@@ -49,12 +53,7 @@ def easy_tables() -> Dataset[LinkedHTMLTable]:
             .get_extended_rdd()
             .filter(partial(is_easy_table, tests=tests))
             .map(ser_linked_tables)
-            .save_as_dataset(
-                cfg.easy_tables,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="easy-tables",
-                auto_coalesce=True,
-            )
+            .save_like_dataset(ds, auto_coalesce=True)
         )
 
     return ds

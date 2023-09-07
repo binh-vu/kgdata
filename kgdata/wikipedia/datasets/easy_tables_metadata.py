@@ -25,8 +25,9 @@ def easy_tables_metadata() -> Dataset[TableMetadata]:
     ds = Dataset(
         file_pattern=cfg.easy_tables_metadata / "*.gz",
         deserialize=deser_easy_tables_metadata,
+        name="easy-tables-metadata",
+        dependencies=[entity_types(), easy_tables()],
     )
-    ds.sign("easy-tables-metadata", [entity_types(), easy_tables()])
 
     if not does_result_dir_exist(cfg.easy_tables_metadata):
         entity_type_rdd = entity_types().get_extended_rdd()
@@ -46,11 +47,7 @@ def easy_tables_metadata() -> Dataset[TableMetadata]:
         )
         ExtendedRDD(new_table_rdd, table_rdd.sig.use(entity_type_rdd.sig)).map(
             lambda tbl: orjson.dumps(asdict(tbl))
-        ).save_as_dataset(
-            cfg.easy_tables_metadata,
-            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-            name="easy-tables-metadata",
-        )
+        ).save_like_dataset(ds)
 
     return ds
 

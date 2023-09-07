@@ -58,9 +58,13 @@ def article_metadata() -> Dataset[ArticleMetadata]:
     )
 
     if not ds.has_complete_data():
-        html_articles().get_extended_rdd().map(extract_metadata).map(
-            ArticleMetadata.ser
-        ).save_like_dataset(ds)
+        (
+            html_articles()
+            .get_extended_rdd()
+            .map(extract_metadata)
+            .map(ArticleMetadata.ser)
+            .save_like_dataset(ds)
+        )
 
     return ds
 

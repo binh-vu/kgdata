@@ -38,6 +38,8 @@ def article_aliases() -> Dataset[ArticleAliases]:
     ds = Dataset(
         file_pattern=cfg.article_aliases / "*.gz",
         deserialize=partial(deser_from_dict, ArticleAliases),
+        name="article-aliases",
+        dependencies=[article_links()],
     )
 
     if not ds.has_complete_data():
@@ -48,11 +50,7 @@ def article_aliases() -> Dataset[ArticleAliases]:
             .map(lambda a: (a.url, a))
             .reduceByKey(merge_aliases)
             .map(lambda tup: orjson.dumps(tup[1].to_dict()))
-            .save_as_dataset(
-                cfg.article_aliases,
-                compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec",
-                name="article-aliases",
-            )
+            .save_like_dataset(ds)
         )
 
     return ds

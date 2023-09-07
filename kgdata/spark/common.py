@@ -1,4 +1,5 @@
 """Utility functions for Apache Spark."""
+from __future__ import annotations
 
 import math
 import os
@@ -427,6 +428,8 @@ def estimate_num_partitions(rdd: RDD[str] | RDD[bytes], partition_size: int) -> 
     total_size = rdd.map(get_bytes).sum()
     return math.ceil(total_size / partition_size)
 
+
 @dataclass
 class EmptyBroadcast(Generic[V]):
+    value: V
     value: V
