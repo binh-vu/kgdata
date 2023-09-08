@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 from typing import List, Optional
 
 import orjson
@@ -20,6 +21,7 @@ class TableMetadata:
     page_types: List[str]
 
 
+@lru_cache()
 def easy_tables_metadata() -> Dataset[TableMetadata]:
     cfg = WikipediaDirCfg.get_instance()
     ds = Dataset(

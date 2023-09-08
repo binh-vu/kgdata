@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from loguru import logger
 from rsoup.core import ContextExtractor, Table, TableExtractor
 
@@ -8,6 +10,7 @@ from kgdata.wikipedia.datasets.html_articles import html_articles
 from kgdata.wikipedia.models.html_article import HTMLArticle
 
 
+@lru_cache()
 def html_tables() -> Dataset[Table]:
     """Extracting all tables (at the lowest level) and their surrounding context from Wikipedia articles."""
 

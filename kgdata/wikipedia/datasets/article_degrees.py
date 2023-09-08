@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from operator import add
 from typing import Optional
 from urllib.parse import urlparse
@@ -18,6 +19,7 @@ class ArticleDegree(Record):
     outdegree: int
 
 
+@lru_cache()
 def article_degrees(lang: str = "en") -> Dataset[ArticleDegree]:
     """Computes the indegree and outdegree of all articles in the wikipedia
     corpus. The result is a dictionary mapping from article id to indegree and

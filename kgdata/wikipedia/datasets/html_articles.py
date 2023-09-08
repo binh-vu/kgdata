@@ -1,6 +1,6 @@
 import tarfile
 from datetime import datetime
-from functools import partial
+from functools import lru_cache, partial
 from typing import BinaryIO, Iterable, Union, cast
 
 import orjson
@@ -13,6 +13,7 @@ from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.models.html_article import HTMLArticle
 
 
+@lru_cache()
 def html_articles() -> Dataset[HTMLArticle]:
     """
     Extract HTML page

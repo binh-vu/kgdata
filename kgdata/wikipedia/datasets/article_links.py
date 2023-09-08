@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial
+from functools import lru_cache, partial
 from urllib.parse import urljoin, urlparse
 
 from rsoup.core import Document, RichText, RichTextConfig
@@ -52,6 +52,7 @@ class ArticleLinks:
         }
 
 
+@lru_cache()
 def article_links() -> Dataset[ArticleLinks]:
     cfg = WikipediaDirCfg.get_instance()
     ds = Dataset(

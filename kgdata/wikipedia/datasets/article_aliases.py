@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial
+from functools import lru_cache, partial
 
 import orjson
 
@@ -30,6 +30,7 @@ class ArticleAliases:
         }
 
 
+@lru_cache()
 def article_aliases() -> Dataset[ArticleAliases]:
     """Extract a mapping from article urls to set of names that were used to refer to that article."""
 
