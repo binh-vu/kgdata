@@ -21,6 +21,11 @@ function wikipedia_dataset {
     python -m kgdata.wikipedia.datasets -d $1
 }
 
+function wikidata_db {
+    echo "Build wikidata database: $1 storing at $WD_DBDIR"
+    python -m kgdata.wikidata $1 -c -o $WD_DBDIR
+}
+
 # ======================================================================
 # DBPEDIA Datasets
 
@@ -34,7 +39,7 @@ function wikipedia_dataset {
 # dbpedia_dataset entity_degrees
 # dbpedia_dataset entity_types_and_degrees
 # dbpedia_dataset redirection_dump
-dbpedia_dataset entity_labels
+# dbpedia_dataset entity_labels
 
 # ======================================================================
 # WIKIDATA Datasets
@@ -61,17 +66,23 @@ dbpedia_dataset entity_labels
 # ======================================================================
 # WIKIPEDIA Datasets
 
-wikipedia_dataset article_aliases
-wikipedia_dataset article_degrees
-wikipedia_dataset article_links
-wikipedia_dataset article_metadata
-wikipedia_dataset easy_tables_metadata
-wikipedia_dataset easy_tables
-wikipedia_dataset html_articles
-wikipedia_dataset html_tables
-wikipedia_dataset linked_relational_tables
-wikipedia_dataset relational_tables
+# wikipedia_dataset article_aliases
+# wikipedia_dataset article_degrees
+# wikipedia_dataset article_links
+# wikipedia_dataset article_metadata
+# wikipedia_dataset easy_tables_metadata
+# wikipedia_dataset easy_tables
+# wikipedia_dataset html_articles
+# wikipedia_dataset html_tables
+# wikipedia_dataset linked_relational_tables
+# wikipedia_dataset relational_tables
 
+# ======================================================================
+# WIKIDATA Databases
+
+wikidata_db classes
+wikidata_db properties
+wikidata_db entities
 
 # python -m kgdata.wikidata entity_labels -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
 # python -m kgdata.wikidata classes -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
