@@ -23,11 +23,11 @@ import click
 import serde.byteline
 import serde.json
 import serde.textline
+from hugedict.misc import Chain2, identity
 from loguru import logger
 from pyspark import RDD
 from tqdm.auto import tqdm
 
-from hugedict.misc import Chain2, identity
 from kgdata.spark import ExtendedRDD, SparkLikeInterface, get_spark_context
 from kgdata.spark.common import does_result_dir_exist
 from kgdata.spark.extended_rdd import DatasetSignature
@@ -377,8 +377,18 @@ class Dataset(Generic[T_co]):
 
 
 def import_dataset(dataset: str, kwargs: Optional[dict] = None) -> Dataset:
-    kgname, dataset = dataset.split(".")
-    module = import_module(f"kgdata.{kgname}.datasets.{dataset}")
+    """Import a dataset by name such as wikidata.entities, wikidata.classes, or wikidata.classes.classes.
+    If there is only one dot (.) in the dataset, then the function to construct the dataset is expected
+    to be the same as the last module name so wikidata.classes.classes is the same as wikidata.classes.
+    """
+    parts = dataset.split(".")
+    if len(parts) == 2:
+        kgname, dataset = parts
+        dataset_module = dataset
+    else:
+        assert len(parts) == 3
+        kgname, dataset_module, dataset = parts
+    module = import_module(f"kgdata.{kgname}.datasets.{dataset_module}")
     kwargs = kwargs or {}
     return getattr(module, dataset)(**kwargs)
 
@@ -430,7 +440,9 @@ def compare(dir1: Path, dir2: Path):
                 files1 = list(subdir1.iterdir())
                 files2 = list(subdir2.iterdir())
 
-                if {f.relative_to(rootdir1) for f in files1} != {f.relative_to(rootdir2) for f in files2}:
+                if {f.relative_to(rootdir1) for f in files1} != {
+                    f.relative_to(rootdir2) for f in files2
+                }:
                     dirdiff.append(subdir1.relative_to(rootdir1))
                     break
                 else:
