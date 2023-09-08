@@ -11,7 +11,7 @@ from kgdata.misc.resource import Record
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
-from kgdata.wikipedia.datasets.article_metadata import ArticleMetadata
+from kgdata.wikipedia.datasets.article_metadata import ArticleMetadata, article_metadata
 from kgdata.wikipedia.misc import get_title_from_url
 from kgdata.wikipedia.models.html_article import HTMLArticle
 
@@ -110,6 +110,10 @@ def cross_wiki_mapping(
 
     ds = wd_ds if wdwpds is None else wdwpds
     return ds
+
+
+def default_cross_wiki_mapping():
+    return cross_wiki_mapping(article_metadata())
 
 
 def resolve_multiple_mapping(

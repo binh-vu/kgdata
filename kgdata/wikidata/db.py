@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import (
     Callable,
     Dict,
+    Generic,
     List,
     Literal,
     Optional,
@@ -20,19 +21,23 @@ from typing import (
 import orjson
 import requests
 import serde.jl as jl
-
 from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
+
 from kgdata.db import (
     deser_from_dict,
     get_rocksdb,
     large_dbopts,
+    make_get_rocksdb,
     medium_dbopts,
+    pack_float,
     pack_int,
     ser_to_dict,
     small_dbopts,
+    unpack_float,
     unpack_int,
 )
+from kgdata.models.entity import EntityLabel
 from kgdata.wikidata.datasets.entity_metadata import (
     deser_entity_metadata,
     ser_entity_metadata,
@@ -143,84 +148,93 @@ def query_wikidata_entities(
     return qnodes
 
 
-def proxy_wrapper(
-    dbfile: Union[Path, str],
-    cls: type[WDClass] | type[WDProperty] | type[WDEntity],
-    create_if_missing: bool = True,
-    read_only: bool = False,
-    proxy: bool = False,
-    dbopts: dict | None = None,
-) -> HugeMutableMapping[str, V]:
-    if proxy:
-        constructor = WDProxyDB
-        create_if_missing = True
-    else:
-        constructor = RocksDBDict
-
-    db = get_rocksdb(
-        dbfile,
-        ser_value=ser_to_dict,
-        deser_value=partial(deser_from_dict, cls),  # type: ignore
-        cls=constructor,
-        create_if_missing=create_if_missing,
-        read_only=read_only,
-        dbopts=dbopts,
-    )
-    if proxy:
-        if hasattr(cls, "from_entity"):
-            return cast(WDProxyDB, db).set_extract_ent_from_entity(cls.from_entity)  # type: ignore
-        return cast(WDProxyDB, db).set_extract_ent_from_entity(lambda x: x)
-    return db  # type: ignore
+WrappableClass = TypeVar("WrappableClass", WDClass, WDProperty, WDEntity)
 
 
-get_class_db = partial(proxy_wrapper, cls=WDClass, dbopts=medium_dbopts)
-get_prop_db = partial(proxy_wrapper, cls=WDProperty, dbopts=small_dbopts)
-get_entity_db = partial(proxy_wrapper, cls=WDEntity, dbopts=large_dbopts)
-get_entity_metadata_db = partial(
-    get_rocksdb,
+class proxy_wrapper(Generic[WrappableClass]):
+    def __init__(
+        self,
+        cls: type[WrappableClass],
+        dbopts: dict | None = None,
+    ):
+        self.cls = cls
+        self.dbopts = dbopts
+
+    def __call__(
+        self,
+        dbfile: Union[Path, str],
+        *,
+        create_if_missing: bool = True,
+        read_only: bool = False,
+        proxy: bool = False,
+    ) -> HugeMutableMapping[str, WrappableClass]:
+        if proxy:
+            constructor = WDProxyDB
+            create_if_missing = True
+        else:
+            constructor = RocksDBDict
+
+        db = get_rocksdb(
+            dbfile,
+            ser_value=ser_to_dict,
+            deser_value=partial(deser_from_dict, self.cls),
+            cls=constructor,
+            create_if_missing=create_if_missing,
+            read_only=read_only,
+            dbopts=self.dbopts,
+        )
+        if proxy:
+            if hasattr(self.cls, "from_entity"):
+                return cast(WDProxyDB, db).set_extract_ent_from_entity(cls.from_entity)  # type: ignore
+            return cast(WDProxyDB, db).set_extract_ent_from_entity(lambda x: x)
+        return db  # type: ignore
+
+
+get_class_db = proxy_wrapper(cls=WDClass, dbopts=medium_dbopts)
+get_prop_db = proxy_wrapper(cls=WDProperty, dbopts=small_dbopts)
+get_entity_db = proxy_wrapper(cls=WDEntity, dbopts=large_dbopts)
+get_entity_metadata_db = make_get_rocksdb(
     deser_value=deser_entity_metadata,
     ser_value=ser_entity_metadata,
     dbopts=large_dbopts,
     version="2",
 )
-get_entity_redirection_db = partial(
-    get_rocksdb,
+get_entity_redirection_db = make_get_rocksdb(
     deser_value=partial(str, encoding="utf-8"),
     ser_value=str.encode,
     dbopts=small_dbopts,
 )
-get_entity_label_db = partial(
-    get_rocksdb,
-    deser_value=partial(deser_from_dict, WDEntityLabel),
+get_entity_label_db = make_get_rocksdb(
+    deser_value=partial(deser_from_dict, EntityLabel),
     ser_value=ser_to_dict,
     dbopts=small_dbopts,
 )
-get_entity_wikilinks_db = partial(
-    get_rocksdb,
+get_entity_pagerank_db = make_get_rocksdb(
+    deser_value=unpack_float,
+    ser_value=pack_float,
+    dbopts={"compression_type": "none"},
+)
+get_entity_wikilinks_db = make_get_rocksdb(
     deser_value=partial(deser_from_dict, WDEntityWikiLink),
     ser_value=ser_to_dict,
     dbopts=small_dbopts,
 )
-get_wp2wd_db = partial(
-    get_rocksdb,
+get_wp2wd_db = make_get_rocksdb(
     deser_value=partial(str, encoding="utf-8"),
     ser_value=str.encode,
     dbopts=small_dbopts,
 )
-get_ontcount_db = partial(
-    get_rocksdb,
+get_ontcount_db = make_get_rocksdb(
     deser_value=unpack_int,
     ser_value=pack_int,
     dbopts={"compression_type": "none"},
 )
-get_prop_range_db = partial(
-    get_rocksdb,
+get_prop_range_db = make_get_rocksdb(
     deser_value=orjson.loads,
     ser_value=orjson.dumps,
     dbopts=small_dbopts,
 )
-get_prop_domain_db = partial(
-    get_rocksdb,
+get_prop_domain_db = make_get_rocksdb(
     deser_value=orjson.loads,
     ser_value=orjson.dumps,
     dbopts=small_dbopts,
@@ -302,7 +316,7 @@ class WikidataDB:
         )
 
     @cached_property
-    def redirections(self):
+    def entity_redirections(self):
         return get_entity_redirection_db(
             self.database_dir / "entity_redirections.db", read_only=self.read_only
         )
@@ -312,11 +326,9 @@ class WikidataDB:
         return get_wp2wd_db(self.database_dir / "wp2wd.db", read_only=self.read_only)
 
     @cached_property
-    def pagerank(self):
-        return get_entity_attr_db(
-            self.database_dir / "entities_attr.db",
-            "pagerank",
-            read_only=self.read_only,
+    def entity_pagerank(self):
+        return get_entity_pagerank_db(
+            self.database_dir / "entity_pagerank.db", read_only=self.read_only
         )
 
     @cached_property

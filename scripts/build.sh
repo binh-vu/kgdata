@@ -85,6 +85,8 @@ wikidata_db properties
 wikidata_db entities
 wikidata_db entity_labels
 wikidata_db entity_pagerank
+wikidata_db entity_redirections
+wikidata_db wp2wd
 
 # python -m kgdata.wikidata entity_labels -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
 # python -m kgdata.wikidata classes -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en

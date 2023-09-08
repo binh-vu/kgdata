@@ -151,8 +151,6 @@ wikidata.add_command(
         },
     )
 )
-
-
 wikidata.add_command(
     dataset2db(
         "entity_labels",
@@ -164,9 +162,33 @@ wikidata.add_command(
 )
 wikidata.add_command(
     dataset2db(
+        "entity_pagerank",
+        format={
+            "record_type": {"type": "tuple2", "key": None, "value": None},
+            "is_sorted": False,
+        },
+    )
+)
+wikidata.add_command(
+    dataset2db(
         "entity_redirections",
         format={
             "record_type": {"type": "tabsep", "key": None, "value": None},
+            "is_sorted": False,
+        },
+    )
+)
+wikidata.add_command(
+    dataset2db(
+        "cross_wiki_mapping.default_cross_wiki_mapping",
+        dbname="wp2wd",
+        command_name="wp2wd",
+        format={
+            "record_type": {
+                "type": "ndjson",
+                "key": "wikipedia_title",
+                "value": "wikidata_entityid",
+            },
             "is_sorted": False,
         },
     )

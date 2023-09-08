@@ -57,6 +57,13 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
         name="entity-pagerank/idmap",
         dependencies=[entities()],
     )
+    pagerank_ds = Dataset(
+        cfg.entity_pagerank / "pagerank/*.gz",
+        deserialize=orjson.loads,
+        name="entity-pagerank/pagerank",
+        dependencies=[entities()],
+    )
+
     if not idmap_ds.has_complete_data():
         (
             entities()
@@ -136,12 +143,6 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
         )
         (graphtool_indir / "_SUCCESS").touch()
 
-    pagerank_ds = Dataset(
-        cfg.entity_pagerank / "pagerank/*.gz",
-        deserialize=orjson.loads,
-        name="entity-pagerank/pagerank",
-        dependencies=[entities()],
-    )
     if not pagerank_ds.has_complete_data():
         assert does_result_dir_exist(
             cfg.entity_pagerank / "graphtool_pagerank", allow_override=False
