@@ -1,3 +1,4 @@
+import re
 from functools import partial
 from typing import Callable, List
 
@@ -121,7 +122,14 @@ class EasyTests:
                 ), f"Table {tbl.table.id} must have exactly one <th> element."
                 thel = thels[0]
                 colspan = header.value.get_element_attr_by_id(thel, "colspan")
-                if colspan is not None and colspan != "" and int(colspan) > 1:
+                # html forgiveness is enable, so we accept value such as 100%, etc, and only
+                # use the number at the beginning just like the browser.
+                if (
+                    colspan is not None
+                    and colspan != ""
+                    and (m := re.search(r"\d+", colspan)) is not None
+                    and int(m.group(0)) > 1
+                ):
                     return False
         return True
 
