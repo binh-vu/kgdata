@@ -17,6 +17,7 @@ def entity_redirection_dump() -> Dataset[str]:
     ds = Dataset.string(
         cfg.entity_redirection_dump / "*.gz",
         name=f"entity-redirection-dump/{dump_date}",
+        dependencies=[],
     )
 
     if not ds.has_complete_data():
@@ -28,7 +29,7 @@ def entity_redirection_dump() -> Dataset[str]:
             n_writers=8,
             override=False,
         )
-        ds.sign(ds.get_name(), [])
+        ds.sign(ds.get_name(), ds.get_dependencies())
 
     return ds
 
