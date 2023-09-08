@@ -41,3 +41,7 @@ def init_dbdir_from_env():
     if log_config == "1":
         logger.info("Wikipedia directory: {}", os.environ[WP_DIR_NAME])
     WikipediaDirCfg.init(os.environ[WP_DIR_NAME])
+
+
+if __name__ == "__main__":
+    init_dbdir_from_env()
