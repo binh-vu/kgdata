@@ -11,6 +11,7 @@ import click
 import orjson
 import ray
 import serde.jl
+import serde.json
 from hugedict.cachedict import CacheDict
 from hugedict.prelude import (
     RocksDBDict,
@@ -20,12 +21,14 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
     rocksdb_load,
 )
+from loguru import logger
 from sm.misc.ray_helper import ray_map
 from timer import Timer
 
 from kgdata.config import init_dbdir_from_env
+from kgdata.dataset import import_dataset
+from kgdata.spark.extended_rdd import DatasetSignature
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets import import_dataset
 from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.entity_metadata import entity_metadata
 from kgdata.wikidata.datasets.property_count import property_count
@@ -84,14 +87,31 @@ def dataset2db(
         if lang is not None:
             ds_kwargs["lang"] = lang
 
+        ds = import_dataset("wikidata." + dataset, ds_kwargs)
+        db_sig_file = Path(dbpath) / "_SIGNATURE"
+        if db_sig_file.exists():
+            db_sig = DatasetSignature.from_dict(serde.json.deser(db_sig_file))
+            ds_sig = ds.get_signature()
+
+            if db_sig != ds_sig:
+                raise Exception(
+                    "Trying to rebuild database, but the database already exists with different signature."
+                )
+
+            logger.info(
+                "Database already exists with the same signature. Skip building."
+            )
+            return
+
         rocksdb_load(
             dbpath=dbpath,
             dbopts=options,
-            files=import_dataset(dataset, ds_kwargs).get_files(),
+            files=ds.get_files(),
             format=fileformat,
             verbose=True,
             compact=compact,
         )
+        serde.json.ser(ds.get_signature().to_dict(), db_sig_file)
 
     return command
 
@@ -99,18 +119,6 @@ def dataset2db(
 @click.group()
 def wikidata():
     pass
-
-
-wikidata.add_command(dataset2db("entities", "entities"))
-wikidata.add_command(
-    dataset2db(
-        "entity_metadata",
-        format={
-            "record_type": {"type": "ndjson", "key": "0", "value": None},
-            "is_sorted": False,
-        },
-    )
-)
 
 
 @click.command(name="entity_attr")
@@ -133,76 +141,27 @@ def db_entities_attr(attr: EntAttr, output: str, compact: bool, lang: str):
     build_extra_ent_db(dbpath, attr, lang=lang, compact=compact)
 
 
-@click.command(name="entity_labels")
-@click.option("-d", "--directory", default="", help="Wikidata directory")
-@click.option("-o", "--output", help="Output directory")
-@click.option(
-    "-c",
-    "--compact",
-    is_flag=True,
-    help="Whether to compact the results. May take a very very long time",
+wikidata.add_command(dataset2db("entities", "entities"))
+wikidata.add_command(
+    dataset2db(
+        "entity_metadata",
+        format={
+            "record_type": {"type": "ndjson", "key": "0", "value": None},
+            "is_sorted": False,
+        },
+    )
 )
-@click.option("-l", "--lang", default="en", help="Default language of the Wikidata")
-def db_entity_labels(directory: str, output: str, compact: bool, lang: str):
-    """Wikidata entity labels"""
-    WikidataDirCfg.init(directory)
-
-    dbpath = Path(output) / "entity_labels.db"
-    dbpath.mkdir(exist_ok=True, parents=True)
-
-    temp_dir = dbpath / "_temporary"
-    if temp_dir.exists():
-        shutil.rmtree(temp_dir)
-    temp_dir.mkdir()
-
-    options = cast(
-        RocksDBDict,
-        get_entity_label_db(dbpath, create_if_missing=True, read_only=False),
-    ).options
-    gc.collect()
-
-    ray.init()
-
-    @ray.remote
-    def _build_sst_file(infile: str, temp_dir: str, options: RocksDBOptions):
-        kvs = sorted(
-            [
-                (
-                    obj["id"].encode(),
-                    orjson.dumps(WDEntityLabel.from_wdentity_raw(obj).to_dict()),
-                )
-                for obj in serde.jl.deser(infile)
-            ],
-            key=itemgetter(0),
-        )
-        tmp = {"counter": 0}
-
-        def input_gen():
-            if tmp["counter"] == len(kvs):
-                return None
-            obj = kvs[tmp["counter"]]
-            tmp["counter"] += 1
-            return obj
-
-        outfile = os.path.join(temp_dir, Path(infile).stem + ".sst")
-        rocksdb_build_sst_file(options, outfile, input_gen)
-        return outfile
-
-    ray_opts = ray.put(options)
-    with Timer().watch_and_report("Creating SST files"):
-        sst_files = ray_map(
-            _build_sst_file.remote,
-            [
-                (file, str(temp_dir), ray_opts)
-                for file in entity_metadata(lang=lang).get_files()
-            ],
-            verbose=True,
-        )
-
-    with Timer().watch_and_report("Ingesting SST files"):
-        rocksdb_ingest_sst_files(str(dbpath), options, sst_files, True)
 
 
+wikidata.add_command(
+    dataset2db(
+        "entity_labels",
+        format={
+            "record_type": {"type": "ndjson", "key": "id", "value": "label"},
+            "is_sorted": False,
+        },
+    )
+)
 wikidata.add_command(
     dataset2db(
         "entity_redirections",
@@ -331,7 +290,6 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
 
 
 wikidata.add_command(db_entities_attr)
-wikidata.add_command(db_entity_labels)
 wikidata.add_command(db_ontcount)
 
 if __name__ == "__main__":

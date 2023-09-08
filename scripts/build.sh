@@ -51,7 +51,7 @@ function wikidata_db {
 # wikidata_dataset entity_all_types
 # wikidata_dataset entity_degrees
 # wikidata_dataset entity_ids
-# wikidata_dataset entity_labels
+wikidata_dataset entity_labels
 # wikidata_dataset entity_metadata
 # wikidata_dataset entity_pagerank
 # wikidata_dataset entity_redirections
@@ -83,6 +83,8 @@ function wikidata_db {
 wikidata_db classes
 wikidata_db properties
 wikidata_db entities
+wikidata_db entity_labels
+wikidata_db entity_pagerank
 
 # python -m kgdata.wikidata entity_labels -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
 # python -m kgdata.wikidata classes -d data/wikidata/20211213 -o data/databases/20211213_v2 -c -l en
