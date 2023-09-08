@@ -4,10 +4,10 @@ import gc
 from typing import TYPE_CHECKING, Optional
 
 import click
-
 from hugedict.prelude import RocksDBDict, init_env_logger, rocksdb_load
+
 from kgdata.config import init_dbdir_from_env
-from kgdata.dbpedia.datasets import import_dataset
+from kgdata.dataset import import_dataset
 from kgdata.dbpedia.db import DBpediaDB
 
 if TYPE_CHECKING:
@@ -55,7 +55,7 @@ def dataset2db(
         rocksdb_load(
             dbpath=dbpath,
             dbopts=options,
-            files=import_dataset(dataset, ds_kwargs).get_files(),
+            files=import_dataset("dbpedia." + dataset, ds_kwargs).get_files(),
             format=fileformat,
             verbose=True,
             compact=compact,

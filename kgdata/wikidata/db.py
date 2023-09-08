@@ -154,10 +154,10 @@ WrappableClass = TypeVar("WrappableClass", WDClass, WDProperty, WDEntity)
 class proxy_wrapper(Generic[WrappableClass]):
     def __init__(
         self,
-        cls: type[WrappableClass],
+        clz: type[WrappableClass],
         dbopts: dict | None = None,
     ):
-        self.cls = cls
+        self.cls = clz
         self.dbopts = dbopts
 
     def __call__(
@@ -185,14 +185,14 @@ class proxy_wrapper(Generic[WrappableClass]):
         )
         if proxy:
             if hasattr(self.cls, "from_entity"):
-                return cast(WDProxyDB, db).set_extract_ent_from_entity(cls.from_entity)  # type: ignore
+                return cast(WDProxyDB, db).set_extract_ent_from_entity(self.cls.from_entity)  # type: ignore
             return cast(WDProxyDB, db).set_extract_ent_from_entity(lambda x: x)
         return db  # type: ignore
 
 
-get_class_db = proxy_wrapper(cls=WDClass, dbopts=medium_dbopts)
-get_prop_db = proxy_wrapper(cls=WDProperty, dbopts=small_dbopts)
-get_entity_db = proxy_wrapper(cls=WDEntity, dbopts=large_dbopts)
+get_class_db = proxy_wrapper(clz=WDClass, dbopts=medium_dbopts)
+get_prop_db = proxy_wrapper(clz=WDProperty, dbopts=small_dbopts)
+get_entity_db = proxy_wrapper(clz=WDEntity, dbopts=large_dbopts)
 get_entity_metadata_db = make_get_rocksdb(
     deser_value=deser_entity_metadata,
     ser_value=ser_entity_metadata,
