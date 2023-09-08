@@ -5,23 +5,10 @@ from functools import partial
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
-from kgdata.models.multilingual import MultiLingualString
+from kgdata.models.entity import EntityLabel
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
-
-
-@dataclass
-class EntityLabel:
-    id: str
-    label: MultiLingualString
-
-    @staticmethod
-    def from_dict(obj: dict):
-        return EntityLabel(obj["id"], MultiLingualString.from_dict(obj["label"]))
-
-    def to_dict(self):
-        return {"id": self.id, "label": self.label.to_dict()}
 
 
 def entity_labels() -> Dataset[EntityLabel]:

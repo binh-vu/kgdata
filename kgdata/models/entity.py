@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rdflib import Literal, URIRef
+
 from kgdata.misc.ntriples_parser import node_from_dict, node_to_dict
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from rdflib import Literal, URIRef
 
 
 @dataclass
@@ -63,3 +64,34 @@ class Statement:
             k: [node_from_dict(v) for v in lst] for k, lst in o["qualifiers"].items()
         }
         return cls(**o)
+
+
+@dataclass
+class EntityLabel:
+    __slots__ = ("id", "label")
+    id: str
+    label: str
+
+    @staticmethod
+    def from_dict(o: dict):
+        return EntityLabel(o["id"], o["label"])
+
+    def to_dict(self):
+        return {"id": self.id, "label": self.label}
+
+    @staticmethod
+    def from_entity(ent: Entity):
+        return EntityLabel(ent.id, str(ent.label))
+
+
+@dataclass
+class EntityMultiLingualLabel:
+    id: str
+    label: MultiLingualString
+
+    @staticmethod
+    def from_dict(obj: dict):
+        return EntityLabel(obj["id"], MultiLingualString.from_dict(obj["label"]))
+
+    def to_dict(self):
+        return {"id": self.id, "label": self.label.to_dict()}
