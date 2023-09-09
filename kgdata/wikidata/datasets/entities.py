@@ -1,10 +1,10 @@
 from functools import lru_cache, partial
-from typing import Dict, Set, Union
+from typing import Dict, Optional, Set, Union
 
 import orjson
 from loguru import logger
 from pyspark import Broadcast
-from sm.misc.funcs import filter_duplication
+from sm.misc.funcs import filter_duplication, is_not_null
 
 from kgdata.dataset import Dataset
 from kgdata.misc.funcs import split_tab_2
@@ -51,6 +51,12 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
         name="entities/redirected-ids",
         dependencies=[dangling_id_ds, entity_redirections()],
     )
+    invalid_qualifier_ds = Dataset(
+        cfg.entities / "error_invalid_qualifiers/part-*",
+        deserialize=deser_entity,
+        name="entities/error-invalid-qualifiers",
+        dependencies=[entity_dump()],
+    )
     fixed_ds = Dataset(
         cfg.entities / lang / "*.gz",
         deserialize=deser_entity,
@@ -87,6 +93,19 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
             .map(lambda x: (x[0], x[1][1]))
             .map(lambda x: "\t".join(x))
             .save_like_dataset(redirected_id_ds, auto_coalesce=True)
+        )
+
+    if not invalid_qualifier_ds.has_complete_data():
+        (
+            entity_dump()
+            .get_extended_rdd()
+            .map(partial(WDEntity.from_wikidump, lang=lang))
+            .map(extract_invalid_qualifier)
+            .filter_update_type(is_not_null)
+            .map(ser_entity)
+            .save_like_dataset(
+                invalid_qualifier_ds, auto_coalesce=True, min_num_partitions=1
+            )
         )
 
     if not fixed_ds.has_complete_data():
@@ -231,13 +250,13 @@ def fix_transitive_qualifier(ent: WDEntity):
             for qid, qvals in list(stmt.qualifiers.items()):
                 if qid != pid:
                     continue
-                assert qid in transitive_props, qid
-                for qval in qvals:
-                    new_stmts.append(
-                        WDStatement(
-                            qval, qualifiers={}, qualifiers_order=[], rank=stmt.rank
+                if qid in transitive_props:
+                    for qval in qvals:
+                        new_stmts.append(
+                            WDStatement(
+                                qval, qualifiers={}, qualifiers_order=[], rank=stmt.rank
+                            )
                         )
-                    )
                 del stmt.qualifiers[qid]
                 stmt.qualifiers_order = [x for x in stmt.qualifiers_order if x != qid]
         new_stmts = filter_duplication(
@@ -245,6 +264,24 @@ def fix_transitive_qualifier(ent: WDEntity):
         )
         stmts.extend(new_stmts)
     return ent
+
+
+def extract_invalid_qualifier(ent: WDEntity) -> Optional[WDEntity]:
+    newent = ent.shallow_clone()
+    newent.props = {}
+    for pid, stmts in ent.props.items():
+        new_stmts: list[WDStatement] = []
+        for stmt in stmts:
+            for qid, qvals in list(stmt.qualifiers.items()):
+                if qid != pid:
+                    continue
+                new_stmts.append(stmt)
+        if len(new_stmts) > 0:
+            newent.props[pid] = new_stmts
+
+    if len(newent.props) > 0:
+        return newent
+    return None
 
 
 if __name__ == "__main__":

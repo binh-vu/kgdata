@@ -74,16 +74,17 @@ def properties(lang="en") -> Dataset[WDProperty]:
     if not full_ds.has_complete_data():
         properties = basic_ds.get_list()
 
-        # fix the prop based on manual modification
-        if (cfg.modification / "props.tsv").exists():
-            shutil.copy2(
-                cfg.modification / "props.tsv", cfg.properties / "props.modified.tsv"
-            )
-            id2prop = {p.id: p for p in properties}
-            id2mods = Modification.from_tsv(cfg.properties / "props.modified.tsv")
-            for cid, mods in id2mods.items():
-                for mod in mods:
-                    mod.apply(id2prop[cid])
+        # fix the prop based on manual modification -- even if there is no modification
+        # the file should be there to prevent typo
+        assert (cfg.modification / "props.tsv").exists()
+        shutil.copy2(
+            cfg.modification / "props.tsv", cfg.properties / "props.modified.tsv"
+        )
+        id2prop = {p.id: p for p in properties}
+        id2mods = Modification.from_tsv(cfg.properties / "props.modified.tsv")
+        for cid, mods in id2mods.items():
+            for mod in mods:
+                mod.apply(id2prop[cid])
 
         build_ancestors(properties)
         split_a_list(

@@ -7,7 +7,7 @@ from typing import List, Optional
 import orjson
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist, left_outer_join
+from kgdata.spark import left_outer_join
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.wikidata.datasets.entity_types import entity_types
 from kgdata.wikipedia.config import WikipediaDirCfg
@@ -31,7 +31,7 @@ def easy_tables_metadata() -> Dataset[TableMetadata]:
         dependencies=[entity_types(), easy_tables()],
     )
 
-    if not does_result_dir_exist(cfg.easy_tables_metadata):
+    if not ds.has_complete_data():
         entity_type_rdd = entity_types().get_extended_rdd()
         table_rdd = (
             easy_tables()

@@ -90,10 +90,10 @@ wikidata_dataset entity_types_and_degrees
 # ======================================================================
 # WIKIDATA Databases
 
-# wikidata_db classes
-# wikidata_db properties
-# wikidata_db entities
-# wikidata_db entity_labels
-# wikidata_db entity_pagerank
-# wikidata_db entity_redirections
-# wikidata_db wp2wd
+wikidata_db classes
+wikidata_db properties
+wikidata_db entities
+wikidata_db entity_labels
+wikidata_db entity_redirections
+wikidata_db wp2wd
+wikidata_db entity_pagerank

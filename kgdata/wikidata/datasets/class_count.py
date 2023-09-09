@@ -4,7 +4,6 @@ from typing import Tuple
 import orjson
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.classes import classes
 from kgdata.wikidata.datasets.entity_types import entity_types
@@ -19,7 +18,7 @@ def class_count() -> Dataset[Tuple[str, int]]:
         dependencies=[entity_types(), classes()],
     )
 
-    if not does_result_dir_exist(cfg.class_count):
+    if not ds.has_complete_data():
         class_count = (
             entity_types()
             .get_extended_rdd()
@@ -36,7 +35,8 @@ def class_count() -> Dataset[Tuple[str, int]]:
             .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
-    if not (cfg.class_count / "../class_count_sorted.tsv").exists():
+    count_file = cfg.class_count / f"../{cfg.class_count.name}_sorted.tsv"
+    if not count_file.exists():
         (
             classes()
             .get_extended_rdd()
@@ -45,7 +45,7 @@ def class_count() -> Dataset[Tuple[str, int]]:
             .map(lambda x: (x[0], x[1][0], x[1][1]))
             .sortBy(lambda x: x[2], ascending=False)
             .map(lambda x: "\t".join([str(y) for y in x]))
-            .save_as_single_text_file(cfg.class_count / "../class_count_sorted.tsv")
+            .save_as_single_text_file(count_file)
         )
 
     return ds

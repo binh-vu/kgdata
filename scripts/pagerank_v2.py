@@ -10,7 +10,7 @@ from loguru import logger
 from tqdm.auto import tqdm
 
 wd_dir = Path(os.environ["WD_DIR"])
-working_dir = wd_dir / "entity_pagerank"
+working_dir = wd_dir / "074_entity_pagerank"
 pagerank_outdir = working_dir / "graphtool_pagerank"
 edge_files = sorted(glob.glob(str((working_dir / "graphtool" / "part-*.npz"))))
 

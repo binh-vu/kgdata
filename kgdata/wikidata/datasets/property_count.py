@@ -4,7 +4,6 @@ from typing import Tuple
 import orjson
 
 from kgdata.dataset import Dataset
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.properties import properties
@@ -20,7 +19,7 @@ def property_count() -> Dataset[Tuple[str, int]]:
         dependencies=[entities(), properties()],
     )
 
-    if not does_result_dir_exist(cfg.property_count):
+    if not ds.has_complete_data():
         rdd = entities().get_extended_rdd().map(get_property)
 
         property_count = rdd.flatMap(lambda x: [(c, 1) for c in x[1]]).reduceByKey(add)
@@ -34,7 +33,8 @@ def property_count() -> Dataset[Tuple[str, int]]:
             .save_like_dataset(ds)
         )
 
-    if not (cfg.property_count / "../property_count_sorted.tsv").exists():
+    count_file = cfg.property_count / f"../{cfg.property_count.name}_sorted.tsv"
+    if not count_file.exists():
         (
             properties()
             .get_extended_rdd()
@@ -43,9 +43,7 @@ def property_count() -> Dataset[Tuple[str, int]]:
             .map(lambda x: (x[0], x[1][0], x[1][1]))
             .sortBy(lambda x: x[2], ascending=False)
             .map(lambda x: "\t".join([str(y) for y in x]))
-            .save_as_single_text_file(
-                cfg.property_count / "../property_count_sorted.tsv"
-            )
+            .save_as_single_text_file(count_file)
         )
 
     return ds

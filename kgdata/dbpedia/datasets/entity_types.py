@@ -7,7 +7,6 @@ from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entities import entities
 from kgdata.models.entity import Entity
-from kgdata.spark import does_result_dir_exist
 
 
 def entity_types(lang: str = "en") -> Dataset[tuple[str, list[str]]]:
@@ -19,7 +18,7 @@ def entity_types(lang: str = "en") -> Dataset[tuple[str, list[str]]]:
         dependencies=[entities(lang)],
     )
 
-    if not does_result_dir_exist(cfg.entity_types):
+    if not ds.has_complete_data():
         (
             entities(lang)
             .get_extended_rdd()

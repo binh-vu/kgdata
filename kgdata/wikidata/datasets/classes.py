@@ -57,16 +57,17 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
     if not full_ds.has_complete_data():
         classes = basic_ds.get_list()
 
-        # fix the class based on manual modification
-        if (cfg.modification / "classes.tsv").exists():
-            shutil.copy2(
-                cfg.modification / "classes.tsv", cfg.classes / "classes.modified.tsv"
-            )
-            id2class = {c.id: c for c in classes}
-            id2mods = Modification.from_tsv(cfg.classes / "classes.modified.tsv")
-            for cid, mods in id2mods.items():
-                for mod in mods:
-                    mod.apply(id2class[cid])
+        # fix the class based on manual modification -- even if there is no modification
+        # the file should be there to prevent typo
+        assert (cfg.modification / "classes.tsv").exists()
+        shutil.copy2(
+            cfg.modification / "classes.tsv", cfg.classes / "classes.modified.tsv"
+        )
+        id2class = {c.id: c for c in classes}
+        id2mods = Modification.from_tsv(cfg.classes / "classes.modified.tsv")
+        for cid, mods in id2mods.items():
+            for mod in mods:
+                mod.apply(id2class[cid])
 
         build_ancestors(classes)
         split_a_list(

@@ -344,6 +344,7 @@ class Dataset(Generic[T_co]):
         need_sig: bool = True,
         allow_override: bool = True,
         create_if_not_exist: bool = False,
+        verify_dependencies_signature: bool = True,
     ) -> bool:
         """Check if the indir contains the completed dataset.
 
@@ -367,6 +368,29 @@ class Dataset(Generic[T_co]):
             if (indir / "_SIGNATURE").exists():
                 signature = serde.json.deser(indir / "_SIGNATURE", DatasetSignature)
                 if signature.is_valid():
+                    # signature is valid -- should we go ahead and verify if the dependencies
+                    # is also match?
+                    if verify_dependencies_signature:
+                        for dep in self.get_dependencies():
+                            if (
+                                dep.get_signature()
+                                != signature.dependencies[dep.get_name()]
+                            ):
+                                logger.info(
+                                    "Signature of a depenency {} does not match what is stored in {}",
+                                    dep.get_name(),
+                                    self.get_name(),
+                                )
+                                logger.info(
+                                    "Dependency's signature: {}", dep.get_signature()
+                                )
+                                logger.info(
+                                    "Dependency's signature stored in the dataset: {}",
+                                    signature.dependencies[dep.get_name()],
+                                )
+                                raise Exception(
+                                    f"The signature of {dep.get_name()} does not match with what is stored in {self.get_name()}. Abort!"
+                                )
                     return True
 
             # TODO: how to construct the signature -- we have no information about the dependents?

@@ -26,7 +26,7 @@ def property_ranges() -> Dataset[Tuple[str, Dict[str, int]]]:
         dependencies=[entities(), entity_types()],
     )
 
-    if not does_result_dir_exist(cfg.property_ranges):
+    if not ds.has_complete_data():
         # mapping from entity id to the incoming properties with counts
         (
             entities()

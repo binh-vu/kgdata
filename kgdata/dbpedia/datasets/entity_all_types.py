@@ -15,7 +15,7 @@ from kgdata.dbpedia.datasets.classes import classes
 from kgdata.dbpedia.datasets.entity_types import entity_types
 from kgdata.misc.resource import Record
 from kgdata.models.ont_class import OntologyClass
-from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
+from kgdata.spark import are_records_unique, get_spark_context
 
 
 @dataclass
@@ -43,7 +43,7 @@ def entity_all_types(lang: str = "en") -> Dataset[EntityAllTypes]:
 
     unique_check = False
 
-    if not does_result_dir_exist(cfg.entity_all_types):
+    if not ds.has_complete_data():
         sc = get_spark_context()
 
         id2count = dict(

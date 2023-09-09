@@ -28,7 +28,7 @@ class WikidataDirCfg:
         self.entities = datadir / "023_entities"
         self.entity_types = datadir / "024_entity_types"
 
-        self.modification = datadir / "030_modification"
+        self.modification = datadir / "030_modifications"
 
         self.classes = datadir / "040_classes"
         self.properties = datadir / "041_properties"

@@ -6,7 +6,6 @@ from typing import Optional
 
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.datasets.entity_degrees import EntityDegree
-from kgdata.spark import does_result_dir_exist
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.cross_wiki_mapping import cross_wiki_mapping
 from kgdata.wikidata.datasets.entities import entities
@@ -50,7 +49,7 @@ def entity_degrees() -> Dataset[EntityDegree]:
             .save_like_dataset(step1_ds, checksum=False)
         )
 
-    if not does_result_dir_exist(cfg.entity_degrees / "step2"):
+    if not ds.has_complete_data():
         (
             step1_ds.get_extended_rdd()
             .map(lambda e: (e.id, e))

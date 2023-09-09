@@ -11,7 +11,7 @@ from kgdata.dbpedia.datasets.entity_all_types import (
     merge_type_dist,
     merge_types,
 )
-from kgdata.spark import are_records_unique, does_result_dir_exist, get_spark_context
+from kgdata.spark import are_records_unique, get_spark_context
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.classes import classes
@@ -33,7 +33,7 @@ def entity_all_types() -> Dataset[EntityAllTypes]:
 
     unique_check = False
 
-    if not does_result_dir_exist(cfg.entity_all_types):
+    if not ds.has_complete_data():
         id2count = (
             class_count()
             .get_rdd()

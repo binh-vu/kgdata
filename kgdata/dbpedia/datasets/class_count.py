@@ -9,7 +9,6 @@ from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.classes import classes
 from kgdata.dbpedia.datasets.entity_types import entity_types
-from kgdata.spark import does_result_dir_exist
 
 
 @lru_cache()
@@ -22,7 +21,7 @@ def class_count(lang="en") -> Dataset[tuple[str, int]]:
         dependencies=[entity_types(lang), classes()],
     )
 
-    if not does_result_dir_exist(cfg.class_count):
+    if not ds.has_complete_data():
         class_count = (
             entity_types(lang)
             .get_extended_rdd()
@@ -39,7 +38,8 @@ def class_count(lang="en") -> Dataset[tuple[str, int]]:
             .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
-    if not (cfg.class_count / "../class_count_sorted.tsv").exists():
+    count_file = cfg.class_count / f"../{cfg.class_count.name}_sorted.tsv"
+    if not count_file.exists():
         (
             classes()
             .get_extended_rdd()
@@ -48,7 +48,7 @@ def class_count(lang="en") -> Dataset[tuple[str, int]]:
             .map(lambda x: (x[0], x[1][0], x[1][1]))
             .sortBy(lambda x: x[2], ascending=False)
             .map(lambda x: "\t".join([str(y) for y in x]))
-            .save_as_single_text_file(cfg.class_count / "../class_count_sorted.tsv")
+            .save_as_single_text_file(count_file)
         )
 
     return ds

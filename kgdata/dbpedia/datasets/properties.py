@@ -14,7 +14,6 @@ from kgdata.dbpedia.datasets.ontology_dump import RDFResource, ontology_dump
 from kgdata.misc.hierarchy import build_ancestors
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_property import OntologyProperty
-from kgdata.spark import does_result_dir_exist
 from kgdata.splitter import split_a_list
 
 rdf_type = str(RDF.type)
@@ -25,21 +24,20 @@ rdfs_subpropertyof = str(RDFS.subPropertyOf)
 
 def properties() -> Dataset[OntologyProperty]:
     cfg = DBpediaDirCfg.get_instance()
-    outdir = cfg.properties
     ds = Dataset(
-        outdir / "*.jl",
+        cfg.properties / "*.jl",
         deserialize=partial(deser_from_dict, OntologyProperty),
         name="properties",
         dependencies=[ontology_dump()],
     )
 
-    if not does_result_dir_exist(outdir):
+    if not ds.has_complete_data():
         ont_ds = ontology_dump()
         props = ont_ds.get_rdd_alike().filter(is_prop).map(to_prop).collect()
         build_ancestors(props)
 
         # use this function, but it gonna keeps in one file
-        split_a_list([ser_to_dict(p) for p in props], outdir / "part.jl")
+        split_a_list([ser_to_dict(p) for p in props], cfg.properties / "part.jl")
         ds.sign("properties", [ont_ds])
 
     return ds
