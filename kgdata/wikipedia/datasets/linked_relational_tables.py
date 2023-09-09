@@ -59,9 +59,7 @@ def linked_tables(
             .leftOuterJoin(tbl2titles)
             .map(merge_link_to_table)
             .map(ser_linked_tables)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

@@ -71,7 +71,6 @@ def entity_degrees() -> Dataset[EntityDegree]:
                 ds,
                 auto_coalesce=True,
                 shuffle=True,
-                max_num_partitions=1024,
                 trust_dataset_dependencies=True,
             )
         )

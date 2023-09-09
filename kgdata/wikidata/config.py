@@ -17,36 +17,39 @@ class WikidataDirCfg:
 
         # directorys contain dumps and their splitted files
         # for the name of the dumps, see the corresponding function `self.get_X_file` in this class
-        self.dumps = datadir / "dumps"
-        self.entity_dump = datadir / "entity_dump"
-        self.page_dump = datadir / "page_dump"
-        self.entity_redirection_dump = datadir / "entity_redirection_dump"
+        self.dumps = datadir / "000_dumps"
+        self.entity_dump = datadir / "012_entity_dump"
+        self.page_dump = datadir / "010_page_dump"
+        self.entity_redirection_dump = datadir / "011_entity_redirection_dump"
 
-        self.entity_ids = datadir / "entity_ids"
-        self.entity_labels = datadir / "entity_labels"
-        self.entity_types = datadir / "entity_types"
-        self.entity_all_types = datadir / "entity_all_types"
-        self.entity_wikilinks = datadir / "entity_wikilinks"
-        self.entity_metadata = datadir / "entity_metadata"
-        self.entity_pagerank = datadir / "entity_pagerank"
-        self.entity_degrees = datadir / "entity_degrees"
-        self.entity_types_and_degrees = datadir / "entity_types_and_degrees"
-        self.page_ids = datadir / "page_ids"
-        self.entities = datadir / "entities"
+        self.page_ids = datadir / "020_page_ids"
+        self.entity_ids = datadir / "021_entity_ids"
+        self.entity_redirections = datadir / "022_entity_redirections"
+        self.entities = datadir / "023_entities"
+        self.entity_types = datadir / "024_entity_types"
 
-        self.modification = datadir / "modification"
-        self.classes = datadir / "classes"
-        self.class_count = datadir / "class_count"
-        self.properties = datadir / "properties"
-        self.property_count = datadir / "property_count"
-        self.property_domains = datadir / "property_domains"
-        self.property_ranges = datadir / "property_ranges"
-        self.cross_wiki_mapping = datadir / "cross_wiki_mapping"
+        self.modification = datadir / "030_modification"
+
+        self.classes = datadir / "040_classes"
+        self.properties = datadir / "041_properties"
+        self.class_count = datadir / "042_class_count"
+        self.property_count = datadir / "043_property_count"
+        self.property_domains = datadir / "044_property_domains"
+        self.property_ranges = datadir / "045_property_ranges"
+
+        self.cross_wiki_mapping = datadir / "050_cross_wiki_mapping"
+
+        self.entity_metadata = datadir / "070_entity_metadata"
+        self.entity_labels = datadir / "071_entity_labels"
+        self.entity_all_types = datadir / "072_entity_all_types"
+        self.entity_wikilinks = datadir / "073_entity_wikilinks"
+        self.entity_pagerank = datadir / "074_entity_pagerank"
+        self.entity_degrees = datadir / "075_entity_degrees"
+        self.entity_types_and_degrees = datadir / "076_entity_types_and_degrees"
+
+        # deprecated
         self.wp2wd = datadir / "wp2wd"
-
         self.search = datadir / "search"
-
-        self.entity_redirections = datadir / "entity_redirections"
 
     @lru_cache
     def get_dump_date(self):

@@ -39,9 +39,7 @@ def entity_types_and_degrees() -> Dataset[EntityTypeAndDegree]:
             .join(entity_degrees().get_extended_rdd().map(lambda e: (e.id, e)))
             .map(merge_type_degree)
             .map(EntityTypeAndDegree.ser)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

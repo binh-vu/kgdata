@@ -24,9 +24,7 @@ def entity_types() -> Dataset[tuple[str, list[str]]]:
             .get_extended_rdd()
             .map(get_instanceof)
             .map(orjson.dumps)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

@@ -46,9 +46,7 @@ def mapping_extractor_dump(lang: str = "en") -> Dataset[RDFResource]:
             .groupBy(lambda x: x[0])
             .map(aggregated_triples)
             .map(RDFResource.ser)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=512
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

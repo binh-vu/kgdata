@@ -40,9 +40,7 @@ def redirection_dump(lang: str = "en"):
             )  # join with entities to filter out non-existing entities
             .flatMap(lambda x: x[1][0])  # get back the redirections
             .map(orjson.dumps)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=512
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

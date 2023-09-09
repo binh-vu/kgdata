@@ -31,7 +31,7 @@ def property_domains() -> Dataset[Tuple[str, Dict[str, int]]]:
             .flatMap(get_property_domains)
             .reduceByKey(merge_counters)
             .map(orjson.dumps)
-            .save_like_dataset(ds, auto_coalesce=True, max_num_partitions=512)
+            .save_like_dataset(ds, auto_coalesce=True)
         )
 
     return ds

@@ -56,7 +56,6 @@ def entity_degrees(lang: str = "en") -> Dataset[EntityDegree]:
                 step1_ds,
                 checksum=False,
                 auto_coalesce=True,
-                max_num_partitions=512,
             )
         )
 
@@ -74,7 +73,6 @@ def entity_degrees(lang: str = "en") -> Dataset[EntityDegree]:
             .save_like_dataset(
                 step2_ds,
                 auto_coalesce=True,
-                max_num_partitions=512,
                 trust_dataset_dependencies=True,
             )
         )

@@ -34,7 +34,7 @@ def entity_ids() -> Dataset[str]:
             entity_dump()
             .get_extended_rdd()
             .map(itemgetter("id"))
-            .save_like_dataset(id_ds)
+            .save_like_dataset(id_ds, auto_coalesce=True)
         )
 
     if not (cfg.entity_ids / "identifiers.txt").exists():

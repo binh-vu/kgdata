@@ -83,9 +83,7 @@ def cross_wiki_mapping(
                 .map(resolve_multiple_mapping)
                 .filter(lambda x: x is not None)
                 .map(lambda e: WikipediaWikidataMapping.ser(assert_not_null(e)))
-                .save_like_dataset(
-                    wdwpds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
-                )
+                .save_like_dataset(wdwpds, auto_coalesce=True, shuffle=True)
             )
             need_verification = True
 

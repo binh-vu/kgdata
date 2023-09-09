@@ -37,7 +37,7 @@ def property_ranges() -> Dataset[Tuple[str, Dict[str, int]]]:
             .flatMap(lambda x: join_prop_counts_and_types(x[1][0], x[1][1]))
             .reduceByKey(merge_counters)
             .map(orjson.dumps)
-            .save_like_dataset(ds, auto_coalesce=True, max_num_partitions=512)
+            .save_like_dataset(ds, auto_coalesce=True)
         )
 
     return ds

@@ -20,9 +20,7 @@ def relational_tables() -> Dataset[Table]:
             .get_extended_rdd()
             .filter(is_relational_table)
             .map(ser_table)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

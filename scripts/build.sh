@@ -50,34 +50,38 @@ function wikidata_db {
 # python -m kgdata.wikidata.datasets -d entity_redirection_dump --sign
 # python -m kgdata.wikidata.datasets -d page_dump --sign
 
-# wikidata_dataset class_count
-# wikidata_dataset classes
-# wikidata_dataset cross_wiki_mapping
-# wikidata_dataset entities
-# wikidata_dataset entity_all_types
-# wikidata_dataset entity_degrees
-# wikidata_dataset entity_ids
-# wikidata_dataset entity_labels
-# wikidata_dataset entity_metadata
-# wikidata_dataset entity_pagerank
-# wikidata_dataset entity_redirections
-# wikidata_dataset entity_types_and_degrees
-# wikidata_dataset entity_types
-# wikidata_dataset page_ids
-# wikidata_dataset properties
-# wikidata_dataset property_count
-# wikidata_dataset property_domains
-# wikidata_dataset property_ranges
+wikidata_dataset page_ids
+wikidata_dataset entity_ids
+wikidata_dataset entity_redirections
+wikidata_dataset entities
+wikidata_dataset entity_types
+
+wikidata_dataset classes
+wikidata_dataset properties
+
+wikidata_dataset class_count
+wikidata_dataset property_count
+wikidata_dataset property_domains
+wikidata_dataset property_ranges
+
+wikidata_dataset cross_wiki_mapping
+
+wikidata_dataset entity_metadata
+wikidata_dataset entity_all_types
+wikidata_dataset entity_degrees
+wikidata_dataset entity_labels
+wikidata_dataset entity_pagerank
+wikidata_dataset entity_types_and_degrees
 
 # ======================================================================
 # WIKIPEDIA Datasets
 
-wikipedia_dataset html_articles -p 128
-wikipedia_dataset article_aliases -p 64
-wikipedia_dataset article_degrees -p 2
-wikipedia_dataset article_links -p 64
-wikipedia_dataset article_metadata -p 32
-wikipedia_dataset html_tables -p 64
+# wikipedia_dataset html_articles -p 128
+# wikipedia_dataset article_aliases -p 64
+# wikipedia_dataset article_degrees -p 2
+# wikipedia_dataset article_links -p 64
+# wikipedia_dataset article_metadata -p 32
+# wikipedia_dataset html_tables -p 64
 # wikipedia_dataset easy_tables_metadata
 # wikipedia_dataset easy_tables
 # wikipedia_dataset linked_relational_tables

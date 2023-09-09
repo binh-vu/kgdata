@@ -27,9 +27,7 @@ def entity_labels() -> Dataset[EntityLabel]:
             .get_extended_rdd()
             .map(get_labels)
             .map(ser_to_dict)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=1024
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

@@ -59,9 +59,7 @@ def properties(lang="en") -> Dataset[WDProperty]:
             .save_like_dataset(
                 basic_ds,
                 auto_coalesce=True,
-                partition_size=4 * 1024 * 1024,
                 shuffle=True,
-                max_num_partitions=512,
             )
         )
 

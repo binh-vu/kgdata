@@ -36,9 +36,7 @@ def class_count(lang="en") -> Dataset[tuple[str, int]]:
             .leftOuterJoin(class_count)
             .map(lambda x: (x[0], x[1][1] if x[1][1] is not None else 0))
             .map(orjson.dumps)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=512
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     if not (cfg.class_count / "../class_count_sorted.tsv").exists():

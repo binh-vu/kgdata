@@ -53,9 +53,7 @@ def entities(lang: str = "en") -> Dataset[Entity]:
             .map(lambda x: merge_resources(x[1][0], x[1][1]))
             .map(partial(to_entity, dump_lang=lang))
             .map(ser_to_dict)
-            .save_like_dataset(
-                merge_ds, checksum=False, auto_coalesce=True, max_num_partitions=512
-            )
+            .save_like_dataset(merge_ds, checksum=False, auto_coalesce=True)
         )
 
     if not final_ds.has_complete_data():
@@ -67,9 +65,7 @@ def entities(lang: str = "en") -> Dataset[Entity]:
             )
             .map(merge_new_triple)
             .map(ser_to_dict)
-            .save_like_dataset(
-                final_ds, auto_coalesce=True, shuffle=True, max_num_partitions=512
-            )
+            .save_like_dataset(final_ds, auto_coalesce=True, shuffle=True)
         )
 
     return final_ds

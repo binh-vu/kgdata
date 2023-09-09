@@ -65,7 +65,6 @@ def entity_all_types() -> Dataset[EntityAllTypes]:
             .save_like_dataset(
                 ds,
                 auto_coalesce=True,
-                max_num_partitions=1024,
             )
         )
 

@@ -76,7 +76,6 @@ def entity_pagerank() -> Dataset[EntityPageRank]:
                 idmap_ds,
                 checksum=False,
                 auto_coalesce=True,
-                max_num_partitions=512,
             )
         )
         # write the total number of entity

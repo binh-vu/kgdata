@@ -26,9 +26,7 @@ def entity_types(lang: str = "en") -> Dataset[tuple[str, list[str]]]:
             .map(get_instanceof)
             .map(orjson.dumps)
             .auto_coalesce(cache=True)
-            .save_like_dataset(
-                ds, auto_coalesce=True, shuffle=True, max_num_partitions=512
-            )
+            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
         )
 
     return ds

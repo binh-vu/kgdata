@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entity_all_types import EntityAllTypes, entity_all_types
@@ -42,7 +41,6 @@ def entity_types_and_degrees(lang: str = "en") -> Dataset[EntityTypeAndDegree]:
                 ds,
                 auto_coalesce=True,
                 shuffle=True,
-                max_num_partitions=512,
             )
         )
 

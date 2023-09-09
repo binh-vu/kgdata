@@ -42,7 +42,7 @@ def page_ids() -> Dataset[tuple[str, str]]:
             .map(extract_id)
             .filter_update_type(is_not_null)
             .map(lambda x: "\t".join(x))
-            .save_like_dataset(ds)
+            .save_like_dataset(ds, auto_coalesce=True)
         )
 
     if not (cfg.page_ids / "_METADATA").exists():

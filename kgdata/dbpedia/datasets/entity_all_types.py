@@ -75,7 +75,6 @@ def entity_all_types(lang: str = "en") -> Dataset[EntityAllTypes]:
                 ds,
                 auto_coalesce=True,
                 shuffle=True,
-                max_num_partitions=512,
             )
         )
 

@@ -104,7 +104,9 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
             .map(lambda x: fixed_entity(x, unknown_entities, redirected_entities))
             .map(lambda x: x[0])
             .map(ser_entity)
-            .save_like_dataset(fixed_ds, trust_dataset_dependencies=True)
+            .save_like_dataset(
+                fixed_ds, auto_coalesce=True, trust_dataset_dependencies=True
+            )
         )
 
     return fixed_ds
