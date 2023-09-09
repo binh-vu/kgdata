@@ -100,6 +100,7 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
             entity_dump()
             .get_extended_rdd()
             .map(partial(WDEntity.from_wikidump, lang=lang))
+            .map(fix_transitive_qualifier)
             .map(lambda x: fixed_entity(x, unknown_entities, redirected_entities))
             .map(lambda x: x[0])
             .map(ser_entity)

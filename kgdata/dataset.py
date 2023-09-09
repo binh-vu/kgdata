@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import math
 import os
 import re
 import shutil
@@ -28,6 +29,8 @@ from loguru import logger
 from pyspark import RDD
 from tqdm.auto import tqdm
 
+from kgdata.config import init_dbdir_from_env
+from kgdata.misc.query import PropQuery, every
 from kgdata.spark import ExtendedRDD, SparkLikeInterface, get_spark_context
 from kgdata.spark.common import does_result_dir_exist
 from kgdata.spark.extended_rdd import DatasetSignature
@@ -375,6 +378,28 @@ class Dataset(Generic[T_co]):
             return False
         return True
 
+    def get_temporary(self) -> Dataset:
+        data_dir = self.get_data_directory()
+        data_dir = data_dir.parent / (data_dir.name + "-tmp")
+
+        filepattern = Path(self.file_pattern)
+        if filepattern.name == "*.gz":
+            new_filepattern = data_dir / "*.gz"
+        elif filepattern.name == "part-*":
+            new_filepattern = data_dir / "part-*"
+        else:
+            raise NotImplementedError()
+
+        return Dataset(
+            file_pattern=new_filepattern,
+            deserialize=self.deserialize,
+            prefilter=self.prefilter,
+            postfilter=self.postfilter,
+            is_deser_identity=self.is_deser_identity,
+            name=self.name,
+            dependencies=self.dependencies,
+        )
+
 
 def import_dataset(dataset: str, kwargs: Optional[dict] = None) -> Dataset:
     """Import a dataset by name such as wikidata.entities, wikidata.classes, or wikidata.classes.classes.
@@ -482,6 +507,120 @@ def compare(dir1: Path, dir2: Path):
         logger.info("Different directories")
         for dir in dirdiff:
             print(f"- {dir}")
+
+
+def make_dataset_cli(kgname: str):
+    @click.command("Generate a specific dataset")
+    @click.option("-d", "--dataset", required=True, help="Dataset name")
+    @click.option(
+        "-s",
+        "--sign",
+        is_flag=True,
+        required=False,
+        default=False,
+        help="Sign the dataset if it hasn't been signed",
+    )
+    @click.option(
+        "-p",
+        "--partition",
+        type=int,
+        required=False,
+        default=0,
+        help="Rebalance the dataset so that each partition roughly has the desired MB",
+    )
+    @click.option(
+        "-t", "--take", type=int, required=False, default=0, help="Take n rows"
+    )
+    @click.option("-q", "--query", type=str, required=False, default="", help="Query")
+    @click.option("-l", "--limit", type=int, required=False, default=20, help="Limit")
+    def cli(
+        dataset: str,
+        sign: bool = False,
+        partition: int = 0,
+        take: int = 0,
+        query: str = "",
+        limit: int = 20,
+    ):
+        init_dbdir_from_env()
+
+        if sign:
+            # disable signature check
+            os.environ["KGDATA_FORCE_DISABLE_CHECK_SIGNATURE"] = "1"
+
+        ds: Dataset = import_dataset(kgname + "." + dataset)
+
+        if sign:
+            for dep in ds.get_dependencies():
+                # make sure that the dependencies are all signed
+                try:
+                    dep.get_signature()
+                except:
+                    print(f"{dep.get_name()} doesn't have a signature")
+                    raise
+
+            ds.sign(
+                ds.get_name(),
+                ds.get_dependencies(),
+            )
+
+        if partition > 0:
+            files = ds.get_files()
+            # get number of partitions, which each has the desired size in MB
+            n_partitions = math.ceil(
+                sum((os.path.getsize(file) for file in files))
+                / (partition * 1024 * 1024)
+            )
+            if abs(n_partitions - len(files)) > 2:
+                print(
+                    f"Repartitioning the dataset, change the number of partitions from {len(files)} to {n_partitions}"
+                )
+                origin_deser = ds.deserialize
+                ds.deserialize = identity
+                temp_ds = ds.get_temporary()
+
+                origin_data_dir = ds.get_data_directory()
+                temp_data_dir = temp_ds.get_data_directory()
+
+                if not temp_ds.has_complete_data():
+                    ds.get_extended_rdd().coalesce(
+                        n_partitions, shuffle=True
+                    ).save_like_dataset(
+                        temp_ds,
+                        trust_dataset_dependencies=True,
+                    )
+                ds.deserialize = origin_deser
+                # make sure the signature are the same, then remove copy the signature
+                ds_sig = ds.get_signature()
+                tmp_ds_sig = temp_ds.get_signature()
+                tmp_ds_sig = tmp_ds_sig.update(created_at=ds_sig.created_at)
+                # assert ds_sig == tmp_ds_sig, (ds_sig.checksum, tmp_ds_sig.checksum)
+                assert ds_sig == tmp_ds_sig, (ds_sig, tmp_ds_sig)
+                shutil.copy2(
+                    origin_data_dir / "_SIGNATURE",
+                    temp_data_dir / "_SIGNATURE",
+                )
+                # then we can remove
+                shutil.move(origin_data_dir, str(origin_data_dir) + "-old")
+                shutil.move(temp_data_dir, origin_data_dir)
+            else:
+                print(
+                    f"Skip repartitioning dataset, as it has {len(files)} partitions and each partition has roughly {partition} MB"
+                )
+
+        if take > 0:
+            for record in ds.take(take):
+                print(repr(record))
+                print("=" * 30)
+
+        if query != "":
+            queries = [PropQuery.from_string(s) for s in query.split(",")]
+            filter_fn = every(queries)
+
+            for record in ds.get_rdd().filter(filter_fn).take(limit):
+                print(repr(record))
+                print("=" * 30)
+
+    return cli
 
 
 if __name__ == "__main__":

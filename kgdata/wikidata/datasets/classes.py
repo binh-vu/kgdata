@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from functools import partial
 
 import orjson
@@ -7,6 +8,7 @@ import orjson
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.misc.hierarchy import build_ancestors
+from kgdata.misc.modification import Modification
 from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.splitter import split_a_list
 from kgdata.wikidata.config import WikidataDirCfg
@@ -54,6 +56,18 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
 
     if not full_ds.has_complete_data():
         classes = basic_ds.get_list()
+
+        # fix the class based on manual modification
+        if (cfg.modification / "classes.tsv").exists():
+            shutil.copy2(
+                cfg.modification / "classes.tsv", cfg.classes / "classes.modified.tsv"
+            )
+            id2class = {c.id: c for c in classes}
+            id2mods = Modification.from_tsv(cfg.classes / "classes.modified.tsv")
+            for cid, mods in id2mods.items():
+                for mod in mods:
+                    mod.apply(id2class[cid])
+
         build_ancestors(classes)
         split_a_list(
             [ser_to_dict(c) for c in classes],

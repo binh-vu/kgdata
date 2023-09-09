@@ -24,7 +24,6 @@ def html_articles() -> Dataset[HTMLArticle]:
     cfg = WikipediaDirCfg.get_instance()
 
     dump_date = cfg.get_dump_date()
-    dump_file = cfg.get_html_article_file()
     need_double_check = False
 
     splitted_ds = Dataset(
@@ -38,10 +37,11 @@ def html_articles() -> Dataset[HTMLArticle]:
         cfg.html_articles / "final/*.gz",
         deserialize=partial(deser_from_dict, HTMLArticle),
         name=f"html-articles/{dump_date}/final",
-        dependencies=[],
+        dependencies=[splitted_ds],
     )
 
     if not splitted_ds.has_complete_data():
+        dump_file = cfg.get_html_article_file()
         with tarfile.open(dump_file, "r:*") as archive:
             for file in archive:
                 split_a_file(
@@ -73,7 +73,11 @@ def html_articles() -> Dataset[HTMLArticle]:
             .reduceByKey(select_updated_article)
             .map(lambda tup: tup[1])
             .map(ser_html_articles)
-            .save_like_dataset(final_ds, trust_dataset_dependencies=True)
+            .coalesce(1024)
+            .save_like_dataset(
+                final_ds,
+                trust_dataset_dependencies=True,
+            )
         )
 
         need_double_check = True

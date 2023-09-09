@@ -34,6 +34,7 @@ class WikidataDirCfg:
         self.page_ids = datadir / "page_ids"
         self.entities = datadir / "entities"
 
+        self.modification = datadir / "modification"
         self.classes = datadir / "classes"
         self.class_count = datadir / "class_count"
         self.properties = datadir / "properties"

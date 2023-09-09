@@ -1,3 +1,4 @@
+import shutil
 from functools import partial
 from typing import List
 
@@ -6,6 +7,7 @@ import orjson
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.misc.hierarchy import build_ancestors
+from kgdata.misc.modification import Modification
 from kgdata.spark import does_result_dir_exist, get_spark_context
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.splitter import split_a_list
@@ -73,6 +75,18 @@ def properties(lang="en") -> Dataset[WDProperty]:
 
     if not full_ds.has_complete_data():
         properties = basic_ds.get_list()
+
+        # fix the prop based on manual modification
+        if (cfg.modification / "props.tsv").exists():
+            shutil.copy2(
+                cfg.modification / "props.tsv", cfg.properties / "props.modified.tsv"
+            )
+            id2prop = {p.id: p for p in properties}
+            id2mods = Modification.from_tsv(cfg.properties / "props.modified.tsv")
+            for cid, mods in id2mods.items():
+                for mod in mods:
+                    mod.apply(id2prop[cid])
+
         build_ancestors(properties)
         split_a_list(
             [ser_to_dict(p) for p in properties],
