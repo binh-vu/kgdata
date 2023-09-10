@@ -70,8 +70,9 @@ wikidata_dataset entity_metadata
 wikidata_dataset entity_all_types
 wikidata_dataset entity_degrees
 wikidata_dataset entity_labels
-wikidata_dataset entity_pagerank
 wikidata_dataset entity_types_and_degrees
+wikidata_dataset entity_outlinks
+wikidata_dataset entity_pagerank
 
 # ======================================================================
 # WIKIPEDIA Datasets
@@ -94,6 +95,8 @@ wikidata_db classes
 wikidata_db properties
 wikidata_db entities
 wikidata_db entity_labels
+wikidata_db entity_metadata
+wikidata_db entity_outlinks
 wikidata_db entity_redirections
 wikidata_db wp2wd
 wikidata_db entity_pagerank
