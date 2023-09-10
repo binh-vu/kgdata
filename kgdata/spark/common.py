@@ -236,6 +236,57 @@ def left_outer_join_repartition(
     )
 
 
+def join_repartition(
+    rdd1: RDD[Tuple[K, V]],
+    rdd2: RDD[Tuple[K, V2]],
+    threshold: int = 10000,
+    batch_size: int = 1000,
+    num_partitions: Optional[int] = None,
+):
+    """This join is useful in the following scenario:
+
+    1. rdd1 contains duplicated keys, and potentially high cardinality keys
+    2. rdd2 contains **unique** keys
+
+    To avoid high cardinality keys, we artificially generate new keys that have the following format (key, category)
+    where category is a number between [1, n], then perform the join.
+    """
+    # finding the keys that have high cardinality
+    sc = get_spark_context()
+
+    keys_freq = (
+        rdd1.map(lambda x: (x[0], 1))
+        .reduceByKey(add)
+        .filter(lambda x: x[1] > threshold)
+        .collect()
+    )
+    logger.info("Number of keys with high cardinality: {}", len(keys_freq))
+    keys_freq = sc.broadcast(dict(keys_freq))
+
+    def rdd1_gen_key(value: Tuple[K, V]) -> Tuple[Tuple[K, int], V]:
+        key = value[0]
+        if key not in keys_freq.value:
+            return (key, 0), value[1]
+        freq = keys_freq.value[key]
+        n = math.ceil(freq / batch_size)
+        return (key, random.randint(1, n)), value[1]
+
+    def rdd2_gen_key(value: Tuple[K, V2]) -> List[Tuple[Tuple[K, int], V2]]:
+        key = value[0]
+        if key not in keys_freq.value:
+            return [((key, 0), value[1])]
+        freq = keys_freq.value[key]
+        n = math.ceil(freq / batch_size)
+        return [((key, i), value[1]) for i in range(1, n + 1)]
+
+    return (
+        rdd1.map(rdd1_gen_key)
+        .groupByKey(numPartitions=num_partitions)
+        .join(rdd2.flatMap(rdd2_gen_key))
+        .map(lambda x: (x[0][0], x[1]))
+    )
+
+
 def left_outer_join(
     rdd1: RDD[R1],
     rdd2: RDD[R2],

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use crate::conversions::{WDClass, WDEntityMetadata, WDProperty};
-use crate::models::{Class, Entity, EntityLink, EntityMetadata, Property};
+use crate::models::{Class, Entity, EntityMetadata, EntityOutLink, Property};
 use crate::{conversions::WDEntity, error::KGDataError};
 use rocksdb::{DBCompressionType, Options};
 use serde_json;
@@ -15,7 +15,7 @@ pub struct KGDB {
     pub props: ReadonlyRocksDBDict<String, Property>,
     pub entities: ReadonlyRocksDBDict<String, Entity>,
     pub entity_metadata: ReadonlyRocksDBDict<String, EntityMetadata>,
-    pub entity_link: ReadonlyRocksDBDict<String, EntityLink>,
+    pub entity_outlink: ReadonlyRocksDBDict<String, EntityOutLink>,
     pub entity_pagerank: ReadonlyRocksDBDict<String, f64>,
 }
 
@@ -29,7 +29,7 @@ impl KGDB {
             entity_metadata: open_entity_metadata_db(
                 datadir.join("entity_metadata.db").as_os_str(),
             )?,
-            entity_link: open_entity_link_db(datadir.join("entity_links.db").as_os_str())?,
+            entity_outlink: open_entity_link_db(datadir.join("entity_outlinks.db").as_os_str())?,
             entity_pagerank: open_entity_pagerank_db(
                 datadir.join("entity_pagerank.db").as_os_str(),
             )?,
@@ -109,7 +109,7 @@ pub fn open_entity_metadata_db(
 
 pub fn open_entity_link_db(
     dbpath: &OsStr,
-) -> Result<ReadonlyRocksDBDict<String, EntityLink>, KGDataError> {
+) -> Result<ReadonlyRocksDBDict<String, EntityOutLink>, KGDataError> {
     let mut options = Options::default();
     options.create_if_missing(false);
     options.set_compression_type(DBCompressionType::Lz4);
@@ -185,8 +185,8 @@ fn deser_entity_pagerank(v: &[u8]) -> Result<f64, KGDataError> {
     Ok(f64::from_le_bytes(v.try_into()?))
 }
 
-fn deser_entity_link(v: &[u8]) -> Result<EntityLink, KGDataError> {
-    Ok(serde_json::from_slice::<EntityLink>(v)?)
+fn deser_entity_link(v: &[u8]) -> Result<EntityOutLink, KGDataError> {
+    Ok(serde_json::from_slice::<EntityOutLink>(v)?)
 }
 
 fn deser_property(v: &[u8]) -> Result<Property, KGDataError> {

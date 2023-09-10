@@ -108,6 +108,8 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
             )
         )
 
+    need_verification = False
+
     if not fixed_ds.has_complete_data():
         logger.info("Normalizing and fixing the entities in the dump")
 
@@ -124,9 +126,22 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
             .map(lambda x: x[0])
             .map(ser_entity)
             .save_like_dataset(
-                fixed_ds, auto_coalesce=True, trust_dataset_dependencies=True
+                fixed_ds,
+                auto_coalesce=True,
+                shuffle=True,
+                trust_dataset_dependencies=True,
             )
         )
+        need_verification = True
+
+    if need_verification:
+        logger.info("Verifying if entities contain unique ids")
+        assert fixed_ds.get_extended_rdd().is_unique(lambda x: x.id)
+
+        n_ents = fixed_ds.get_rdd().count()
+        n_ents_from_dump = entity_dump().get_rdd().count()
+        assert n_ents == n_ents_from_dump, f"{n_ents} != {n_ents_from_dump}"
+        logger.info("The entity dataset is unique and has {} entities", n_ents)
 
     return fixed_ds
 

@@ -26,8 +26,10 @@ from pyspark.rdd import RDD, portable_hash
 from typing_extensions import TypeGuard
 
 from kgdata.spark.common import (
+    are_records_unique,
     estimate_num_partitions,
     get_spark_context,
+    join_repartition,
     left_outer_join_repartition,
 )
 
@@ -435,6 +437,36 @@ class ExtendedRDD(Generic[T_co]):
             ),
             self.sig.use(other.sig),
         )
+
+    def join_repartition(
+        self: ExtendedRDD[tuple[K, V]],
+        other: ExtendedRDD[tuple[K, V2]],
+        threshold: int = 10000,
+        batch_size: int = 1000,
+        num_partitions: Optional[int] = None,
+    ):
+        """This join is useful in the following scenario:
+
+        1. rdd1 contains **duplicated** keys, and potentially high cardinality keys
+        2. rdd2 contains **unique** keys
+
+        To avoid high cardinality keys, we artificially generate new keys that have the following format (key, category)
+        where category is a number between [1, n], then perform the join.
+        """
+        return ExtendedRDD(
+            join_repartition(
+                self.rdd, other.rdd, threshold, batch_size, num_partitions
+            ),
+            self.sig.use(other.sig),
+        )
+
+    def is_unique(
+        self,
+        keyfn: Callable[[T_co], Union[str, int]],
+        print_error: bool = True,
+        return_duplication: bool = False,
+    ):
+        return are_records_unique(self.rdd, keyfn, print_error, return_duplication)
 
     # ======================================================================
 

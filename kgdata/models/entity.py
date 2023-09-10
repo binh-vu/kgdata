@@ -95,3 +95,17 @@ class EntityMultiLingualLabel:
 
     def to_dict(self):
         return {"id": self.id, "label": self.label.to_dict()}
+
+
+@dataclass
+class EntityOutLinks:
+    id: str  # source entity id
+    targets: set[str]  # target entity id
+
+    @staticmethod
+    def from_dict(obj: dict):
+        return EntityOutLinks(obj["id"], set(obj["targets"]))
+
+    def to_dict(self):
+        # sort targets for consistency -- otherwise, checksums will be different
+        return {"id": self.id, "targets": sorted(self.targets)}

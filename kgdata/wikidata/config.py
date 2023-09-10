@@ -42,7 +42,7 @@ class WikidataDirCfg:
         self.entity_metadata = datadir / "070_entity_metadata"
         self.entity_labels = datadir / "071_entity_labels"
         self.entity_all_types = datadir / "072_entity_all_types"
-        self.entity_wikilinks = datadir / "073_entity_wikilinks"
+        self.entity_outlinks = datadir / "073_entity_outlinks"
         self.entity_pagerank = datadir / "074_entity_pagerank"
         self.entity_degrees = datadir / "075_entity_degrees"
         self.entity_types_and_degrees = datadir / "076_entity_types_and_degrees"

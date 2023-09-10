@@ -195,9 +195,9 @@ wikidata.add_command(
 )
 wikidata.add_command(
     dataset2db(
-        "entity_wikilinks",
+        "entity_outlinks",
         format={
-            "record_type": {"type": "ndjson", "key": "source", "value": None},
+            "record_type": {"type": "ndjson", "key": "id", "value": None},
             "is_sorted": False,
         },
     )

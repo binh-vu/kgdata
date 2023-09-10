@@ -37,7 +37,7 @@ from kgdata.db import (
     unpack_float,
     unpack_int,
 )
-from kgdata.models.entity import EntityLabel
+from kgdata.models.entity import EntityLabel, EntityOutLinks
 from kgdata.wikidata.datasets.entity_metadata import (
     deser_entity_metadata,
     ser_entity_metadata,
@@ -214,8 +214,8 @@ get_entity_pagerank_db = make_get_rocksdb(
     ser_value=pack_float,
     dbopts={"compression_type": "none"},
 )
-get_entity_wikilinks_db = make_get_rocksdb(
-    deser_value=partial(deser_from_dict, WDEntityWikiLink),
+get_entity_outlinks_db = make_get_rocksdb(
+    deser_value=partial(deser_from_dict, EntityOutLinks),
     ser_value=ser_to_dict,
     dbopts=small_dbopts,
 )
@@ -332,9 +332,9 @@ class WikidataDB:
         )
 
     @cached_property
-    def entity_wikilinks(self):
-        return get_entity_wikilinks_db(
-            self.database_dir / "entity_wikilinks.db", read_only=self.read_only
+    def entity_outlinks(self):
+        return get_entity_outlinks_db(
+            self.database_dir / "entity_outlinks.db", read_only=self.read_only
         )
 
     @overload
@@ -358,8 +358,10 @@ class WikidataDB:
 
     @staticmethod
     def init(database_dir: Union[str, Path]) -> "WikidataDB":
-        assert WikidataDB.instance is None
-        WikidataDB.instance = WikidataDB(database_dir)
+        if WikidataDB.instance is not None:
+            assert WikidataDB.instance.database_dir == Path(database_dir)
+        else:
+            WikidataDB.instance = WikidataDB(database_dir)
         return WikidataDB.instance
 
     @staticmethod
