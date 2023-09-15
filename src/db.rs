@@ -29,7 +29,7 @@ impl KGDB {
             entity_metadata: open_entity_metadata_db(
                 datadir.join("entity_metadata.db").as_os_str(),
             )?,
-            entity_outlink: open_entity_link_db(datadir.join("entity_outlinks.db").as_os_str())?,
+            entity_outlink: open_entity_outlink_db(datadir.join("entity_outlinks.db").as_os_str())?,
             entity_pagerank: open_entity_pagerank_db(
                 datadir.join("entity_pagerank.db").as_os_str(),
             )?,
@@ -107,7 +107,7 @@ pub fn open_entity_metadata_db(
     })
 }
 
-pub fn open_entity_link_db(
+pub fn open_entity_outlink_db(
     dbpath: &OsStr,
 ) -> Result<ReadonlyRocksDBDict<String, EntityOutLink>, KGDataError> {
     let mut options = Options::default();
@@ -117,7 +117,7 @@ pub fn open_entity_link_db(
     let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
     Ok(ReadonlyRocksDBDict {
         db,
-        deser_value: deser_entity_link,
+        deser_value: deser_entity_outlink,
         deser_key: PhantomData,
     })
 }
@@ -185,7 +185,7 @@ fn deser_entity_pagerank(v: &[u8]) -> Result<f64, KGDataError> {
     Ok(f64::from_le_bytes(v.try_into()?))
 }
 
-fn deser_entity_link(v: &[u8]) -> Result<EntityOutLink, KGDataError> {
+fn deser_entity_outlink(v: &[u8]) -> Result<EntityOutLink, KGDataError> {
     Ok(serde_json::from_slice::<EntityOutLink>(v)?)
 }
 
