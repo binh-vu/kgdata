@@ -12,6 +12,8 @@ pub mod value;
 pub mod class;
 pub mod property;
 
+pub mod kgns;
+
 pub use self::class::*;
 pub use self::entity::*;
 pub use self::entity_link::*;

@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use crate::conversions::{WDClass, WDEntityMetadata, WDProperty};
+use crate::models::kgns::KnowledgeGraphNamespace;
 use crate::models::{Class, Entity, EntityMetadata, EntityOutLink, Property};
 use crate::{conversions::WDEntity, error::KGDataError};
 use rocksdb::{DBCompressionType, Options};
@@ -17,6 +18,7 @@ pub struct KGDB {
     pub entity_metadata: ReadonlyRocksDBDict<String, EntityMetadata>,
     pub entity_outlink: ReadonlyRocksDBDict<String, EntityOutLink>,
     pub entity_pagerank: ReadonlyRocksDBDict<String, f64>,
+    pub kgns: KnowledgeGraphNamespace,
 }
 
 impl KGDB {
@@ -34,6 +36,7 @@ impl KGDB {
                 datadir.join("entity_pagerank.db").as_os_str(),
             )?,
             datadir,
+            kgns: KnowledgeGraphNamespace::wikidata(),
         })
     }
 }
