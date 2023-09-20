@@ -14,6 +14,7 @@ where
     D: ParallelDataset,
     F: Fn(&D::Item) -> bool + Sync + Send,
 {
+    #[allow(dead_code)]
     fn collect(self) -> Vec<D::Item> {
         let mut items: Vec<D::Item> = self.base.into_par_iter().collect();
         if self.ascending {
