@@ -21,9 +21,9 @@ from typing import (
 import orjson
 import requests
 import serde.jl as jl
+
 from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
-
 from kgdata.db import (
     deser_from_dict,
     get_rocksdb,
@@ -205,8 +205,8 @@ get_entity_redirection_db = make_get_rocksdb(
     dbopts=small_dbopts,
 )
 get_entity_label_db = make_get_rocksdb(
-    deser_value=partial(deser_from_dict, EntityLabel),
-    ser_value=ser_to_dict,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
     dbopts=small_dbopts,
 )
 get_entity_pagerank_db = make_get_rocksdb(

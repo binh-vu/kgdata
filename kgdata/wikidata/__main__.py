@@ -12,6 +12,9 @@ import orjson
 import ray
 import serde.jl
 import serde.json
+from loguru import logger
+from timer import Timer
+
 from hugedict.cachedict import CacheDict
 from hugedict.prelude import (
     RocksDBDict,
@@ -21,10 +24,6 @@ from hugedict.prelude import (
     rocksdb_ingest_sst_files,
     rocksdb_load,
 )
-from loguru import logger
-from sm.misc.ray_helper import ray_map
-from timer import Timer
-
 from kgdata.config import init_dbdir_from_env
 from kgdata.dataset import import_dataset
 from kgdata.spark.extended_rdd import DatasetSignature
@@ -40,6 +39,7 @@ from kgdata.wikidata.db import (
 )
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
+from sm.misc.ray_helper import ray_map
 
 if TYPE_CHECKING:
     from hugedict.hugedict.rocksdb import FileFormat
@@ -195,7 +195,7 @@ wikidata.add_command(
 )
 wikidata.add_command(
     dataset2db(
-        "entity_outlinks",
+        dataset="entity_outlinks",
         format={
             "record_type": {"type": "ndjson", "key": "id", "value": None},
             "is_sorted": False,
@@ -206,8 +206,8 @@ wikidata.add_command(dataset2db("classes"))
 wikidata.add_command(dataset2db("properties", "props"))
 wikidata.add_command(
     dataset2db(
-        "property_domains",
-        "prop_domains",
+        dataset="property_domains",
+        dbname="prop_domains",
         format={
             "record_type": {"type": "tuple2", "key": None, "value": None},
             "is_sorted": False,
@@ -216,8 +216,8 @@ wikidata.add_command(
 )
 wikidata.add_command(
     dataset2db(
-        "property_ranges",
-        "prop_ranges",
+        dataset="property_ranges",
+        dbname="prop_ranges",
         format={
             "record_type": {"type": "tuple2", "key": None, "value": None},
             "is_sorted": False,
@@ -254,6 +254,7 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
     gc.collect()
 
     import ray
+
     from sm.misc.ray_helper import ray_map, ray_put
 
     ray.init()
