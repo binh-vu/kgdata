@@ -32,6 +32,22 @@ impl StatementRank {
             StatementRank::Deprecated => "deprecated",
         }
     }
+
+    pub fn intersect(&self, another: &StatementRank) -> StatementRank {
+        match self {
+            StatementRank::Normal => match another {
+                StatementRank::Normal => StatementRank::Normal,
+                StatementRank::Preferred => StatementRank::Normal,
+                StatementRank::Deprecated => StatementRank::Deprecated,
+            },
+            StatementRank::Preferred => match another {
+                StatementRank::Normal => StatementRank::Normal,
+                StatementRank::Preferred => StatementRank::Preferred,
+                StatementRank::Deprecated => StatementRank::Deprecated,
+            },
+            StatementRank::Deprecated => StatementRank::Deprecated,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
