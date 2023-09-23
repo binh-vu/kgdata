@@ -1,8 +1,11 @@
 from __future__ import annotations
-from kgdata.core.models import Value
+
+from typing import Generic, Literal, TypedDict, TypeVar, Union
+
 import orjson
-from typing import Generic, Literal, TypeVar, TypedDict, Union
 from typing_extensions import TypeGuard
+
+from kgdata.core.models import Value
 
 """
 https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON#Data_Values is moved to https://doc.wikimedia.org/Wikibase/master/php/md_docs_topics_json.html
@@ -155,6 +158,9 @@ class WDValue(Generic[T, V]):
 
     def to_string_repr(self) -> str:
         return orjson.dumps(self.to_dict()).decode()
+
+    def to_rust_string_repr(self) -> str:
+        return orjson.dumps({self.type: self.value}).decode("utf-8")
 
     def to_rust(self, cls=Value) -> Value:
         if self.is_string(self):
