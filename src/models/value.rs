@@ -57,11 +57,9 @@ pub struct Quantity {
     // The nominal value of the quantity, as an arbitrary precision decimal string. The string always starts with a character indicating the sign of the value, either “+” or “-”.
     pub amount: String,
     // Optionally, the upper bound of the quantity's uncertainty interval, using the same notation as the amount field. If not given or null, the uncertainty (or precision) of the quantity is not known. If the upperBound field is given, the lowerBound field must also be given.
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "upperBound")]
     pub upper_bound: Option<String>,
     // Optionally, the lower bound of the quantity's uncertainty interval, using the same notation as the amount field. If not given or null, the uncertainty (or precision) of the quantity is not known. If the lowerBound field is given, the upperBound field must also be given.
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "lowerBound")]
     pub lower_bound: Option<String>,
     // The URI of a unit (or “1” to indicate a unit-less quantity). This would typically refer to a data item on wikidata.org, e.g. http://www.wikidata.org/entity/Q712226 for “square kilometer”.
