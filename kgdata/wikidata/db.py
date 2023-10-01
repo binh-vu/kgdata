@@ -209,6 +209,11 @@ get_entity_label_db = make_get_rocksdb(
     ser_value=str.encode,
     dbopts=small_dbopts,
 )
+get_entity_type_db: make_get_rocksdb[list[str]] = make_get_rocksdb(
+    deser_value=orjson.loads,
+    ser_value=orjson.dumps,
+    dbopts=small_dbopts,
+)
 get_entity_pagerank_db = make_get_rocksdb(
     deser_value=unpack_float,
     ser_value=pack_float,
@@ -271,6 +276,12 @@ class WikidataDB:
     def entity_labels(self):
         return get_entity_label_db(
             self.database_dir / "entity_labels.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def entity_types(self):
+        return get_entity_type_db(
+            self.database_dir / "entity_types.db", read_only=self.read_only
         )
 
     @cached_property

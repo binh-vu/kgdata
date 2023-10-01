@@ -96,6 +96,7 @@ wikidata_db properties
 wikidata_db entities
 wikidata_db entity_labels
 wikidata_db entity_metadata
+wikidata_db entity_types
 wikidata_db entity_outlinks
 wikidata_db entity_redirections
 wikidata_db wp2wd

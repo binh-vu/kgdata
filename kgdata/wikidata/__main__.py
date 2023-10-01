@@ -153,6 +153,15 @@ wikidata.add_command(
 )
 wikidata.add_command(
     dataset2db(
+        "entity_types",
+        format={
+            "record_type": {"type": "tuple2", "key": None, "value": None},
+            "is_sorted": False,
+        },
+    )
+)
+wikidata.add_command(
+    dataset2db(
         "entity_labels",
         format={
             "record_type": {"type": "ndjson", "key": "id", "value": "label"},
