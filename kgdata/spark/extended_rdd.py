@@ -526,6 +526,9 @@ class ExtendedRDD(Generic[T_co]):
             DatasetSignature.intermediate_dataset("parallelize"),
         )
 
+    def union(self: ExtendedRDD[T], other: ExtendedRDD[U]) -> ExtendedRDD[T | U]:
+        return ExtendedRDD(self.rdd.union(other.rdd), self.sig.use(other.sig))
+
     def map(
         self: ExtendedRDD[T], f: Callable[[T], U], preservesPartitioning: bool = False
     ) -> ExtendedRDD[U]:

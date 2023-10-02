@@ -175,6 +175,7 @@ wikidata.add_command(
         format={
             "record_type": {"type": "tuple2", "key": None, "value": None},
             "is_sorted": False,
+            "number_type": "f64",
         },
     )
 )
@@ -230,6 +231,17 @@ wikidata.add_command(
         format={
             "record_type": {"type": "tuple2", "key": None, "value": None},
             "is_sorted": False,
+        },
+    )
+)
+wikidata.add_command(
+    dataset2db(
+        dataset="ontology_count",
+        dbname="ontcount",
+        format={
+            "record_type": {"type": "tuple2", "key": None, "value": None},
+            "is_sorted": False,
+            "number_type": "u32",
         },
     )
 )

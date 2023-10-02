@@ -36,6 +36,7 @@ class WikidataDirCfg:
         self.property_count = datadir / "043_property_count"
         self.property_domains = datadir / "044_property_domains"
         self.property_ranges = datadir / "045_property_ranges"
+        self.ont_count = datadir / "046_ont_count"
 
         self.cross_wiki_mapping = datadir / "050_cross_wiki_mapping"
 

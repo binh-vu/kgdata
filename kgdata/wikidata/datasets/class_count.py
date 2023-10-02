@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from operator import add
-from typing import Tuple
 
 import orjson
 
@@ -9,7 +10,7 @@ from kgdata.wikidata.datasets.classes import classes
 from kgdata.wikidata.datasets.entity_types import entity_types
 
 
-def class_count() -> Dataset[Tuple[str, int]]:
+def class_count() -> Dataset[tuple[str, int]]:
     cfg = WikidataDirCfg.get_instance()
     ds = Dataset(
         cfg.class_count / "*.gz",

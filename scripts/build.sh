@@ -103,3 +103,4 @@ wikidata_db wp2wd
 wikidata_db entity_pagerank
 wikidata_db property_domains
 wikidata_db property_ranges
+wikidata_db ontology_count
