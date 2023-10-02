@@ -23,6 +23,18 @@ get_entity_db = partial(
     ser_value=ser_to_dict,
     dbopts=large_dbopts,
 )
+get_entity_label_db = partial(
+    get_rocksdb,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
+    dbopts=small_dbopts,
+)
+get_entity_redirection_db = partial(
+    get_rocksdb,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
+    dbopts=small_dbopts,
+)
 get_class_db = partial(
     get_rocksdb,
     deser_value=partial(deser_from_dict, OntologyClass),
@@ -54,6 +66,18 @@ class DBpediaDB:
     def entities(self):
         return get_entity_db(
             self.database_dir / "entities.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def entity_labels(self):
+        return get_entity_label_db(
+            self.database_dir / "entity_labels.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def entity_redirections(self):
+        return get_entity_redirection_db(
+            self.database_dir / "entity_redirections.db", read_only=self.read_only
         )
 
     @cached_property
