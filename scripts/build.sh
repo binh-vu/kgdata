@@ -56,7 +56,7 @@ function wikidata_db {
 # wikidata_dataset entities
 # wikidata_dataset entity_types
 
-# wikidata_dataset classes
+wikidata_dataset classes
 # wikidata_dataset properties
 
 # wikidata_dataset class_count
@@ -92,15 +92,15 @@ function wikidata_db {
 # WIKIDATA Databases
 
 wikidata_db classes
-wikidata_db properties
-wikidata_db entities
-wikidata_db entity_labels
-wikidata_db entity_metadata
-wikidata_db entity_types
-wikidata_db entity_outlinks
-wikidata_db entity_redirections
-wikidata_db wp2wd
-wikidata_db entity_pagerank
-wikidata_db property_domains
-wikidata_db property_ranges
-wikidata_db ontology_count
+# wikidata_db properties
+# wikidata_db entities
+# wikidata_db entity_labels
+# wikidata_db entity_metadata
+# wikidata_db entity_types
+# wikidata_db entity_outlinks
+# wikidata_db entity_redirections
+# wikidata_db wp2wd
+# wikidata_db entity_pagerank
+# wikidata_db property_domains
+# wikidata_db property_ranges
+# wikidata_db ontology_count

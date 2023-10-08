@@ -15,6 +15,7 @@ pub struct KGDB {
     pub classes: ReadonlyRocksDBDict<String, Class>,
     pub props: ReadonlyRocksDBDict<String, Property>,
     pub entities: ReadonlyRocksDBDict<String, Entity>,
+    pub entity_redirection: ReadonlyRocksDBDict<String, String>,
     pub entity_metadata: ReadonlyRocksDBDict<String, EntityMetadata>,
     pub entity_outlink: ReadonlyRocksDBDict<String, EntityOutLink>,
     pub entity_pagerank: ReadonlyRocksDBDict<String, f64>,
@@ -28,6 +29,9 @@ impl KGDB {
             props: open_property_db(datadir.join("props.db").as_os_str())?,
             classes: open_class_db(datadir.join("classes.db").as_os_str())?,
             entities: open_entity_db(datadir.join("entities.db").as_os_str())?,
+            entity_redirection: open_entity_redirection_db(
+                datadir.join("entity_redirections.db").as_os_str(),
+            )?,
             entity_metadata: open_entity_metadata_db(
                 datadir.join("entity_metadata.db").as_os_str(),
             )?,
@@ -110,6 +114,21 @@ pub fn open_entity_metadata_db(
     })
 }
 
+pub fn open_entity_redirection_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, String>, KGDataError> {
+    let mut options = Options::default();
+    options.create_if_missing(false);
+    options.set_compression_type(DBCompressionType::Lz4);
+
+    let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
+    Ok(ReadonlyRocksDBDict {
+        db,
+        deser_value: deser_string,
+        deser_key: PhantomData,
+    })
+}
+
 pub fn open_entity_outlink_db(
     dbpath: &OsStr,
 ) -> Result<ReadonlyRocksDBDict<String, EntityOutLink>, KGDataError> {
@@ -130,14 +149,7 @@ pub fn open_entity_pagerank_db(
 ) -> Result<ReadonlyRocksDBDict<String, f64>, KGDataError> {
     let mut options = Options::default();
     options.create_if_missing(false);
-    options.set_compression_type(DBCompressionType::Zstd);
-    options.set_compression_options(
-        -14,       // window_bits
-        6,         // level
-        0,         // strategy
-        16 * 1024, // max_dict_bytes
-    );
-    options.set_zstd_max_train_bytes(100 * 16 * 1024);
+    options.set_compression_type(DBCompressionType::None);
 
     let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
     Ok(ReadonlyRocksDBDict {
@@ -198,4 +210,8 @@ fn deser_property(v: &[u8]) -> Result<Property, KGDataError> {
 
 fn deser_class(v: &[u8]) -> Result<Class, KGDataError> {
     Ok(serde_json::from_slice::<WDClass>(v)?.0)
+}
+
+fn deser_string(v: &[u8]) -> Result<String, KGDataError> {
+    String::from_utf8(v.to_owned()).map_err(KGDataError::from)
 }

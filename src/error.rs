@@ -12,6 +12,9 @@ pub enum KGDataError {
     IOError(#[from] std::io::Error),
 
     #[error(transparent)]
+    FromUtf8Error(#[from] std::string::FromUtf8Error),
+
+    #[error(transparent)]
     SerdeJsonErr(#[from] serde_json::Error),
 
     #[error(transparent)]
