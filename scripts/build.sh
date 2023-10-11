@@ -77,16 +77,16 @@ wikidata_dataset classes
 # ======================================================================
 # WIKIPEDIA Datasets
 
-# wikipedia_dataset html_articles -p 128
-# wikipedia_dataset article_aliases -p 64
-# wikipedia_dataset article_degrees -p 2
-# wikipedia_dataset article_links -p 64
-# wikipedia_dataset article_metadata -p 32
-# wikipedia_dataset html_tables -p 64
-# wikipedia_dataset easy_tables_metadata
-# wikipedia_dataset easy_tables
-# wikipedia_dataset linked_relational_tables
+# wikipedia_dataset html_articles
+# wikipedia_dataset article_aliases
+# wikipedia_dataset article_degrees
+# wikipedia_dataset article_links
+# wikipedia_dataset article_metadata
+# wikipedia_dataset html_tables
 # wikipedia_dataset relational_tables
+# wikipedia_dataset linked_relational_tables
+# wikipedia_dataset easy_tables
+# wikipedia_dataset easy_tables_metadata
 
 # ======================================================================
 # WIKIDATA Databases

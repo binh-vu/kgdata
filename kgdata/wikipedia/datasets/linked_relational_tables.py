@@ -1,14 +1,13 @@
 from importlib import import_module
 from typing import Dict, Iterable, List, Literal, Tuple, Union
 
-from rsoup.core import Cell, Table
-
 from kgdata.dataset import Dataset
 from kgdata.wikidata.datasets.cross_wiki_mapping import cross_wiki_mapping
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.article_metadata import article_metadata
 from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable, WikiLink
+from rsoup.core import Cell, Table
 
 
 def linked_tables(
