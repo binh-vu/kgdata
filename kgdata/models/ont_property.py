@@ -35,6 +35,23 @@ class OntologyProperty:
     instanceof: list[str]
     ancestors: dict[str, int]
 
+    @staticmethod
+    def empty(id: str):
+        return OntologyProperty(
+            id=id,
+            label=MultiLingualString.en(id),
+            description=MultiLingualString.en(""),
+            aliases=MultiLingualStringList({"en": []}, "en"),
+            datatype="",
+            parents=[],
+            related_properties=[],
+            equivalent_properties=[],
+            subjects=[],
+            inverse_properties=[],
+            instanceof=[],
+            ancestors={},
+        )
+
     @classmethod
     def from_dict(cls, obj):
         obj["label"] = MultiLingualString(**obj["label"])
