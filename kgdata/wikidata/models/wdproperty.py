@@ -116,6 +116,9 @@ class WDProperty(OntologyProperty):
             ancestors=self.ancestors,
         )
 
+    def __str__(self):
+        return f"{self.label} ({self.id})"
+
 
 def normalize_wikidata_datatype(datatype: WDDataType) -> str:
     if datatype == "wikibase-property" or datatype == "wikibase-item":

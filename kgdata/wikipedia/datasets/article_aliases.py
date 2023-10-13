@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from functools import lru_cache, partial
 
 import orjson
-
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict
 from kgdata.wikipedia.config import WikipediaDirCfg
@@ -14,7 +13,7 @@ from kgdata.wikipedia.datasets.article_links import ArticleLinks, article_links
 @dataclass
 class ArticleAliases:
     url: str  # url of html articles
-    aliases: dict[str, int]
+    aliases: dict[str, int]  # mention and count
 
     @staticmethod
     def from_dict(obj):

@@ -74,6 +74,9 @@ class MultiLingualStringList(List[str]):
         self.lang2values = lang2values
         self.lang = lang
 
+    def get_all(self) -> set[str]:
+        return {value for values in self.lang2values.values() for value in values}
+
     def to_dict(self):
         return {"lang2values": self.lang2values, "lang": self.lang}
 
