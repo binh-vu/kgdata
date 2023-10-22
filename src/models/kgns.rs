@@ -1,10 +1,13 @@
 use super::Property;
+use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Serialize, Deserialize)]
 pub enum KGName {
     Wikidata,
     DBpedia,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct KnowledgeGraphNamespace {
     kgname: KGName,
     pub instanceof: String,
