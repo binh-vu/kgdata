@@ -10,6 +10,8 @@ use crate::{conversions::WDEntity, error::KGDataError};
 use rocksdb::{DBCompressionType, Options};
 use serde_json;
 
+pub mod remotedb;
+
 pub struct KGDB {
     pub datadir: PathBuf,
     pub classes: ReadonlyRocksDBDict<String, Class>,

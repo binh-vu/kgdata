@@ -814,7 +814,7 @@ dependencies = [
 
 [[package]]
 name = "kgdata"
-version = "3.5.2"
+version = "3.6.1"
 dependencies = [
  "anyhow",
  "bincode",
@@ -825,6 +825,7 @@ dependencies = [
  "glob",
  "hashbrown 0.14.0",
  "log",
+ "nng",
  "ord_subset",
  "petgraph",
  "pyo3",
@@ -978,6 +979,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b275950c28b37e794e8c55d88aeb5e139d0ce23fdbbeda68f8d7174abdf9e8fa"
 dependencies = [
  "adler",
+]
+
+[[package]]
+name = "nng"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20a18ed7ec1c8ff1658bcfea2ce76dcedf8be21dd9e8dd2e9762ba9632d16203"
+dependencies = [
+ "log",
+ "nng-sys",
+]
+
+[[package]]
+name = "nng-sys"
+version = "1.4.0-rc.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50d0e7f39a8fd1792a710da9351320e864dc799cf439960e332c977b2f876da6"
+dependencies = [
+ "cmake",
+ "version_check",
 ]
 
 [[package]]
