@@ -19,6 +19,8 @@ crate-type = ["cdylib", "rlib"]
 anyhow = { version = "1.0.58", features = ["backtrace"] }
 bincode = "1.3.3"
 bzip2 = "0.4.3"
+clap = { version = "4.4.6", features = ["derive"] }
+ctrlc = { version = "3.4.1", features = ["termination"] }
 env_logger = "0.9.0"
 flate2 = { version = "1.0.24", features = [
     "zlib-ng",

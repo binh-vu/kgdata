@@ -10,7 +10,9 @@ use crate::{conversions::WDEntity, error::KGDataError};
 use rocksdb::{DBCompressionType, Options};
 use serde_json;
 
-pub mod remotedb;
+mod remotedb;
+
+pub use self::remotedb::{serve_db, RepMsg, ReqMsg};
 
 pub struct KGDB {
     pub datadir: PathBuf,
@@ -45,6 +47,19 @@ impl KGDB {
             kgns: KnowledgeGraphNamespace::wikidata(),
         })
     }
+
+    #[inline]
+    pub fn open_entity_raw_db(datadir: PathBuf) -> Result<rocksdb::DB, KGDataError> {
+        open_entity_raw_db(datadir.join("entities.db").as_os_str())
+    }
+
+    pub fn open_entity_metadata_raw_db(datadir: PathBuf) -> Result<rocksdb::DB, KGDataError> {
+        open_entity_metadata_raw_db(datadir.join("entity_metadata.db").as_os_str())
+    }
+
+    pub fn open_entity_redirection_db(datadir: PathBuf) -> Result<rocksdb::DB, KGDataError> {
+        open_small_db(datadir.join("entity_redirections.db").as_os_str())
+    }
 }
 
 pub struct ReadonlyRocksDBDict<K: AsRef<[u8]> + 'static, V: 'static> {
@@ -74,7 +89,7 @@ impl<K: AsRef<[u8]>, V> ReadonlyRocksDBDict<K, V> {
     }
 }
 
-pub fn open_entity_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Entity>, KGDataError> {
+pub fn open_entity_raw_db(dbpath: &OsStr) -> Result<rocksdb::DB, KGDataError> {
     let mut options = Options::default();
     options.create_if_missing(false);
     options.set_compression_type(DBCompressionType::Zstd);
@@ -86,17 +101,19 @@ pub fn open_entity_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Enti
     );
     options.set_zstd_max_train_bytes(100 * 16 * 1024);
 
-    let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
+    rocksdb::DB::open_for_read_only(&options, dbpath, false)
+        .map_err(|e| KGDataError::RocksDBError(e))
+}
+
+pub fn open_entity_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Entity>, KGDataError> {
     Ok(ReadonlyRocksDBDict {
-        db,
+        db: open_entity_raw_db(dbpath)?,
         deser_value: deser_entity,
         deser_key: PhantomData,
     })
 }
 
-pub fn open_entity_metadata_db(
-    dbpath: &OsStr,
-) -> Result<ReadonlyRocksDBDict<String, EntityMetadata>, KGDataError> {
+pub fn open_entity_metadata_raw_db(dbpath: &OsStr) -> Result<rocksdb::DB, KGDataError> {
     let mut options = Options::default();
     options.create_if_missing(false);
     options.set_compression_type(DBCompressionType::Zstd);
@@ -108,24 +125,33 @@ pub fn open_entity_metadata_db(
     );
     options.set_zstd_max_train_bytes(100 * 16 * 1024);
 
-    let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
+    rocksdb::DB::open_for_read_only(&options, dbpath, false)
+        .map_err(|e| KGDataError::RocksDBError(e))
+}
+pub fn open_entity_metadata_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, EntityMetadata>, KGDataError> {
     Ok(ReadonlyRocksDBDict {
-        db,
+        db: open_entity_metadata_raw_db(dbpath)?,
         deser_value: deser_entity_metadata,
         deser_key: PhantomData,
     })
 }
 
-pub fn open_entity_redirection_db(
-    dbpath: &OsStr,
-) -> Result<ReadonlyRocksDBDict<String, String>, KGDataError> {
+pub fn open_small_db(dbpath: &OsStr) -> Result<rocksdb::DB, KGDataError> {
     let mut options = Options::default();
     options.create_if_missing(false);
     options.set_compression_type(DBCompressionType::Lz4);
 
-    let db = rocksdb::DB::open_for_read_only(&options, dbpath, false)?;
+    rocksdb::DB::open_for_read_only(&options, dbpath, false)
+        .map_err(|e| KGDataError::RocksDBError(e))
+}
+
+pub fn open_entity_redirection_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, String>, KGDataError> {
     Ok(ReadonlyRocksDBDict {
-        db,
+        db: open_small_db(dbpath)?,
         deser_value: deser_string,
         deser_key: PhantomData,
     })
