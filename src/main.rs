@@ -2,7 +2,7 @@ use anyhow::Result;
 // use hashbrown::HashSet;
 // use kgdata::mapreduce::*;
 use clap::Parser;
-use kgdata::db::{serve_db, KGDB};
+use kgdata::db::{serve_db, PredefinedDB, KGDB};
 use kgdata::error::KGDataError;
 use std::path::PathBuf;
 // use kgdata::python::scripts::GetRepresentativeValue;
@@ -12,7 +12,7 @@ use std::path::PathBuf;
 #[derive(Debug, Parser)]
 struct ServerCLI {
     /// name of the database
-    dbname: String,
+    db: PredefinedDB,
     /// url to serve the database
     url: String,
     /// path to the parent directory of the database
@@ -22,13 +22,7 @@ struct ServerCLI {
 impl ServerCLI {
     /// Start and serve a DB server at the given URL.
     fn start(&self) -> Result<(), KGDataError> {
-        let datadir = PathBuf::from(&self.datadir);
-        let db = match self.dbname.as_ref() {
-            "entity" => KGDB::open_entity_raw_db(datadir)?,
-            "entity_metadata" => KGDB::open_entity_metadata_raw_db(datadir)?,
-            "entity_redirection" => KGDB::open_entity_redirection_raw_db(datadir)?,
-            _ => panic!("Unknown database name: {}", self.dbname),
-        };
+        let db = self.db.open_raw_db(&self.datadir)?;
         serve_db(&self.url, &db)
     }
 }

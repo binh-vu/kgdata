@@ -9,42 +9,20 @@ use crate::{conversions::WDEntity, error::KGDataError};
 use serde_json;
 
 mod interface;
-mod predefined_dboptions;
+mod predefined_db;
 mod readonly_rocksdb_dict;
 mod remotedb;
-pub use self::predefined_dboptions::{open_big_db, open_small_db, open_medium_db, open_nocompressed_db};
+pub use self::interface::Dict;
+pub use self::predefined_db::{
+    open_big_db, open_medium_db, open_nocompressed_db, open_small_db, PredefinedDB,
+};
 pub use self::readonly_rocksdb_dict::ReadonlyRocksDBDict;
 pub use self::remotedb::{dial, serve_db, RemoteRocksDBDict, RepMsg, ReqMsg};
 
-/// A persistent key-value store
-pub trait PersistentDict<K: AsRef<[u8]>, V>: Send + Sync {
-    /// Get multiple keys
-    fn batch_get<Q: ?Sized>(&self, keys: I) -> Result<Vec<Option<V>, KGDataError>
-    where
-        K: Borrow<Q>,
-        Q: AsRef<[u8]>,
-        I: Iterator<Item = &Q>;
-
-    /// Get a key
-    fn get<Q: ?Sized>(&self, key: &Q) -> Result<Option<V>, KGDataError>
-    where
-        K: Borrow<Q>,
-        Q: AsRef<[u8]>;
-
-    /// Check if a key exists
-    fn contains_key<Q: ?Sized>(&self, key: &Q) -> Result<bool, KGDataError>
-    where
-        K: Borrow<Q>,
-        Q: AsRef<[u8]>;
-}
-
-pub type EntityDB = PersistentDict<String, Entity>;
-pub type EntityMetadataDB = PersistentDict<String, EntityMetadata>;
-
 pub struct BaseKGDB<ED, EMD>
 where
-    ED: EntityDB,
-    EMD: EntityMetadataDB,
+    ED: Dict<String, Entity> + Sync + Send,
+    EMD: Dict<String, EntityMetadata> + Sync + Send,
 {
     pub datadir: PathBuf,
     pub classes: ReadonlyRocksDBDict<String, Class>,

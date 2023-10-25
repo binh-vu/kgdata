@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use crate::error::KGDataError;
 
-use super::PersistentDict;
+use super::Dict;
 
 pub struct ReadonlyRocksDBDict<K: AsRef<[u8]> + 'static, V: 'static> {
     db: rocksdb::DB,
@@ -21,7 +21,7 @@ impl<K: AsRef<[u8]>, V> ReadonlyRocksDBDict<K, V> {
     }
 }
 
-impl<K: AsRef<[u8]>, V> PersistentDict<K, V> for ReadonlyRocksDBDict<K, V> {
+impl<K: AsRef<[u8]>, V: Send + Sync> Dict<K, V> for ReadonlyRocksDBDict<K, V> {
     fn get<Q: ?Sized>(&self, key: &Q) -> Result<Option<V>, KGDataError>
     where
         K: Borrow<Q>,

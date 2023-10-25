@@ -1,9 +1,10 @@
-use std::ffi::OsStr;
+use std::{ffi::OsStr, path::PathBuf};
 
 use rocksdb::{DBCompressionType, Options};
 
 use crate::error::KGDataError;
 
+#[derive(Debug, Clone)]
 pub enum PredefinedDB {
     Entity,
     EntityMetadata,
@@ -28,15 +29,31 @@ impl PredefinedDB {
     }
 
     pub fn open_raw_db(&self, datadir: &str) -> Result<rocksdb::DB, KGDataError> {
-        let dbpath = PathBuf::from(datadir).join(self.get_dbname()).as_os_str();
+        let tmp = PathBuf::from(datadir).join(self.get_dbname());
+        let dbpath = tmp.as_os_str();
         match self {
-            Predefined::Entity => open_big_db(dbpath),
-            Predefined::EntityMetadata => open_big_db(dbpath),
-            Predefined::EntityOutLink => open_small_db(dbpath),
-            Predefined::EntityRedirection => open_small_db(dbpath),
-            Predefined::EntityPageRank => open_nocompressed_db(dbpath),
-            Predefined::Property => open_small_db(dbpath),
-            Predefined::Class => open_medium_db(dbpath),
+            PredefinedDB::Entity => open_big_db(dbpath),
+            PredefinedDB::EntityMetadata => open_big_db(dbpath),
+            PredefinedDB::EntityOutLink => open_small_db(dbpath),
+            PredefinedDB::EntityRedirection => open_small_db(dbpath),
+            PredefinedDB::EntityPageRank => open_nocompressed_db(dbpath),
+            PredefinedDB::Property => open_small_db(dbpath),
+            PredefinedDB::Class => open_medium_db(dbpath),
+        }
+    }
+}
+
+impl<'s> From<&'s str> for PredefinedDB {
+    fn from(s: &'s str) -> Self {
+        match s {
+            "entity" => PredefinedDB::Entity,
+            "entity_metadata" => PredefinedDB::EntityMetadata,
+            "entity_outlinks" => PredefinedDB::EntityOutLink,
+            "entity_redirections" => PredefinedDB::EntityRedirection,
+            "entity_pagerank" => PredefinedDB::EntityPageRank,
+            "props" => PredefinedDB::Property,
+            "classes" => PredefinedDB::Class,
+            _ => panic!("Unknown DB name: {}", s),
         }
     }
 }
