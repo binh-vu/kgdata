@@ -19,23 +19,25 @@ struct ServerCLI {
     datadir: String,
 }
 
-// impl ServerCLI {
-//     /// Start and serve a DB server at the given URL.
-//     fn start(&self) -> Result<(), KGDataError> {
-//         let datadir = PathBuf::from(&self.datadir);
-//         let db = match &self.dbname {
-//             "entity" => KGDB::open_entity_raw_db(&datadir)?,
-//             "entity_metadata" => KGDB::open_entity_metadata_raw_db(&datadir)?,
-//             "entity_redirection" => KGDB::open_entity_redirection_db(&datadir)?,
-//             _ => panic!("Unknown database name: {}", name),
-//         };
-//         serve_db(&self.url, &db)
-//     }
-// }
+impl ServerCLI {
+    /// Start and serve a DB server at the given URL.
+    fn start(&self) -> Result<(), KGDataError> {
+        let datadir = PathBuf::from(&self.datadir);
+        let db = match self.dbname.as_ref() {
+            "entity" => KGDB::open_entity_raw_db(datadir)?,
+            "entity_metadata" => KGDB::open_entity_metadata_raw_db(datadir)?,
+            "entity_redirection" => KGDB::open_entity_redirection_raw_db(datadir)?,
+            _ => panic!("Unknown database name: {}", self.dbname),
+        };
+        serve_db(&self.url, &db)
+    }
+}
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     let cli = ServerCLI::parse();
-    // cli.start();
+    cli.start()?;
 
     // let args = GetRepresentativeValue {
     //     data_dir: "/Volumes/research/kgdata/data/dbpedia/20221201".to_string(),
