@@ -8,6 +8,12 @@ pub enum KGDataError {
     #[error("ValueError: {0}")]
     ValueError(String),
 
+    #[error("TimeoutError: {0}")]
+    TimeoutError(String),
+
+    #[error("InterruptedError: {0}")]
+    InterruptedError(&'static str),
+
     #[error(transparent)]
     IOError(#[from] std::io::Error),
 
@@ -31,6 +37,16 @@ pub enum KGDataError {
 
     #[error(transparent)]
     PyErr(#[from] pyo3::PyErr),
+
+    #[error("NNG (Messaging Library) Error: {0}")]
+    NNGError(#[from] nng::Error),
+
+    #[error("ZeroMQ Error: {0}")]
+    ZeroMQError(#[from] zmq::Error),
+
+    /// Error due to incorrect NNG's usage
+    #[error("IPC Impl Error: {0}")]
+    IPCImplError(String),
 }
 
 pub fn into_pyerr<E: Into<KGDataError>>(err: E) -> PyErr {

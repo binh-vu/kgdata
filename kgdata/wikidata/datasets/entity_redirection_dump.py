@@ -51,5 +51,5 @@ def _record_postprocess(line: bytes):
 
 
 if __name__ == "__main__":
-    WikidataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
+    WikidataDirCfg.init("~/kgdata/wikidata/20211213")
     entity_redirection_dump()
