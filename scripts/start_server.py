@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import signal
 import time
@@ -10,17 +12,18 @@ from loguru import logger
 
 
 @click.command("Start the server")
-@click.option("--db", required=True, help="Database name")
+@click.option("--db", required=True, multiple=True, help="Database name(s)")
 @click.option("--socket-dir", required=True, help="Directory to store the socket")
-@click.option("--dbpath", required=True, help="Database directory")
+@click.option("--dbpath", required=True, help="Directory containing databases")
 @click.option("-n", "--n-workers", type=int, default=1, help="Number of DB instances")
 def start_server(
-    db: Literal["entity", "entity_metadata"],
-    socket_dir: str,
+    db: tuple[Literal["entity", "entity_metadata"], ...],
+    socket_dir: str | Path,
     dbpath: str,
     n_workers: int = 1,
 ):
-    pid_file = Path(__file__).parent / f"started_{db}_servers.pid"
+    assert isinstance(db, tuple)
+    pid_file = Path(__file__).parent / f"started_{'__'.join(sorted(db))}_servers.pid"
     socket_dir = Path(socket_dir).absolute()
 
     if pid_file.exists():
@@ -33,20 +36,27 @@ def start_server(
     processes = []
 
     try:
-        for i in range(n_workers):
-            cmd = [
-                "cargo",
-                "run",
-                "--release",
-                "--",
-                db,
-                f"ipc://{socket_dir}/{db}.{i:03d}.ipc",
-                dbpath,
-            ]
-            logger.debug("Execute command: {}", " ".join(cmd))
-            p = Popen(cmd, cwd=str(Path(__file__).parent.parent), env=os.environ)
-            processes.append(p)
-            time.sleep(0.5)
+        for dbname in db:
+            paspath = str(
+                Path(dbpath)
+                / {"entity": "entities.db", "entity_metadata": "entity_metadata.db"}[
+                    dbname
+                ]
+            )
+            for i in range(n_workers):
+                cmd = [
+                    "cargo",
+                    "run",
+                    "--release",
+                    "--",
+                    dbname,
+                    f"ipc://{socket_dir}/{dbname}.{i:03d}.ipc",
+                    paspath,
+                ]
+                logger.debug("Execute command: {}", " ".join(cmd))
+                p = Popen(cmd, cwd=str(Path(__file__).parent.parent), env=os.environ)
+                processes.append(p)
+                time.sleep(0.5)
 
         with open(pid_file, "w") as f:
             for p in processes:

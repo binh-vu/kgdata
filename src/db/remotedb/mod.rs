@@ -11,7 +11,6 @@ pub mod ipcdeser;
 pub mod nngserver;
 pub mod request;
 pub mod response;
-// pub mod zeromqserver;
 pub use self::nngserver::{serve_db, NNGClient, NNGLocalClient};
 pub use self::request::Request;
 pub use self::response::Response;
