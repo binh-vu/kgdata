@@ -1,4 +1,4 @@
-#[allow(unused_imports)]
+#[allow(unused_imports, dead_code)]
 use std::time::{Duration, Instant};
 
 use indicatif::*;
@@ -13,7 +13,8 @@ const SOCKET_BASE_URL: &str = "ipc:///dev/shm/kgdata";
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let inputdir = &args[1];
-    let exptype = &args[2];
+    let maxentsize = args[2].parse::<usize>().unwrap();
+    let exptype = &args[3];
 
     if exptype == "process" {
         procspawn::init();
@@ -39,7 +40,7 @@ fn main() {
                 .map(String::from)
                 .collect::<Vec<_>>()
         })
-        .map(|x| x[0..5000.min(x.len())].to_vec())
+        .map(|x| x[0..maxentsize.min(x.len())].to_vec())
         .collect::<Vec<_>>();
 
     let mut start = Instant::now();
@@ -52,7 +53,19 @@ fn main() {
         fetch_ent_list_proc_par(&entlist);
     }
 
-    println!("Main bench takes: {:?}", start.elapsed());
+    let duration = start.elapsed();
+    println!("Main bench takes: {:?}", duration);
+    println!("*** exptype,ncpus,nentdb,numthreads,batchsize,maxentsize,duration");
+    println!(
+        "**- {},{},{},{},{},{},{:?}",
+        exptype,
+        get_cpus(),
+        get_n_entdb(),
+        rayon::current_num_threads(),
+        get_batch_size(),
+        maxentsize,
+        duration,
+    )
 }
 
 fn get_datadir() -> String {
@@ -89,11 +102,11 @@ fn get_remote_db() -> RemoteKGDB {
 
     let entity_urls = (0..n_entdb)
         .into_iter()
-        .map(|i| format!("{}/ent.{:0>3}.ipc", SOCKET_BASE_URL, i))
+        .map(|i| format!("{}/entity.{:0>3}.ipc", SOCKET_BASE_URL, i))
         .collect::<Vec<_>>();
     let entity_metadata_urls = (0..n_entmetadb)
         .into_iter()
-        .map(|i| format!("{}/entmeta.{:0>3}.ipc", SOCKET_BASE_URL, i))
+        .map(|i| format!("{}/entity_metadata.{:0>3}.ipc", SOCKET_BASE_URL, i))
         .collect::<Vec<_>>();
     RemoteKGDB::new(&get_datadir(), &entity_urls, &entity_metadata_urls).unwrap()
 }
@@ -102,14 +115,14 @@ fn get_entity_remote_db() -> RemoteRocksDBDict<String, Entity> {
     let n_entdb = get_n_entdb();
     let entity_urls = (0..n_entdb)
         .into_iter()
-        .map(|i| format!("{}/ent.{:0>3}.ipc", SOCKET_BASE_URL, i))
+        .map(|i| format!("{}/entity.{:0>3}.ipc", SOCKET_BASE_URL, i))
         .collect::<Vec<_>>();
     RemoteRocksDBDict::new(&entity_urls, deser_entity).unwrap()
 }
 
 fn get_batch_size() -> usize {
     std::env::var("BATCH_SIZE")
-        .unwrap_or(num_cpus::get().to_string())
+        .unwrap_or("64".to_owned())
         .as_str()
         .parse::<usize>()
         .unwrap()

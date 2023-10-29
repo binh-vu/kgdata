@@ -300,5 +300,5 @@ def extract_invalid_qualifier(ent: WDEntity) -> Optional[WDEntity]:
 
 
 if __name__ == "__main__":
-    WikidataDirCfg.init("/data/binhvu/sm-dev/data/wikidata/20211213")
+    WikidataDirCfg.init("~/kgdata/wikidata/20211213")
     print("Total:", entities().get_rdd().count())

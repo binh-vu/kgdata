@@ -1,3 +1,4 @@
+use super::{ipcdeser, Client, Request, Response};
 use kgdata::error::KGDataError;
 use log::info;
 use nng::{
@@ -7,8 +8,7 @@ use nng::{
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{thread::sleep, time::Duration};
-
-use super::{request::serialize_optional_bytes, Client, Request, Response};
+use thread_local::ThreadLocal;
 
 const CHECK_SIGNALS_INTERVAL: Duration = Duration::from_millis(200);
 const DIAL_RETRY_INTERVAL: Duration = Duration::from_millis(50);
@@ -35,6 +35,29 @@ impl Client for NNGClient {
     }
 }
 
+pub struct NNGLocalClient {
+    url: String,
+    socket: ThreadLocal<Socket>,
+}
+
+impl Client for NNGLocalClient {
+    type Message = nng::Message;
+
+    fn open(url: &str) -> Result<Self, KGDataError> {
+        Ok(Self {
+            url: url.to_owned(),
+            socket: ThreadLocal::new(),
+        })
+    }
+
+    #[inline(always)]
+    fn request(&self, req: &[u8]) -> Result<nng::Message, KGDataError> {
+        let socket = self.socket.get_or_try(|| dial(&self.url))?;
+        socket.send(req).map_err(from_nngerror)?;
+        Ok(socket.recv()?)
+    }
+}
+
 /// Serve an instance of rocksdb at the given URL.
 pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
     let running = Arc::new(AtomicBool::new(true));
@@ -49,6 +72,8 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
     socket.listen(url)?;
     socket.set_opt::<RecvTimeout>(Some(CHECK_SIGNALS_INTERVAL))?;
 
+    // 10 MB
+    let mut buffer = ipcdeser::VecBuffer::with_capacity(10 * 1024 * 1024);
     info!("Serving a database at {}", url);
     loop {
         let mut nnmsg = loop {
@@ -66,38 +91,36 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
                 Err(e) => return Err(KGDataError::NNGError(e)),
             }
         };
-
         let req = Request::deserialize(nnmsg.as_slice())?;
-        let rep = process_request(db, &req)?;
+        buffer.clear();
+        let resp_size = match req {
+            Request::Get(key) => match db.get_pinned(key)? {
+                None => Response::SuccessGet(&[]).serialize_to_buf(&mut buffer),
+                Some(value) => Response::SuccessGet(value.as_ref()).serialize_to_buf(&mut buffer),
+            },
+            Request::BatchGet(keys) => {
+                let values = keys
+                    .iter()
+                    .map(|key| db.get_pinned(key))
+                    .collect::<Result<Vec<_>, _>>()?;
+                ipcdeser::serialize_optional_lst_to_buffer(
+                    Response::SUCCESS_BATCH_GET,
+                    &values,
+                    &mut buffer,
+                )
+            }
+            Request::Contains(key) => {
+                let msg = match db.get_pinned(key)? {
+                    None => Response::SuccessContains(false),
+                    Some(_) => Response::SuccessContains(true),
+                };
+                msg.serialize_to_buf(&mut buffer)
+            }
+        };
         nnmsg.clear();
-        nnmsg.push_back(&rep);
+        nnmsg.push_back(&buffer.0[..resp_size]);
         socket.send(nnmsg).map_err(from_nngerror)?;
     }
-}
-
-pub fn process_request(db: &rocksdb::DB, req: &Request) -> Result<Vec<u8>, KGDataError> {
-    let resp = match req {
-        Request::Get(key) => match db.get_pinned(key)? {
-            None => Response::SuccessGet(&[]).serialize(),
-            Some(value) => Response::SuccessGet(value.as_ref()).serialize(),
-        },
-        Request::BatchGet(keys) => {
-            let values = keys
-                .iter()
-                .map(|key| db.get_pinned(key))
-                .collect::<Result<Vec<_>, _>>()?;
-            serialize_optional_bytes(Response::SUCCESS_BATCH_GET, &values)
-        }
-        Request::Contains(key) => {
-            let msg = match db.get_pinned(key)? {
-                None => Response::SuccessContains(false),
-                Some(_) => Response::SuccessContains(true),
-            };
-            msg.serialize()
-        }
-    };
-
-    Ok(resp)
 }
 
 #[inline]

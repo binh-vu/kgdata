@@ -1,23 +1,35 @@
 set -x
 
-# N_CPUS=1 N_ENTDB=4 RAYON_NUM_THREADS=1 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_CPUS=4 N_ENTDB=4 RAYON_NUM_THREADS=4 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_CPUS=8 N_ENTDB=4 RAYON_NUM_THREADS=8 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_CPUS=16 N_ENTDB=4 RAYON_NUM_THREADS=16 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_CPUS=32 N_ENTDB=4 RAYON_NUM_THREADS=32 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_CPUS=48 N_ENTDB=4 RAYON_NUM_THREADS=48 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_CPUS=64 N_ENTDB=4 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
+INDIR=/var/tmp/ben/ray-on-100
+BATCH_SIZE=32
+# ENT_LIMIT=1000
+ENT_LIMIT=2000
 
-N_ENTDB=1 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-N_ENTDB=2 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-N_ENTDB=3 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-N_ENTDB=4 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-N_ENTDB=5 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-N_ENTDB=6 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-N_ENTDB=7 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-N_ENTDB=8 RAYON_NUM_THREADS=64 cargo run --release -- /var/tmp/ben/ray-on-100 thread >> bench_thread.txt
-# N_ENTDB=16 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_ENTDB=24 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_ENTDB=32 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_ENTDB=48 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
-# N_ENTDB=48 cargo run --release -- /var/tmp/ben/ray-on-100 process >> bench_proc.txt
+# for j in 1 2 3 4 5
+# do
+#     for i in 1 4 8 12 16 20 24 28 32 64 72
+#     do
+#         N_CPUS=$i N_ENTDB=1 cargo run --release -- $INDIR $ENT_LIMIT process >> bench_process.txt
+#     done
+# done
+
+# BATCH_SIZE=32
+# ENT_LIMIT=2000
+
+# for i in 1 2 3 4 5
+# do
+#     for j in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+#     do
+#         # N_ENTDB=$j BATCH_SIZE=$BATCH_SIZE cargo run --release -- $INDIR $ENT_LIMIT thread >> bench_thread_client_mutex.txt
+#         N_ENTDB=$j BATCH_SIZE=$BATCH_SIZE cargo run --release -- $INDIR $ENT_LIMIT thread >> bench_thread_client_threadlocal.txt
+#     done
+# done
+
+# for BATCH_SIZE in 16 32 64 128 256
+for i in 1 2 3 4 5
+do
+    for j in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+    do
+        N_ENTDB=$j BATCH_SIZE=$BATCH_SIZE cargo run --release -- $INDIR $ENT_LIMIT thread >> bench_thread_client_threadlocal_2.txt
+    done
+done

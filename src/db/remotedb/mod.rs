@@ -7,15 +7,14 @@ use std::marker::PhantomData;
 
 use super::Dict;
 
+pub mod ipcdeser;
 pub mod nngserver;
 pub mod request;
 pub mod response;
 // pub mod zeromqserver;
-pub use self::nngserver::{serve_db, NNGClient};
+pub use self::nngserver::{serve_db, NNGClient, NNGLocalClient};
 pub use self::request::Request;
 pub use self::response::Response;
-// pub use self::nngserver::{serve_db as nng_serve_db, NNGSocket};
-// pub use self::zeromqserver::{serve_db, ZMQClient};
 
 pub trait Client: Send + Sync {
     type Message: std::ops::Deref<Target = [u8]>;
@@ -172,9 +171,6 @@ impl<K: AsRef<[u8]>, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let k = key.as_ref();
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        // socket.send(&Request::Contains(k).serialize())?;
-        // let msg = socket.recv()?;
-
         let msg = socket.request(&Request::Contains(k).serialize())?;
 
         match Response::deserialize(&msg)? {
@@ -234,10 +230,7 @@ impl<K: AsRef<[u8]>, V: Send + Sync, S: Client> Dict<K, V> for BaseRemoteRocksDB
     }
 }
 
-// pub type NNGRemoteRocksDBDict<K, V> = BaseRemoteRocksDBDict<K, V, NNGSocket>;
-pub type RemoteRocksDBDict<K, V> = BaseRemoteRocksDBDict<K, V, NNGClient>;
-// pub type IPCRemoteRocksDBDict<K, V> = BaseRemoteRocksDBDict<K, V, InterProcessClient>;
-// pub type RemoteRocksDBDict<K, V> = BaseRemoteRocksDBDict<K, V, ZMQClient>;
+pub type RemoteRocksDBDict<K, V> = BaseRemoteRocksDBDict<K, V, NNGLocalClient>;
 
 /// Find the worker that is responsible for the given key.
 #[inline]
