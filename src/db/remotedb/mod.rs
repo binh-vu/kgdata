@@ -10,12 +10,11 @@ use super::Dict;
 pub mod nngserver;
 pub mod request;
 pub mod response;
-pub mod zeromqserver;
-// pub use self::interprocessserver::{serve_db as ipc_serve_db, InterProcessClient};
+// pub mod zeromqserver;
 pub use self::nngserver::{serve_db, NNGClient};
-// pub use self::nngserver::{serve_db as nng_serve_db, NNGSocket};
 pub use self::request::Request;
 pub use self::response::Response;
+// pub use self::nngserver::{serve_db as nng_serve_db, NNGSocket};
 // pub use self::zeromqserver::{serve_db, ZMQClient};
 
 pub trait Client: Send + Sync {
@@ -65,14 +64,6 @@ impl<K: AsRef<[u8]>, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         Q: AsRef<[u8]>,
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-
-        // socket.send(&Request::serialize_batch_get(
-        //     keys.iter().map(|key| key.as_ref()),
-        //     keys.len(),
-        //     keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        // ))?;
-        // let msg = socket.recv()?;
-
         let msg = socket.request(&Request::serialize_batch_get(
             keys.iter().map(|key| key.as_ref()),
             keys.len(),
@@ -114,13 +105,6 @@ impl<K: AsRef<[u8]>, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         Q: AsRef<[u8]>,
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-
-        // socket.send(&Request::serialize_batch_get(
-        //     keys.iter().map(|key| key.as_ref()),
-        //     keys.len(),
-        //     keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        // ))?;
-        // let msg = socket.recv()?;
         let msg = socket.request(&Request::serialize_batch_get(
             keys.iter().map(|key| key.as_ref()),
             keys.len(),
@@ -159,8 +143,6 @@ impl<K: AsRef<[u8]>, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let k = key.as_ref();
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        // socket.send(&Request::Get(k).serialize())?;
-        // let msg = socket.recv()?;
         let msg = socket.request(&Request::Get(k).serialize())?;
 
         match Response::deserialize(&msg)? {

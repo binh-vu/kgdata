@@ -10,7 +10,7 @@ use std::{thread::sleep, time::Duration};
 
 use super::{request::serialize_optional_bytes, Client, Request, Response};
 
-const CHECK_SIGNALS_INTERVAL: Duration = Duration::from_millis(100);
+const CHECK_SIGNALS_INTERVAL: Duration = Duration::from_millis(200);
 const DIAL_RETRY_INTERVAL: Duration = Duration::from_millis(50);
 const DIAL_MAX_RETRIES: usize = 200; // ten seconds
 
@@ -27,16 +27,6 @@ impl Client for NNGClient {
         })
     }
 
-    // #[inline(always)]
-    // fn send(&self, req: &[u8]) -> Result<(), KGDataError> {
-    //     // self.socket.send(req).map_err(from_nngerror)
-    //     self.socket.lock().unwrap().send(req).map_err(from_nngerror)
-    // }
-
-    // #[inline(always)]
-    // fn recv(&self) -> Result<nng::Message, KGDataError> {
-    //     Ok(self.socket.lock().unwrap().recv()?)
-    // }
     #[inline(always)]
     fn request(&self, req: &[u8]) -> Result<nng::Message, KGDataError> {
         let socket = self.socket.lock().unwrap();
@@ -60,13 +50,8 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
     socket.set_opt::<RecvTimeout>(Some(CHECK_SIGNALS_INTERVAL))?;
 
     info!("Serving a database at {}", url);
-
     loop {
         let mut nnmsg = loop {
-            if let Ok(m) = socket.recv() {
-                break m;
-            }
-
             match socket.recv() {
                 Ok(m) => break m,
                 Err(Error::TimedOut) => {
@@ -81,29 +66,9 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
                 Err(e) => return Err(KGDataError::NNGError(e)),
             }
         };
-        let msg = Request::deserialize(nnmsg.as_slice())?;
 
-        let rep = match &msg {
-            Request::Get(key) => match db.get_pinned(key)? {
-                None => Response::SuccessGet(&[]).serialize(),
-                Some(value) => Response::SuccessGet(value.as_ref()).serialize(),
-            },
-            Request::BatchGet(keys) => {
-                let values = keys
-                    .iter()
-                    .map(|key| db.get_pinned(key))
-                    .collect::<Result<Vec<_>, _>>()?;
-                serialize_optional_bytes(Response::SUCCESS_BATCH_GET, &values)
-            }
-            Request::Contains(key) => {
-                let msg = match db.get_pinned(key)? {
-                    None => Response::SuccessContains(false),
-                    Some(_) => Response::SuccessContains(true),
-                };
-                msg.serialize()
-            }
-        };
-
+        let req = Request::deserialize(nnmsg.as_slice())?;
+        let rep = process_request(db, &req)?;
         nnmsg.clear();
         nnmsg.push_back(&rep);
         socket.send(nnmsg).map_err(from_nngerror)?;
