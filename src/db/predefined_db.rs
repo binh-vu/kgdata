@@ -1,8 +1,13 @@
-use std::{ffi::OsStr, path::PathBuf};
+use std::ffi::OsStr;
 
 use rocksdb::{DBCompressionType, Options};
 
 use crate::error::KGDataError;
+
+use super::ReadonlyRocksDBDict;
+use crate::conversions::WDEntity;
+use crate::conversions::{WDClass, WDEntityMetadata, WDProperty};
+use crate::models::{Class, Entity, EntityMetadata, EntityOutLink, Property};
 
 #[derive(Debug, Clone)]
 pub enum PredefinedDB {
@@ -18,7 +23,7 @@ pub enum PredefinedDB {
 impl PredefinedDB {
     pub fn get_dbname(&self) -> &'static str {
         match self {
-            PredefinedDB::Entity => "entity.db",
+            PredefinedDB::Entity => "entities.db",
             PredefinedDB::EntityMetadata => "entity_metadata.db",
             PredefinedDB::EntityOutLink => "entity_outlinks.db",
             PredefinedDB::EntityRedirection => "entity_redirections.db",
@@ -28,9 +33,7 @@ impl PredefinedDB {
         }
     }
 
-    pub fn open_raw_db(&self, datadir: &str) -> Result<rocksdb::DB, KGDataError> {
-        let tmp = PathBuf::from(datadir).join(self.get_dbname());
-        let dbpath = tmp.as_os_str();
+    pub fn open_raw_db(&self, dbpath: &OsStr) -> Result<rocksdb::DB, KGDataError> {
         match self {
             PredefinedDB::Entity => open_big_db(dbpath),
             PredefinedDB::EntityMetadata => open_big_db(dbpath),
@@ -100,4 +103,91 @@ pub fn open_nocompressed_db(dbpath: &OsStr) -> Result<rocksdb::DB, KGDataError> 
 
     rocksdb::DB::open_for_read_only(&options, dbpath, false)
         .map_err(|e| KGDataError::RocksDBError(e))
+}
+
+pub fn open_entity_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Entity>, KGDataError> {
+    Ok(ReadonlyRocksDBDict::new(
+        PredefinedDB::Entity.open_raw_db(dbpath)?,
+        deser_entity,
+    ))
+}
+
+pub fn open_entity_metadata_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, EntityMetadata>, KGDataError> {
+    Ok(ReadonlyRocksDBDict::new(
+        PredefinedDB::EntityMetadata.open_raw_db(dbpath)?,
+        deser_entity_metadata,
+    ))
+}
+
+pub fn open_entity_redirection_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, String>, KGDataError> {
+    Ok(ReadonlyRocksDBDict::new(
+        PredefinedDB::EntityRedirection.open_raw_db(dbpath)?,
+        deser_string,
+    ))
+}
+
+pub fn open_entity_outlink_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, EntityOutLink>, KGDataError> {
+    Ok(ReadonlyRocksDBDict::new(
+        PredefinedDB::EntityOutLink.open_raw_db(dbpath)?,
+        deser_entity_outlink,
+    ))
+}
+
+pub fn open_entity_pagerank_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, f64>, KGDataError> {
+    Ok(ReadonlyRocksDBDict::new(
+        PredefinedDB::EntityPageRank.open_raw_db(dbpath)?,
+        deser_entity_pagerank,
+    ))
+}
+
+pub fn open_property_db(
+    dbpath: &OsStr,
+) -> Result<ReadonlyRocksDBDict<String, Property>, KGDataError> {
+    Ok(ReadonlyRocksDBDict::new(
+        PredefinedDB::Property.open_raw_db(dbpath)?,
+        deser_property,
+    ))
+}
+
+pub fn open_class_db(dbpath: &OsStr) -> Result<ReadonlyRocksDBDict<String, Class>, KGDataError> {
+    Ok(ReadonlyRocksDBDict::new(
+        PredefinedDB::Class.open_raw_db(dbpath)?,
+        deser_class,
+    ))
+}
+
+pub fn deser_entity(v: &[u8]) -> Result<Entity, KGDataError> {
+    Ok(serde_json::from_slice::<WDEntity>(v)?.0)
+}
+
+pub fn deser_entity_metadata(v: &[u8]) -> Result<EntityMetadata, KGDataError> {
+    Ok(serde_json::from_slice::<WDEntityMetadata>(v)?.0)
+}
+
+fn deser_entity_pagerank(v: &[u8]) -> Result<f64, KGDataError> {
+    Ok(f64::from_le_bytes(v.try_into()?))
+}
+
+fn deser_entity_outlink(v: &[u8]) -> Result<EntityOutLink, KGDataError> {
+    Ok(serde_json::from_slice::<EntityOutLink>(v)?)
+}
+
+fn deser_property(v: &[u8]) -> Result<Property, KGDataError> {
+    Ok(serde_json::from_slice::<WDProperty>(v)?.0)
+}
+
+fn deser_class(v: &[u8]) -> Result<Class, KGDataError> {
+    Ok(serde_json::from_slice::<WDClass>(v)?.0)
+}
+
+fn deser_string(v: &[u8]) -> Result<String, KGDataError> {
+    String::from_utf8(v.to_owned()).map_err(KGDataError::from)
 }

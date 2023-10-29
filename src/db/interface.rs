@@ -18,30 +18,38 @@ pub trait Dict<K: AsRef<[u8]>, V: Send + Sync>: Send + Sync {
         Q: AsRef<[u8]>;
 
     /// Get multiple keys
-    fn batch_get<'t, I, Q: ?Sized>(&self, keys: I) -> Result<Vec<Option<V>>, KGDataError>
+    fn batch_get<'t, Q>(&self, keys: &[Q]) -> Result<Vec<Option<V>>, KGDataError>
     where
         K: Borrow<Q>,
         Q: AsRef<[u8]> + 't,
-        I: IntoIterator<Item = &'t Q> + 't,
     {
         keys.into_iter()
             .map(|key| self.get(key))
             .collect::<Result<Vec<_>, KGDataError>>()
     }
 
-    fn par_batch_get<'t, I, Q: ?Sized>(
-        &self,
-        keys: I,
-        batch_size: usize,
-    ) -> Result<Vec<Option<V>>, KGDataError>
+    // fn batch_get_as_map<'t, I, Q>(&self, keys: &[Q]) -> Result<HashMap<K, V>, KGDataError>
+    // where
+    //     K: Borrow<Q>,
+    //     Q: AsRef<[u8]> + 't,
+    // {
+    //     keys.into_iter()
+    //         .map(|key| self.get(key))
+    //         .filter_map(|key| match self.get(key)? {
+    //             None => Ok(None),
+    //             Some(value) => Some(Ok((key, value))),
+    //         })
+    //         .collect::<Result<Vec<_>, KGDataError>>()
+    // }
+
+    /// Get multiple keys in parallel
+    fn par_batch_get<Q>(&self, keys: &[Q], batch_size: usize) -> Result<Vec<Option<V>>, KGDataError>
     where
         K: Borrow<Q>,
-        Q: AsRef<[u8]> + 't,
-        I: IntoIterator<Item = &'t Q> + 't,
+        Q: AsRef<[u8]> + Sync + Send,
     {
-        keys.into_iter()
-            .chunks(batch_size)
-            .into_par_iter()
+        keys.into_par_iter()
+            .with_min_len(batch_size)
             .map(|key| self.get(key))
             .collect::<Result<Vec<_>, KGDataError>>()
     }

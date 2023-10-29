@@ -1,0 +1,8 @@
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=72 -- BATCH_SIZE=64
+Fetch entities in proc parallel takes: 30.324862668s
+Result: 530887
+Main bench takes: 30.325356343s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=72 -- BATCH_SIZE=64
+Fetch entities in proc parallel takes: 29.558504194s
+Result: 530887
+Main bench takes: 29.560440398s

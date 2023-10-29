@@ -1,0 +1,81 @@
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=32 -- BATCH_SIZE=128
+Load DB takes: 12.086628ms
+Fetch entities in parallel takes: 22.59973877s
+Result: 530887
+Main bench takes: 23.333883971s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=16 -- BATCH_SIZE=128
+Load DB takes: 14.867403ms
+Fetch entities in parallel takes: 21.376899276s
+Result: 530887
+Main bench takes: 21.876948063s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=24 -- BATCH_SIZE=128
+Load DB takes: 16.180775ms
+Fetch entities in parallel takes: 21.817697706s
+Result: 530887
+Main bench takes: 22.637934302s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=8 -- NUM_THREADS=24 -- BATCH_SIZE=128
+Load DB takes: 6.028279ms
+Fetch entities in parallel takes: 18.208594753s
+Result: 530887
+Main bench takes: 18.887198395s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=24 -- BATCH_SIZE=128
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=24 -- BATCH_SIZE=128
+Load DB takes: 8.813013ms
+Fetch entities in parallel takes: 16.61830895s
+Result: 530887
+Main bench takes: 17.254720151s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=36 -- BATCH_SIZE=128
+Load DB takes: 9.770672ms
+Fetch entities in parallel takes: 21.482411987s
+Result: 530887
+Main bench takes: 22.182877589s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=36 -- BATCH_SIZE=256
+Load DB takes: 8.156215ms
+Fetch entities in parallel takes: 18.208763381s
+Result: 530887
+Main bench takes: 19.003098196s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=8 -- NUM_THREADS=36 -- BATCH_SIZE=256
+Load DB takes: 6.571176ms
+Fetch entities in parallel takes: 18.921328909s
+Result: 530887
+Main bench takes: 19.858702295s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=8 -- NUM_THREADS=36 -- BATCH_SIZE=64
+Load DB takes: 6.189188ms
+Fetch entities in parallel takes: 20.860430564s
+Result: 530887
+Main bench takes: 21.797636438s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=64 -- BATCH_SIZE=64
+Load DB takes: 9.143558ms
+Fetch entities in parallel takes: 39.555941645s
+Result: 530887
+Main bench takes: 41.66945825s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=4 -- NUM_THREADS=64 -- BATCH_SIZE=64
+Load DB takes: 3.950838ms
+Fetch entities in parallel takes: 32.433646217s
+Result: 530887
+Main bench takes: 33.808525964s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=8 -- NUM_THREADS=72 -- BATCH_SIZE=64
+Load DB takes: 6.191124ms
+Fetch entities in parallel takes: 41.390442466s
+Result: 530887
+Main bench takes: 43.400352135s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=72 -- BATCH_SIZE=64
+Load DB takes: 9.511955ms
+Fetch entities in parallel takes: 38.516465095s
+Result: 530887
+Main bench takes: 40.126674482s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=4 -- NUM_THREADS=72 -- BATCH_SIZE=64
+Load DB takes: 4.346309ms
+Fetch entities in parallel takes: 36.184104526s
+Result: 530887
+Main bench takes: 37.879871284s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=8 -- NUM_THREADS=72 -- BATCH_SIZE=64
+Load DB takes: 6.075628ms
+Fetch entities in parallel takes: 37.92945648s
+Result: 530887
+Main bench takes: 39.654989806s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "thread"] -- N_CPUS=72 -- N_ENTDB=16 -- NUM_THREADS=72 -- BATCH_SIZE=64
+Load DB takes: 12.059595ms
+Fetch entities in parallel takes: 37.937512961s
+Result: 530887
+Main bench takes: 39.661678814s

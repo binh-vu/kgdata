@@ -1,0 +1,28 @@
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=1 -- N_ENTDB=4 -- NUM_THREADS=1 -- BATCH_SIZE=72
+Fetch entities in proc parallel takes: 92.566478081s
+Result: 530887
+Main bench takes: 92.567010761s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=4 -- N_ENTDB=4 -- NUM_THREADS=4 -- BATCH_SIZE=72
+Fetch entities in proc parallel takes: 29.601055133s
+Result: 530887
+Main bench takes: 29.601683557s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=8 -- N_ENTDB=4 -- NUM_THREADS=8 -- BATCH_SIZE=72
+Fetch entities in proc parallel takes: 18.850190245s
+Result: 530887
+Main bench takes: 18.850646395s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=16 -- N_ENTDB=4 -- NUM_THREADS=16 -- BATCH_SIZE=72
+Fetch entities in proc parallel takes: 13.798347792s
+Result: 530887
+Main bench takes: 13.798728335s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=32 -- N_ENTDB=4 -- NUM_THREADS=32 -- BATCH_SIZE=72
+Fetch entities in proc parallel takes: 14.912146512s
+Result: 530887
+Main bench takes: 14.912538082s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=48 -- N_ENTDB=4 -- NUM_THREADS=48 -- BATCH_SIZE=72
+Fetch entities in proc parallel takes: 20.520598645s
+Result: 530887
+Main bench takes: 20.521024317s
+args: ["target/release/benchio", "/var/tmp/ben/ray-on-100", "process"] -- N_CPUS=64 -- N_ENTDB=4 -- NUM_THREADS=64 -- BATCH_SIZE=72
+Fetch entities in proc parallel takes: 27.531252505s
+Result: 530887
+Main bench takes: 27.531831432s

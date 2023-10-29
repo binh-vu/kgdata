@@ -41,6 +41,9 @@ pub enum KGDataError {
     #[error("NNG (Messaging Library) Error: {0}")]
     NNGError(#[from] nng::Error),
 
+    #[error("ZeroMQ Error: {0}")]
+    ZeroMQError(#[from] zmq::Error),
+
     /// Error due to incorrect NNG's usage
     #[error("IPC Impl Error: {0}")]
     IPCImplError(String),
