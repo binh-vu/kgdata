@@ -54,6 +54,7 @@ pub fn serialize_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
     size
 }
 
+#[allow(dead_code)]
 #[inline(always)]
 pub fn serialize_optional_lst<V: std::ops::Deref<Target = [u8]>>(
     code: u8,

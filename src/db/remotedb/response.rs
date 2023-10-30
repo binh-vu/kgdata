@@ -34,6 +34,7 @@ impl<'s> Response<'s> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn serialize(&self) -> Vec<u8> {
         match self {
             Self::Error => vec![Response::ERROR],
