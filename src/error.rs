@@ -5,6 +5,9 @@ use thiserror::Error;
 /// Represent possible errors returned by this library.
 #[derive(Error, Debug)]
 pub enum KGDataError {
+    #[error("KeyError: {0}")]
+    KeyError(String),
+
     #[error("ValueError: {0}")]
     ValueError(String),
 

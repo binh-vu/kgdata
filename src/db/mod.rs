@@ -8,7 +8,7 @@ mod interface;
 mod predefined_db;
 mod readonly_rocksdb_dict;
 mod remotedb;
-pub use self::interface::Dict;
+pub use self::interface::Map;
 pub use self::predefined_db::{
     deser_entity, deser_entity_metadata, open_class_db, open_entity_db, open_entity_metadata_db,
     open_entity_outlink_db, open_entity_pagerank_db, open_entity_redirection_db, open_property_db,
@@ -19,8 +19,8 @@ pub use self::remotedb::{serve_db, RemoteRocksDBDict};
 
 pub struct BaseKGDB<ED, EMD>
 where
-    ED: Dict<String, Entity> + Sync + Send,
-    EMD: Dict<String, EntityMetadata> + Sync + Send,
+    ED: Map<String, Entity> + Sync + Send,
+    EMD: Map<String, EntityMetadata> + Sync + Send,
 {
     pub datadir: PathBuf,
     pub classes: ReadonlyRocksDBDict<String, Class>,

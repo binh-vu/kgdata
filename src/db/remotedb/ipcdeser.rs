@@ -25,6 +25,16 @@ impl Buffer for VecBuffer {
     }
 }
 
+impl Buffer for Vec<u8> {
+    fn write_byte(&mut self, byte: u8) {
+        self.push(byte);
+    }
+
+    fn write(&mut self, content: &[u8]) {
+        self.extend_from_slice(content);
+    }
+}
+
 #[inline(always)]
 pub fn serialize_lst<V: std::ops::Deref<Target = [u8]>>(code: u8, lst: &[V]) -> Vec<u8> {
     let mut buf = Vec::with_capacity(lst.iter().map(|item| item.len() + 4).sum::<usize>() + 5);

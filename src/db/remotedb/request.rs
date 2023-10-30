@@ -64,4 +64,23 @@ impl<'s> Request<'s> {
             }
         }
     }
+
+    #[allow(dead_code)]
+    pub fn serialize_to_buf(&self, buf: &mut impl ipcdeser::Buffer) -> usize {
+        match self {
+            Self::Get(key) => {
+                buf.write_byte(Request::GET);
+                buf.write(key);
+                1 + key.len()
+            }
+            Self::BatchGet(keys) => {
+                ipcdeser::serialize_lst_to_buffer(Request::BATCH_GET, keys, buf)
+            }
+            Self::Contains(key) => {
+                buf.write_byte(Request::CONTAINS);
+                buf.write(key);
+                1 + key.len()
+            }
+        }
+    }
 }
