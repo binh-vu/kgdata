@@ -1,14 +1,17 @@
 from __future__ import annotations
-import orjson
-from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
+
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
+
+import orjson
+from kgdata.wikipedia.misc import get_title_from_url, is_wikipedia_url
 from rsoup.core import Table
-from sm.dataset import FullTable, Context
+from sm.dataset import Context, FullTable
 from sm.inputs.column import Column
-from sm.inputs.link import WIKIDATA, Link, EntityId
+from sm.inputs.link import EntityId, Link
 from sm.inputs.table import ColumnBasedTable
 from sm.misc.matrix import Matrix
+from sm.namespaces.utils import KGName
 
 
 @dataclass
@@ -56,7 +59,7 @@ class LinkedHTMLTable:
                     start=l.start,
                     end=l.end,
                     url=l.wikipedia_url,
-                    entities=[EntityId(l.wikidata_id, WIKIDATA)]
+                    entities=[EntityId(l.wikidata_id, KGName.Wikidata)]
                     if l.wikidata_id is not None
                     else [],
                 )
@@ -68,9 +71,10 @@ class LinkedHTMLTable:
             context=Context(
                 page_title=title,
                 page_url=url,
-                page_entities=[EntityId(self.page_wikidata_id, WIKIDATA)]
+                entities=[EntityId(self.page_wikidata_id, KGName.Wikidata)]
                 if self.page_wikidata_id is not None
                 else [],
+                literals=[],
                 content_hierarchy=self.table.context,
             ),
             links=links,
