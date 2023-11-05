@@ -5,9 +5,9 @@ from typing import Generic, Literal, TypedDict, TypeVar, Union
 import orjson
 from kgdata.core.models import Value
 from rdflib import XSD
-from rdflib import Literal as RDFLiteral
+from rdflib import Literal as LiteralTerm
 from rdflib import URIRef
-from sm.namespaces.namespace import KnowledgeGraphNamespace
+from sm.namespaces.wikidata import WikidataNamespace
 from typing_extensions import TypeGuard
 
 """
@@ -25,6 +25,10 @@ WDValueType = Literal[
     "monolingualtext",
     "globecoordinate",
 ]
+WD_VALUE_QUANTITY_TYPE_URI = "http://wikiba.se/ontology#Value:Quantity"
+WD_VALUE_TIME_TYPE_URI = "http://wikiba.se/ontology#Value:Time"
+WD_VALUE_GLOBECOORDINATE_TYPE_URI = "http://wikiba.se/ontology#Value:GlobeCoordinate"
+
 
 T = TypeVar(
     "T",
@@ -200,26 +204,33 @@ class WDValue(Generic[T, V]):
             return cls.monolingual_text(self.value["text"], self.value["language"])
         raise ValueError(f"Unknown type: {self.type}")
 
-    def to_rdf(self, kgns: KnowledgeGraphNamespace) -> URIRef | RDFLiteral:
+    def to_rdf(self, wdns: WikidataNamespace) -> URIRef | LiteralTerm:
         if self.is_entity_id(self):
-            return URIRef(kgns.id_to_uri(self.as_entity_id()))
+            return URIRef(wdns.id_to_uri(self.as_entity_id()))
 
         if self.is_string(self):
-            return RDFLiteral(self.value, datatype=XSD.string)
+            return LiteralTerm(self.value, datatype=XSD.string)
 
         if self.is_mono_lingual_text(self):
-            return RDFLiteral(
+            return LiteralTerm(
                 self.value["text"], lang=self.value["language"], datatype=XSD.string
             )
 
-        # if self.is_time(self):
-        #     return RDFLiteral(self.value["time"])
+        if self.is_time(self):
+            return LiteralTerm(
+                orjson.dumps(self.value).decode(), datatype=WD_VALUE_TIME_TYPE_URI
+            )
 
         if self.is_quantity(self):
-            return RDFLiteral(self.value["amount"], datatype=XSD.numeric)
+            return LiteralTerm(
+                orjson.dumps(self.value).decode(), datatype=WD_VALUE_QUANTITY_TYPE_URI
+            )
 
-        # if self.is_globe_coordinate(self):
-        #     return RDFLiteral(f"{self.value['latitude']} {self.value['longitude']}")
+        if self.is_globe_coordinate(self):
+            return LiteralTerm(
+                orjson.dumps(self.value).decode(),
+                datatype=WD_VALUE_GLOBECOORDINATE_TYPE_URI,
+            )
 
         raise ValueError(f"Unknown type: {self.type}")
 
@@ -241,17 +252,17 @@ WDValueKind = Union[
 ]
 
 
-def type_check(val: WDValueKind):
-    """The function is here to see if the type checker is able to flag error.
+# def type_check(val: WDValueKind):
+#     """The function is here to see if the type checker is able to flag error.
 
-    Uncomment to see the errors.
+#     Uncomment to see the errors.
 
-    Tested with Pylance and mypy in 2022-05-15.
-    """
-    if WDValue.is_entity_id(val):
-        # val.as_string()
-        val.as_entity_id()
+#     Tested with Pylance and mypy in 2022-05-15.
+#     """
+#     if WDValue.is_entity_id(val):
+#         # val.as_string()
+#         val.as_entity_id()
 
-    if WDValue.is_string(val):
-        val.as_string()
-        # val.as_entity_id()
+#     if WDValue.is_string(val):
+#         val.as_string()
+#         # val.as_entity_id()
