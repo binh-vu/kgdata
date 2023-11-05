@@ -6,14 +6,13 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import Any, Callable, Iterable
 
-from rdflib import OWL, RDF, RDFS, URIRef
-
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
 from kgdata.spark import ExtendedRDD
 from kgdata.splitter import split_a_file, split_a_list
+from rdflib import OWL, RDF, RDFS, URIRef
 
 rdf_type = str(RDF.type)
 rdfs_label = str(RDFS.label)
@@ -145,12 +144,12 @@ def ontology_dump() -> Dataset[RDFResource]:
     return final_ds
 
 
-def aggregated_triples(val: tuple[str, Iterable[Triple]]) -> RDFResource:
+def aggregated_triples(val: tuple[URIRef, Iterable[Triple]]) -> RDFResource:
     source, pred_objs = val
     props: dict[str, list] = defaultdict(list)
     for _, pred, obj in pred_objs:
         props[str(pred)].append(obj)
-    return RDFResource(source, dict(props))
+    return RDFResource(str(source), dict(props))
 
 
 def is_target_ontologies(uri: str) -> bool:

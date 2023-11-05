@@ -3,9 +3,12 @@ from __future__ import annotations
 from typing import Generic, Literal, TypedDict, TypeVar, Union
 
 import orjson
-from typing_extensions import TypeGuard
-
 from kgdata.core.models import Value
+from rdflib import XSD
+from rdflib import Literal as RDFLiteral
+from rdflib import URIRef
+from sm.namespaces.namespace import KnowledgeGraphNamespace
+from typing_extensions import TypeGuard
 
 """
 https://www.mediawiki.org/wiki/Wikibase/DataModel/JSON#Data_Values is moved to https://doc.wikimedia.org/Wikibase/master/php/md_docs_topics_json.html
@@ -195,6 +198,29 @@ class WDValue(Generic[T, V]):
             )
         if self.is_mono_lingual_text(self):
             return cls.monolingual_text(self.value["text"], self.value["language"])
+        raise ValueError(f"Unknown type: {self.type}")
+
+    def to_rdf(self, kgns: KnowledgeGraphNamespace) -> URIRef | RDFLiteral:
+        if self.is_entity_id(self):
+            return URIRef(kgns.id_to_uri(self.as_entity_id()))
+
+        if self.is_string(self):
+            return RDFLiteral(self.value, datatype=XSD.string)
+
+        if self.is_mono_lingual_text(self):
+            return RDFLiteral(
+                self.value["text"], lang=self.value["language"], datatype=XSD.string
+            )
+
+        # if self.is_time(self):
+        #     return RDFLiteral(self.value["time"])
+
+        if self.is_quantity(self):
+            return RDFLiteral(self.value["amount"], datatype=XSD.numeric)
+
+        # if self.is_globe_coordinate(self):
+        #     return RDFLiteral(f"{self.value['latitude']} {self.value['longitude']}")
+
         raise ValueError(f"Unknown type: {self.type}")
 
 

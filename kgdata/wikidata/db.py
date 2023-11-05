@@ -21,7 +21,6 @@ from typing import (
 import orjson
 import requests
 import serde.jl as jl
-
 from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
 from kgdata.db import (
@@ -111,7 +110,9 @@ def query_wikidata_entities(
     qnode_ids: Union[Set[str], List[str]],
     endpoint: str = "https://www.wikidata.org/w/api.php",
 ) -> Dict[str, WDEntity]:
-    assert len(qnode_ids) > 0, qnode_ids
+    assert (
+        len(qnode_ids) > 0 and len(qnode_ids) <= 50
+    ), "The query limit is 50, but get: %d" % len(qnode_ids)
     resp = requests.get(
         endpoint,
         params={
