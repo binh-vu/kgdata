@@ -4,7 +4,7 @@ from typing import Dict, List, Literal
 from kgdata.models.entity import Statement
 from kgdata.wikidata.models.wdvalue import WDValue, WDValueKind
 from rdflib import URIRef
-from sm.namespaces.wikidata import WikidataNamespace
+from sm.namespaces.namespace import KnowledgeGraphNamespace
 
 
 @dataclass
@@ -53,14 +53,14 @@ class WDStatement:
                 vals[i] = WDValue(v[0], v[1])
         return WDStatement(o[0], o[1], o[2], o[3])
 
-    def to_rdf(self, wdns: WikidataNamespace) -> Statement:
+    def to_rdf(self, kgns: KnowledgeGraphNamespace) -> Statement:
         return Statement(
-            value=self.value.to_rdf(wdns),
+            value=self.value.to_rdf(kgns),
             qualifiers={
-                wdns.id_to_uri(qid): [qval.to_rdf(wdns) for qval in qvals]
+                kgns.id_to_uri(qid): [qval.to_rdf(kgns) for qval in qvals]
                 for qid, qvals in self.qualifiers.items()
             },
             qualifiers_order=[
-                URIRef(wdns.id_to_uri(qid)) for qid in self.qualifiers_order
+                URIRef(kgns.id_to_uri(qid)) for qid in self.qualifiers_order
             ],
         )

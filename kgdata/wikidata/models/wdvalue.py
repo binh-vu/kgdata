@@ -7,7 +7,7 @@ from kgdata.core.models import Value
 from rdflib import XSD
 from rdflib import Literal as LiteralTerm
 from rdflib import URIRef
-from sm.namespaces.wikidata import WikidataNamespace
+from sm.namespaces.namespace import KnowledgeGraphNamespace
 from typing_extensions import TypeGuard
 
 """
@@ -204,7 +204,7 @@ class WDValue(Generic[T, V]):
             return cls.monolingual_text(self.value["text"], self.value["language"])
         raise ValueError(f"Unknown type: {self.type}")
 
-    def to_rdf(self, wdns: WikidataNamespace) -> URIRef | LiteralTerm:
+    def to_rdf(self, wdns: KnowledgeGraphNamespace) -> URIRef | LiteralTerm:
         if self.is_entity_id(self):
             return URIRef(wdns.id_to_uri(self.as_entity_id()))
 
