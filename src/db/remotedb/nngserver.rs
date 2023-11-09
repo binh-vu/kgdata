@@ -5,8 +5,11 @@ use nng::{
     options::{Options, RecvTimeout},
     Error, Message, Protocol, Socket,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::{thread::sleep, time::Duration};
 use thread_local::ThreadLocal;
 
@@ -103,7 +106,9 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
                     .iter()
                     .map(|key| db.get_pinned(key))
                     .collect::<Result<Vec<_>, _>>()?;
-                ipcdeser::serialize_optional_lst_to_buffer(
+                ipcdeser::serialize_compressed_optional_lst_to_buffer(
+                    // )
+                    // ipcdeser::serialize_optional_lst_to_buffer(
                     Response::SUCCESS_BATCH_GET,
                     &values,
                     &mut buffer,
@@ -115,6 +120,32 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
                     Some(_) => Response::SuccessContains(true),
                 };
                 msg.serialize_to_buf(&mut buffer)
+            }
+            Request::Test(value) => {
+                // we read a file of entities and calculate sum of id number
+                let (nlines, filename) = {
+                    let tmp = value.split(":").collect::<Vec<_>>();
+                    (tmp[0], tmp[1])
+                };
+                let mut entids = std::fs::read_to_string(&filename)
+                    .unwrap()
+                    .lines()
+                    .filter(|x| x.len() > 0)
+                    .map(String::from)
+                    .collect::<Vec<_>>();
+                entids.truncate(nlines.parse::<usize>().unwrap());
+
+                let sum = entids
+                    .into_iter()
+                    .map(|entid| {
+                        let key: &[u8] = entid.as_ref();
+                        let ent =
+                            crate::db::deser_entity(&db.get_pinned(key).unwrap().unwrap()).unwrap();
+                        ent.id[1..].parse::<i32>().unwrap() % 2
+                    })
+                    .sum::<i32>() as u32;
+
+                Response::SuccessTest(sum).serialize_to_buf(&mut buffer)
             }
         };
         nnmsg.clear();

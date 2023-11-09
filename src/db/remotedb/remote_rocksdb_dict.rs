@@ -38,6 +38,21 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         })
     }
 
+    pub fn test(&self, query: &str, rotate_no: usize) -> Result<u32, KGDataError> {
+        let socket = &self.sockets[rotate_no % self.sockets.len()];
+        let msg = socket.request(&Request::Test(query).serialize())?;
+        match Response::deserialize(&msg)? {
+            Response::Error => {
+                Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
+            }
+            Response::SuccessTest(score) => Ok(score),
+            _ => Err(KGDataError::IPCImplError(
+                "Invalid message. Please report the bug.".to_owned(),
+            )
+            .into()),
+        }
+    }
+
     #[inline(always)]
     fn rotate_batch_get<Q>(
         &self,
@@ -47,6 +62,11 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     where
         Q: AsRef<[u8]> + Equivalent<K>,
     {
+        // println!(
+        //     "thread id: {:?} -- socket: {}",
+        //     std::thread::current().id(),
+        //     rotate_no % self.sockets.len()
+        // );
         let socket = &self.sockets[rotate_no % self.sockets.len()];
         let msg = socket.request(&Request::serialize_batch_get(
             keys.iter().map(|key| key.as_ref()),
@@ -54,7 +74,10 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
             keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
         ))?;
 
-        match Response::deserialize(&msg)? {
+        let buf: &[u8] = &msg;
+        let buf2 = zstd::stream::decode_all(buf)?;
+
+        match Response::deserialize(&buf2)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
             }

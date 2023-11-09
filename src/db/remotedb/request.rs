@@ -12,12 +12,16 @@ pub enum Request<'s> {
 
     // Check if a key exists in the database
     Contains(&'s [u8]),
+
+    // For testing
+    Test(&'s str),
 }
 
 impl<'s> Request<'s> {
     pub const GET: u8 = 0;
     pub const BATCH_GET: u8 = 1;
     pub const CONTAINS: u8 = 2;
+    pub const TEST: u8 = 10;
 
     #[inline]
     pub fn serialize_batch_get<'t>(
@@ -40,6 +44,7 @@ impl<'s> Request<'s> {
             Request::GET => Ok(Self::Get(&buf[1..])),
             Request::BATCH_GET => Ok(Self::BatchGet(ipcdeser::deserialize_lst(buf))),
             Request::CONTAINS => Ok(Self::Contains(&buf[1..])),
+            Request::TEST => Ok(Self::Test(std::str::from_utf8(&buf[1..])?)),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
             )
@@ -62,6 +67,13 @@ impl<'s> Request<'s> {
                 buf.extend_from_slice(key);
                 buf
             }
+            Self::Test(value) => {
+                let sb: &[u8] = value.as_ref();
+                let mut buf = Vec::with_capacity(sb.len() + 1);
+                buf.push(Request::TEST);
+                buf.extend_from_slice(sb);
+                buf
+            }
         }
     }
 
@@ -80,6 +92,12 @@ impl<'s> Request<'s> {
                 buf.write_byte(Request::CONTAINS);
                 buf.write(key);
                 1 + key.len()
+            }
+            Self::Test(value) => {
+                let sb: &[u8] = value.as_ref();
+                buf.write_byte(Request::TEST);
+                buf.write(sb);
+                sb.len() + 1
             }
         }
     }

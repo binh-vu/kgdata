@@ -18,6 +18,9 @@ pub enum KGDataError {
     InterruptedError(&'static str),
 
     #[error(transparent)]
+    Utf8Error(#[from] std::str::Utf8Error),
+
+    #[error(transparent)]
     IOError(#[from] std::io::Error),
 
     #[error(transparent)]

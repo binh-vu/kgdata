@@ -1,9 +1,12 @@
+use std::io::Write;
+
 pub trait Buffer {
     fn write_byte(&mut self, byte: u8);
     fn write(&mut self, content: &[u8]);
 }
 
 pub struct VecBuffer(pub Vec<u8>);
+pub struct RefVecBuffer<'s>(pub &'s mut Vec<u8>);
 
 impl VecBuffer {
     pub fn with_capacity(cap: usize) -> Self {
@@ -12,6 +15,32 @@ impl VecBuffer {
 
     pub fn clear(&mut self) {
         self.0.clear();
+    }
+
+    pub fn get_mut_ref(&mut self) -> RefVecBuffer {
+        RefVecBuffer(&mut self.0)
+    }
+}
+
+impl std::io::Write for VecBuffer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl<'s> std::io::Write for RefVecBuffer<'s> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
@@ -116,6 +145,34 @@ pub fn serialize_optional_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
         }
     }
     size
+}
+
+#[inline(always)]
+pub fn serialize_compressed_optional_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
+    code: u8,
+    lst: &[Option<V>],
+    buf: &mut VecBuffer,
+) -> usize {
+    let mut encoder = zstd::stream::write::Encoder::new(buf.get_mut_ref(), 3).unwrap();
+    encoder.write_all(&[code]).unwrap();
+    encoder
+        .write_all(&(lst.len() as u32).to_le_bytes())
+        .unwrap();
+
+    for item in lst {
+        match item {
+            None => {
+                encoder.write_all(&(0 as u32).to_le_bytes()).unwrap();
+            }
+            Some(x) => {
+                encoder.write_all(&(x.len() as u32).to_le_bytes()).unwrap();
+                encoder.write_all(&x).unwrap();
+            }
+        }
+    }
+    encoder.flush().unwrap();
+    let refbuf = encoder.finish().unwrap();
+    refbuf.0.len()
 }
 
 #[inline(always)]

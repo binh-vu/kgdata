@@ -4,7 +4,7 @@ import os
 import signal
 import time
 from pathlib import Path
-from subprocess import Popen
+from subprocess import Popen, TimeoutExpired
 from typing import Literal
 
 import click
@@ -75,28 +75,29 @@ def start_server(
         is_finished = [False for p in processes]
         wait_time = [0 for p in processes]
         max_wait_time = 30  # 30 seconds
-        for i, p in enumerate(processes):
-            if is_finished[i]:
-                continue
+        while True:
+            for i, p in enumerate(processes):
+                if is_finished[i]:
+                    continue
 
-            try:
-                p.wait(1)
-                is_finished[i] = True
-                logger.info(
-                    "Stopped process {} with return code {} ({}/{})",
-                    p.pid,
-                    p.returncode,
-                    sum(is_finished),
-                    len(processes),
-                )
-            except TimeoutError:
-                wait_time[i] += 1
-                if all(
-                    not finish and t >= max_wait_time
-                    for t, finish in zip(wait_time, is_finished)
-                ):
-                    # empty still true -- all jobs either finished or timeout
-                    break
+                try:
+                    p.wait(1)
+                    is_finished[i] = True
+                    logger.info(
+                        "Stopped process {} with return code {} ({}/{})",
+                        p.pid,
+                        p.returncode,
+                        sum(is_finished),
+                        len(processes),
+                    )
+                except (TimeoutError, TimeoutExpired):
+                    wait_time[i] += 1
+            if all(
+                finish or t >= max_wait_time
+                for t, finish in zip(wait_time, is_finished)
+            ):
+                # empty still true -- all jobs either finished or timeout
+                break
 
         # remove the unfinished processes from the files.
         if all(is_finished):

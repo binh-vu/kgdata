@@ -6,6 +6,7 @@ pub mod nngserver;
 pub mod remote_rocksdb_dict;
 pub mod request;
 pub mod response;
+pub mod shmemserver;
 
 pub use self::nngserver::{serve_db, NNGClient, NNGLocalClient};
 pub use self::remote_rocksdb_dict::BaseRemoteRocksDBDict;
@@ -24,3 +25,4 @@ pub trait Client: Send + Sync {
 }
 
 pub type RemoteRocksDBDict<K, V> = BaseRemoteRocksDBDict<K, V, NNGLocalClient>;
+// pub type RemoteRocksDBDict<K, V> = BaseRemoteRocksDBDict<K, V, NNGClient>;
