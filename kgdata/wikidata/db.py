@@ -25,6 +25,7 @@ from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
 from kgdata.db import (
     deser_from_dict,
+    deser_from_tuple,
     get_rocksdb,
     large_dbopts,
     make_get_rocksdb,
@@ -32,20 +33,18 @@ from kgdata.db import (
     pack_float,
     pack_int,
     ser_to_dict,
+    ser_to_tuple,
     small_dbopts,
     unpack_float,
     unpack_int,
 )
-from kgdata.models.entity import EntityLabel, EntityOutLinks
-from kgdata.wikidata.datasets.entity_metadata import (
-    deser_entity_metadata,
-    ser_entity_metadata,
-)
+from kgdata.models.entity import EntityOutLinks
 from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
 from kgdata.wikidata.models import WDClass, WDProperty
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
+from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel, WDEntityWikiLink)
 
@@ -195,8 +194,8 @@ get_class_db = proxy_wrapper(clz=WDClass, dbopts=medium_dbopts)
 get_prop_db = proxy_wrapper(clz=WDProperty, dbopts=small_dbopts)
 get_entity_db = proxy_wrapper(clz=WDEntity, dbopts=large_dbopts)
 get_entity_metadata_db = make_get_rocksdb(
-    deser_value=deser_entity_metadata,
-    ser_value=ser_entity_metadata,
+    deser_value=partial(deser_from_tuple, WDEntityMetadata),
+    ser_value=ser_to_tuple,
     dbopts=large_dbopts,
     version="2",
 )

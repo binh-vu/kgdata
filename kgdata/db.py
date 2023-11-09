@@ -110,6 +110,10 @@ def deser_from_dict(cls: type[T], data: bytes | str) -> T:
     return cls.from_dict(orjson.loads(data))  # type: ignore
 
 
+def deser_from_tuple(cls: type[T], data: bytes | str) -> T:
+    return cls.from_tuple(orjson.loads(data))  # type: ignore
+
+
 def ser_to_dict(value: T) -> bytes:  # type: ignore
     return orjson.dumps(value.to_dict())  # type: ignore
 
