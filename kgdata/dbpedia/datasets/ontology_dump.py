@@ -12,7 +12,7 @@ from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
 from kgdata.spark import ExtendedRDD
 from kgdata.splitter import split_a_file, split_a_list
-from rdflib import OWL, RDF, RDFS, URIRef
+from rdflib import OWL, RDF, RDFS, BNode, URIRef
 
 rdf_type = str(RDF.type)
 rdfs_label = str(RDFS.label)
@@ -144,12 +144,8 @@ def ontology_dump() -> Dataset[RDFResource]:
     return final_ds
 
 
-def aggregated_triples(val: tuple[URIRef, Iterable[Triple]]) -> RDFResource:
-    source, pred_objs = val
-    props: dict[str, list] = defaultdict(list)
-    for _, pred, obj in pred_objs:
-        props[str(pred)].append(obj)
-    return RDFResource(str(source), dict(props))
+def aggregated_triples(val: tuple[URIRef | BNode, Iterable[Triple]]) -> RDFResource:
+    return RDFResource.from_triples(val[0], val[1])
 
 
 def is_target_ontologies(uri: str) -> bool:

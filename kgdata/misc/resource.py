@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import asdict, dataclass
-from typing import Generic, TypeVar, Union
+from typing import Generic, Iterable, TypeVar, Union
 
 import orjson
+from kgdata.misc.ntriples_parser import Triple, node_from_dict, node_to_dict
 from rdflib import BNode, Literal, URIRef
-
-from kgdata.misc.ntriples_parser import node_from_dict, node_to_dict
 
 V = TypeVar("V")
 
@@ -68,6 +68,13 @@ class RDFResource(Resource[Union[URIRef, BNode, Literal]]):
                     (item for item in lst if item not in self.props[pid])
                 )
         return self
+
+    @staticmethod
+    def from_triples(source: URIRef | BNode, triples: Iterable[Triple]):
+        props: dict[str, list] = defaultdict(list)
+        for _, pred, obj in triples:
+            props[str(pred)].append(obj)
+        return RDFResource(str(source), dict(props))
 
 
 def orjson_default(o):
