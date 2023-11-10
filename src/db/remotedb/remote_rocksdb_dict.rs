@@ -6,6 +6,7 @@ use std::cmp::Eq;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::marker::PhantomData;
+use std::ops::Deref;
 
 use super::super::interface::Equivalent;
 use super::Client;
@@ -40,7 +41,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
 
     pub fn test(&self, query: &str, rotate_no: usize) -> Result<u32, KGDataError> {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::Test(query).serialize())?;
+        let msg = socket.request(&Request::ser_test(query.deref()))?;
         match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
@@ -68,11 +69,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         //     rotate_no % self.sockets.len()
         // );
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::serialize_batch_get(
-            keys.iter().map(|key| key.as_ref()),
-            keys.len(),
-            keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        ))?;
+        let msg = socket.request(&Request::ser_batch_get(keys))?;
 
         let buf: &[u8] = &msg;
         let buf2 = zstd::stream::decode_all(buf)?;
@@ -107,11 +104,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         Q: AsRef<[u8]> + Equivalent<K>,
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::serialize_batch_get(
-            keys.iter().map(|key| key.as_ref()),
-            keys.len(),
-            keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        ))?;
+        let msg = socket.request(&Request::ser_batch_get(keys))?;
 
         match Response::deserialize(&msg)? {
             Response::Error => {
@@ -147,11 +140,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         Q: AsRef<[u8]> + Into<K> + Equivalent<K> + Clone,
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::serialize_batch_get(
-            keys.iter().map(|key| key.as_ref()),
-            keys.len(),
-            keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        ))?;
+        let msg = socket.request(&Request::ser_batch_get(keys))?;
 
         match Response::deserialize(&msg)? {
             Response::Error => {
@@ -185,7 +174,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let k = key.as_ref();
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::Get(k).serialize())?;
+        let msg = socket.request(&Request::ser_get(k))?;
 
         match Response::deserialize(&msg)? {
             Response::Error => {
@@ -213,7 +202,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let k = key.as_ref();
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::Contains(k).serialize())?;
+        let msg = socket.request(&Request::ser_contains(k))?;
 
         match Response::deserialize(&msg)? {
             Response::Error => {

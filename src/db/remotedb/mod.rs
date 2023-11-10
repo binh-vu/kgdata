@@ -6,6 +6,7 @@ pub mod nngserver;
 pub mod remote_rocksdb_dict;
 pub mod request;
 pub mod response;
+pub mod shmemhelper;
 pub mod shmemserver;
 
 pub use self::nngserver::{serve_db, NNGClient, NNGLocalClient};

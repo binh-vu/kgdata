@@ -1,8 +1,44 @@
 use std::io::Write;
+use std::ops::Deref;
+
+use rocksdb::DBPinnableSlice;
+
+pub struct EmptySlice;
+
+impl Deref for EmptySlice {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        &[]
+    }
+}
+
+pub struct OptionDBPinnableSlice<'s>(pub Option<DBPinnableSlice<'s>>);
+
+impl<'s> Deref for OptionDBPinnableSlice<'s> {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        match &self.0 {
+            None => &[],
+            Some(x) => x.deref(),
+        }
+    }
+}
+
+impl<'s> AsRef<[u8]> for OptionDBPinnableSlice<'s> {
+    fn as_ref(&self) -> &[u8] {
+        match &self.0 {
+            None => &[],
+            Some(x) => x.as_ref(),
+        }
+    }
+}
 
 pub trait Buffer {
     fn write_byte(&mut self, byte: u8);
     fn write(&mut self, content: &[u8]);
+    fn write_at(&mut self, content: &[u8], at: usize);
 }
 
 pub struct VecBuffer(pub Vec<u8>);
@@ -52,6 +88,10 @@ impl Buffer for VecBuffer {
     fn write(&mut self, content: &[u8]) {
         self.0.extend_from_slice(content);
     }
+
+    fn write_at(&mut self, content: &[u8], at: usize) {
+        self.0[at..(at + content.len())].copy_from_slice(content);
+    }
 }
 
 impl Buffer for Vec<u8> {
@@ -62,10 +102,14 @@ impl Buffer for Vec<u8> {
     fn write(&mut self, content: &[u8]) {
         self.extend_from_slice(content);
     }
+
+    fn write_at(&mut self, content: &[u8], at: usize) {
+        self[at..(at + content.len())].copy_from_slice(content);
+    }
 }
 
 #[inline(always)]
-pub fn serialize_lst<V: std::ops::Deref<Target = [u8]>>(code: u8, lst: &[V]) -> Vec<u8> {
+pub fn serialize_lst<V: Deref<Target = [u8]>>(code: u8, lst: &[V]) -> Vec<u8> {
     let mut buf = Vec::with_capacity(lst.iter().map(|item| item.len() + 4).sum::<usize>() + 5);
     buf.push(code);
     buf.extend_from_slice(&(lst.len() as u32).to_le_bytes());
@@ -76,16 +120,24 @@ pub fn serialize_lst<V: std::ops::Deref<Target = [u8]>>(code: u8, lst: &[V]) -> 
     buf
 }
 
-#[inline(always)]
-pub fn serialize_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
+#[inline]
+pub fn get_buffer_size_for_iter<'t, V: AsRef<[u8]> + 't>(
+    iter: impl Iterator<Item = V> + ExactSizeIterator,
+) -> usize {
+    return 5 + iter.map(|item| item.as_ref().len() + 4).sum::<usize>();
+}
+
+#[inline]
+pub fn serialize_iter_to_buffer<'t, V: AsRef<[u8]> + 't>(
     code: u8,
-    lst: &[V],
+    iter: impl Iterator<Item = V> + ExactSizeIterator,
     buf: &mut impl Buffer,
 ) -> usize {
     let mut size = 5;
     buf.write_byte(code);
-    buf.write(&(lst.len() as u32).to_le_bytes());
-    for item in lst {
+    buf.write(&(iter.len().to_le_bytes()));
+    for item in iter {
+        let item = item.as_ref();
         buf.write(&(item.len() as u32).to_le_bytes());
         buf.write(item);
         size += 4 + item.len();
@@ -93,37 +145,8 @@ pub fn serialize_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
     size
 }
 
-#[allow(dead_code)]
 #[inline(always)]
-pub fn serialize_optional_lst<V: std::ops::Deref<Target = [u8]>>(
-    code: u8,
-    lst: &[Option<V>],
-) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(
-        lst.iter()
-            .map(|item| match item {
-                None => 4,
-                Some(x) => x.len() + 4,
-            })
-            .sum::<usize>()
-            + 5,
-    );
-    buf.push(code);
-    buf.extend_from_slice(&(lst.len() as u32).to_le_bytes());
-    for item in lst {
-        match item {
-            None => buf.extend_from_slice(&(0 as u32).to_le_bytes()),
-            Some(item) => {
-                buf.extend_from_slice(&(item.len() as u32).to_le_bytes());
-                buf.extend_from_slice(item);
-            }
-        }
-    }
-    buf
-}
-
-#[inline(always)]
-pub fn serialize_optional_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
+pub fn serialize_optional_lst_to_buffer<V: Deref<Target = [u8]>>(
     code: u8,
     lst: &[Option<V>],
     buf: &mut impl Buffer,
@@ -148,7 +171,7 @@ pub fn serialize_optional_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
 }
 
 #[inline(always)]
-pub fn serialize_compressed_optional_lst_to_buffer<V: std::ops::Deref<Target = [u8]>>(
+pub fn serialize_compressed_optional_lst_to_buffer<V: Deref<Target = [u8]>>(
     code: u8,
     lst: &[Option<V>],
     buf: &mut VecBuffer,

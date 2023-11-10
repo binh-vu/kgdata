@@ -1,3 +1,5 @@
+// use crate::db::remotedb::shmemhelper::SharedMemBuffer;
+
 use super::{ipcdeser, Client, Request, Response};
 use kgdata::error::KGDataError;
 use log::info;
@@ -5,6 +7,7 @@ use nng::{
     options::{Options, RecvTimeout},
     Error, Message, Protocol, Socket,
 };
+// use shared_memory::{Shmem, ShmemConf};
 use std::sync::Mutex;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -77,6 +80,7 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
 
     // 10 MB
     let mut buffer = ipcdeser::VecBuffer::with_capacity(10 * 1024 * 1024);
+
     info!("Serving a database at {}", url);
     loop {
         let mut nnmsg = loop {
@@ -98,28 +102,18 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
         buffer.clear();
         let resp_size = match req {
             Request::Get(key) => match db.get_pinned(key)? {
-                None => Response::SuccessGet(&[]).serialize_to_buf(&mut buffer),
-                Some(value) => Response::SuccessGet(value.as_ref()).serialize_to_buf(&mut buffer),
+                None => Response::ser_success_get(ipcdeser::EmptySlice {}, &mut buffer),
+                Some(value) => Response::ser_success_get(value, &mut buffer),
             },
-            Request::BatchGet(keys) => {
-                let values = keys
-                    .iter()
-                    .map(|key| db.get_pinned(key))
-                    .collect::<Result<Vec<_>, _>>()?;
-                ipcdeser::serialize_compressed_optional_lst_to_buffer(
-                    // )
-                    // ipcdeser::serialize_optional_lst_to_buffer(
-                    Response::SUCCESS_BATCH_GET,
-                    &values,
-                    &mut buffer,
-                )
-            }
+            Request::BatchGet(keys) => Response::ser_success_batch_get(
+                keys.into_iter().map(|key| {
+                    ipcdeser::OptionDBPinnableSlice(db.get_pinned(key).expect("Error getting key"))
+                }),
+                &mut buffer,
+            ),
             Request::Contains(key) => {
-                let msg = match db.get_pinned(key)? {
-                    None => Response::SuccessContains(false),
-                    Some(_) => Response::SuccessContains(true),
-                };
-                msg.serialize_to_buf(&mut buffer)
+                let contain = db.get_pinned(key)?.is_some();
+                Response::ser_success_contains(contain, &mut buffer)
             }
             Request::Test(value) => {
                 // we read a file of entities and calculate sum of id number
@@ -145,8 +139,9 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
                     })
                     .sum::<i32>() as u32;
 
-                Response::SuccessTest(sum).serialize_to_buf(&mut buffer)
+                Response::ser_success_test(sum, &mut buffer)
             }
+            _ => todo!(),
         };
         nnmsg.clear();
         nnmsg.push_back(&buffer.0[..resp_size]);
