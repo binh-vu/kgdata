@@ -6,15 +6,17 @@ use std::cmp::Eq;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::marker::PhantomData;
+use std::ops::Deref;
 
 use super::super::interface::Equivalent;
+use super::ipcserde;
 use super::Client;
 use super::Map;
 use super::Request;
 use super::Response;
 
 pub struct BaseRemoteRocksDBDict<K: AsRef<[u8]> + Eq + Hash, V, S: Client> {
-    sockets: Vec<S>,
+    pub sockets: Vec<S>,
     deser_value: fn(&[u8]) -> Result<V, KGDataError>,
     deser_key: PhantomData<fn() -> K>,
 }
@@ -38,6 +40,21 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         })
     }
 
+    pub fn test(&self, query: &str, rotate_no: usize) -> Result<u32, KGDataError> {
+        let socket = &self.sockets[rotate_no % self.sockets.len()];
+        let msg = socket.request(&Request::ser_test(query.deref()))?;
+        match Response::deserialize(&msg)? {
+            Response::Error => {
+                Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
+            }
+            Response::SuccessTest(score) => Ok(score),
+            _ => Err(KGDataError::IPCImplError(
+                "Invalid message. Please report the bug.".to_owned(),
+            )
+            .into()),
+        }
+    }
+
     #[inline(always)]
     fn rotate_batch_get<Q>(
         &self,
@@ -48,29 +65,28 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         Q: AsRef<[u8]> + Equivalent<K>,
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::serialize_batch_get(
-            keys.iter().map(|key| key.as_ref()),
-            keys.len(),
-            keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        ))?;
+        let msg = socket.request(&Request::ser_batch_get(keys))?;
+        let map_func = |item: &[u8]| {
+            if item.len() == 0 {
+                // key does not exist in the primary
+                Ok(None)
+            } else {
+                (self.deser_value)(item).map(|v| Some(v))
+            }
+        };
 
         match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
             }
-            Response::SuccessBatchGet(items) => {
-                items
-                    .into_iter()
-                    .map(|item| {
-                        if item.len() == 0 {
-                            // key does not exist in the primary
-                            Ok(None)
-                        } else {
-                            (self.deser_value)(item).map(|v| Some(v))
-                        }
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            }
+            Response::SuccessBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
+            Response::SuccessCompressedBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
             )
@@ -84,29 +100,27 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         Q: AsRef<[u8]> + Equivalent<K>,
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::serialize_batch_get(
-            keys.iter().map(|key| key.as_ref()),
-            keys.len(),
-            keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        ))?;
-
+        let msg = socket.request(&Request::ser_batch_get(keys))?;
+        let map_func = |item: &[u8]| {
+            if item.len() == 0 {
+                // key does not exist in the primary
+                Err(KGDataError::KeyError("Key not found".to_owned()))
+            } else {
+                (self.deser_value)(item)
+            }
+        };
         match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
             }
-            Response::SuccessBatchGet(items) => {
-                items
-                    .into_iter()
-                    .map(|item| {
-                        if item.len() == 0 {
-                            // key does not exist in the primary
-                            Err(KGDataError::KeyError("Key not found".to_owned()))
-                        } else {
-                            (self.deser_value)(item)
-                        }
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            }
+            Response::SuccessBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
+            Response::SuccessCompressedBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
             )
@@ -124,30 +138,29 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
         Q: AsRef<[u8]> + Into<K> + Equivalent<K> + Clone,
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::serialize_batch_get(
-            keys.iter().map(|key| key.as_ref()),
-            keys.len(),
-            keys.iter().map(|key| key.as_ref().len()).sum::<usize>(),
-        ))?;
-
+        let msg = socket.request(&Request::ser_batch_get(keys))?;
+        let map_func = |(item, key): (&[u8], &Q)| {
+            if item.len() == 0 {
+                // key does not exist in the db
+                Err(KGDataError::KeyError("Key not found".to_owned()))
+            } else {
+                Ok((key.clone().into(), (self.deser_value)(item)?))
+            }
+        };
         match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
             }
-            Response::SuccessBatchGet(items) => {
-                items
-                    .into_iter()
-                    .zip(keys.into_iter())
-                    .map(|(item, key)| {
-                        if item.len() == 0 {
-                            // key does not exist in the db
-                            Err(KGDataError::KeyError("Key not found".to_owned()))
-                        } else {
-                            Ok((key.clone().into(), (self.deser_value)(item)?))
-                        }
-                    })
-                    .collect::<Result<HashMap<_, _>, _>>()
-            }
+            Response::SuccessBatchGet(items) => items
+                .into_iter()
+                .zip(keys.into_iter())
+                .map(map_func)
+                .collect::<Result<HashMap<_, _>, _>>(),
+            Response::SuccessCompressedBatchGet(items) => items
+                .into_iter()
+                .zip(keys.into_iter())
+                .map(map_func)
+                .collect::<Result<HashMap<_, _>, _>>(),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
             )
@@ -162,7 +175,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let k = key.as_ref();
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::Get(k).serialize())?;
+        let msg = socket.request(&Request::ser_get(k))?;
 
         match Response::deserialize(&msg)? {
             Response::Error => {
@@ -190,7 +203,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let k = key.as_ref();
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::Contains(k).serialize())?;
+        let msg = socket.request(&Request::ser_contains(k))?;
 
         match Response::deserialize(&msg)? {
             Response::Error => {

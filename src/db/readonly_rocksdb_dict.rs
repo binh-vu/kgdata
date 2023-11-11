@@ -26,6 +26,7 @@ impl<K: AsRef<[u8]>, V> ReadonlyRocksDBDict<K, V> {
 }
 
 impl<K: AsRef<[u8]> + Eq + Hash, V: Send + Sync> Map<K, V> for ReadonlyRocksDBDict<K, V> {
+    #[inline]
     fn get<Q: ?Sized>(&self, key: &Q) -> Result<Option<V>, KGDataError>
     where
         Q: AsRef<[u8]> + Equivalent<K>,
@@ -34,13 +35,19 @@ impl<K: AsRef<[u8]> + Eq + Hash, V: Send + Sync> Map<K, V> for ReadonlyRocksDBDi
             None => Ok(None),
             Some(value) => (self.deser_value)(value.as_ref()).map(|v| Some(v)),
         }
+        // match self.db.get(key.as_ref())? {
+        //     None => Ok(None),
+        //     Some(value) => (self.deser_value)(value.as_ref()).map(|v| Some(v)),
+        // }
     }
 
+    #[inline]
     fn contains_key<Q: ?Sized>(&self, key: &Q) -> Result<bool, KGDataError>
     where
         Q: AsRef<[u8]> + Equivalent<K>,
     {
         Ok(self.db.get_pinned(key.as_ref())?.is_some())
+        // Ok(self.db.get(key.as_ref())?.is_some())
     }
 
     fn slice_get<Q>(&self, keys: &[Q]) -> Result<Vec<Option<V>>, KGDataError>

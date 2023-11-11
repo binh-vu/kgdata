@@ -7,7 +7,7 @@ use crate::models::{Class, Entity, EntityMetadata, EntityOutLink, Property};
 mod interface;
 mod predefined_db;
 mod readonly_rocksdb_dict;
-mod remotedb;
+pub mod remotedb;
 pub use self::interface::Map;
 pub use self::predefined_db::{
     deser_entity, deser_entity_metadata, open_class_db, open_entity_db, open_entity_metadata_db,

@@ -1,18 +1,23 @@
-use super::{ipcdeser, Client, Request, Response};
+use super::{ipcserde, Client, Request, Response};
 use kgdata::error::KGDataError;
 use log::info;
 use nng::{
     options::{Options, RecvTimeout},
     Error, Message, Protocol, Socket,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::{thread::sleep, time::Duration};
 use thread_local::ThreadLocal;
 
 const CHECK_SIGNALS_INTERVAL: Duration = Duration::from_millis(200);
 const DIAL_RETRY_INTERVAL: Duration = Duration::from_millis(50);
 const DIAL_MAX_RETRIES: usize = 200; // ten seconds
+#[allow(dead_code)]
+const SHARED_MEM_SIZE: usize = 50 * 1024 * 1024; // 50 MB
 
 pub struct NNGClient {
     socket: Mutex<Socket>,
@@ -38,6 +43,7 @@ impl Client for NNGClient {
 pub struct NNGLocalClient {
     url: String,
     socket: ThreadLocal<Socket>,
+    // shm: ReadonlySharedMemBuffer,
 }
 
 impl Client for NNGLocalClient {
@@ -47,6 +53,7 @@ impl Client for NNGLocalClient {
         Ok(Self {
             url: url.to_owned(),
             socket: ThreadLocal::new(),
+            // shm: ReadonlySharedMemBuffer(SharedMemBuffer::open(&SharedMemBuffer::get_flink(url))?),
         })
     }
 
@@ -56,6 +63,10 @@ impl Client for NNGLocalClient {
         socket.send(req).map_err(from_nngerror)?;
         Ok(socket.recv()?)
     }
+
+    // fn get_shm(&self) -> Option<&ReadonlySharedMemBuffer> {
+    //     Some(&self.shm)
+    // }
 }
 
 /// Serve an instance of rocksdb at the given URL.
@@ -73,7 +84,9 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
     socket.set_opt::<RecvTimeout>(Some(CHECK_SIGNALS_INTERVAL))?;
 
     // 10 MB
-    let mut buffer = ipcdeser::VecBuffer::with_capacity(10 * 1024 * 1024);
+    let mut buffer = ipcserde::VecBuffer::with_capacity(10 * 1024 * 1024);
+    // let mut shm = SharedMemBuffer::new(&SharedMemBuffer::get_flink(url), SHARED_MEM_SIZE)?;
+
     info!("Serving a database at {}", url);
     loop {
         let mut nnmsg = loop {
@@ -95,27 +108,55 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
         buffer.clear();
         let resp_size = match req {
             Request::Get(key) => match db.get_pinned(key)? {
-                None => Response::SuccessGet(&[]).serialize_to_buf(&mut buffer),
-                Some(value) => Response::SuccessGet(value.as_ref()).serialize_to_buf(&mut buffer),
+                None => Response::ser_success_get(ipcserde::EmptySlice {}, &mut buffer),
+                Some(value) => Response::ser_success_get(value, &mut buffer),
             },
-            Request::BatchGet(keys) => {
-                let values = keys
-                    .iter()
-                    .map(|key| db.get_pinned(key))
-                    .collect::<Result<Vec<_>, _>>()?;
-                ipcdeser::serialize_optional_lst_to_buffer(
-                    Response::SUCCESS_BATCH_GET,
-                    &values,
-                    &mut buffer,
-                )
-            }
+            // Request::BatchGet(keys) => {
+            //     let values = keys
+            //         .into_iter()
+            //         .map(|key| {
+            //             Ok::<_, KGDataError>(ipcserde::OptionDBPinnableSlice(db.get_pinned(key)?))
+            //         })
+            //         .collect::<Result<Vec<_>, _>>()?;
+            //     Response::ser_compressed_shm_success_batch_get(&values, &mut buffer, &mut shm)?
+            // }
+            Request::BatchGet(keys) => Response::ser_compressed_success_batch_get(
+                keys.into_iter().map(|key| {
+                    ipcserde::OptionDBPinnableSlice(db.get_pinned(key).expect("Error getting key"))
+                }),
+                &mut buffer,
+            ),
             Request::Contains(key) => {
-                let msg = match db.get_pinned(key)? {
-                    None => Response::SuccessContains(false),
-                    Some(_) => Response::SuccessContains(true),
-                };
-                msg.serialize_to_buf(&mut buffer)
+                let contain = db.get_pinned(key)?.is_some();
+                Response::ser_success_contains(contain, &mut buffer)
             }
+            Request::Test(value) => {
+                // we read a file of entities and calculate sum of id number
+                let (nlines, filename) = {
+                    let tmp = value.split(":").collect::<Vec<_>>();
+                    (tmp[0], tmp[1])
+                };
+                let mut entids = std::fs::read_to_string(&filename)
+                    .unwrap()
+                    .lines()
+                    .filter(|x| x.len() > 0)
+                    .map(String::from)
+                    .collect::<Vec<_>>();
+                entids.truncate(nlines.parse::<usize>().unwrap());
+
+                let sum = entids
+                    .into_iter()
+                    .map(|entid| {
+                        let key: &[u8] = entid.as_ref();
+                        let ent =
+                            crate::db::deser_entity(&db.get_pinned(key).unwrap().unwrap()).unwrap();
+                        ent.id[1..].parse::<i32>().unwrap() % 2
+                    })
+                    .sum::<i32>() as u32;
+
+                Response::ser_success_test(sum, &mut buffer)
+            }
+            _ => todo!(),
         };
         nnmsg.clear();
         nnmsg.push_back(&buffer.0[..resp_size]);

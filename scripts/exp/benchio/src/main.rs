@@ -1,13 +1,16 @@
+#![allow(warnings, unused)]
+
 #[allow(unused_imports, dead_code)]
 use std::time::{Duration, Instant};
 
 use indicatif::*;
+use kgdata::db::remotedb::shmemhelper::AllocatedMem;
+use kgdata::db::remotedb::Client;
 use kgdata::{
-    db::{deser_entity, open_entity_db, Dict, PredefinedDB, RemoteKGDB, RemoteRocksDBDict, KGDB},
+    db::{deser_entity, open_entity_db, Map, PredefinedDB, RemoteKGDB, RemoteRocksDBDict, KGDB},
     models::Entity,
 };
 use rayon::prelude::*;
-
 const SOCKET_BASE_URL: &str = "ipc:///dev/shm/kgdata";
 
 fn main() {
@@ -29,11 +32,15 @@ fn main() {
         get_batch_size()
     );
 
-    let entlist = (0..250)
+    let entfiles = (0..250)
         .into_iter()
-        .map(|i| {
-            let filename = format!("{}/{}/entids.txt", inputdir, i);
-            std::fs::read_to_string(&filename)
+        .map(|i| format!("{}/{}/entids.txt", inputdir, i))
+        .collect::<Vec<_>>();
+
+    let entlist = entfiles
+        .iter()
+        .map(|filename| {
+            std::fs::read_to_string(filename)
                 .unwrap()
                 .lines()
                 .filter(|x| x.len() > 0)
@@ -47,6 +54,18 @@ fn main() {
 
     if exptype == "thread" {
         fetch_ent_list_par(&entlist);
+    }
+
+    if exptype == "check" {
+        check_system();
+    }
+
+    if exptype == "thread-2" {
+        fetch_ent_list_par_2(&entlist);
+    }
+
+    if exptype == "thread-3" {
+        fetch_ent_list_par_3(&entfiles, maxentsize);
     }
 
     if exptype == "process" {
@@ -128,6 +147,29 @@ fn get_batch_size() -> usize {
         .unwrap()
 }
 
+fn check_system() {
+    let mut start = Instant::now();
+    let entdb = get_entity_remote_db();
+    for (i, socket) in entdb.sockets.iter().enumerate() {
+        let blocks = socket.get_shm().unwrap().0.get_blocks();
+        let free_blocks = blocks
+            .iter()
+            .filter(|block| AllocatedMem::is_free(block.mem, block.begin))
+            .count();
+        println!(
+            "socket {} has {} blocks (#{} frees)",
+            i,
+            blocks.len(),
+            free_blocks
+        );
+        for block in blocks {
+            if !AllocatedMem::is_free(block.mem, block.begin) {
+                println!("occupied block {}:{}", i, block.begin);
+            }
+        }
+    }
+}
+
 fn fetch_ent_list_par(entlist: &Vec<Vec<String>>) {
     let mut start = Instant::now();
     // let db = get_remote_db();
@@ -141,7 +183,7 @@ fn fetch_ent_list_par(entlist: &Vec<Vec<String>>) {
         .into_par_iter()
         .map(|entids| {
             entdb
-                .par_batch_get(&entids, batch_size)
+                .par_slice_get(&entids, batch_size)
                 .unwrap()
                 .into_iter()
                 .map(|ent| ent.unwrap().id[1..].parse::<i32>().unwrap() % 2)
@@ -151,6 +193,56 @@ fn fetch_ent_list_par(entlist: &Vec<Vec<String>>) {
         .collect::<Vec<_>>();
     println!("Fetch entities in parallel takes: {:?}", start.elapsed());
     println!("Result: {}", res.into_iter().flatten().sum::<i32>())
+}
+
+fn fetch_ent_list_par_2(entlist: &Vec<Vec<String>>) {
+    let mut start = Instant::now();
+    // let db = get_remote_db();
+    // let entdb = &db.entities;
+    // let entdb = get_entity_remote_db();
+    let entdb = &get_db().entities;
+    let batch_size = get_batch_size();
+    println!("Load DB takes: {:?}", start.elapsed());
+
+    start = Instant::now();
+    let res = entlist
+        .into_par_iter()
+        .map(|entids| {
+            entdb
+                .par_slice_get(&entids, batch_size)
+                .unwrap()
+                .into_iter()
+                .map(|ent| ent.unwrap().id[1..].parse::<i32>().unwrap() % 2)
+                .collect::<Vec<_>>()
+        })
+        .progress()
+        .collect::<Vec<_>>();
+    println!("Fetch entities in parallel takes: {:?}", start.elapsed());
+    println!("Result: {}", res.into_iter().flatten().sum::<i32>())
+}
+
+fn fetch_ent_list_par_3(entfiles: &Vec<String>, maxentsize: usize) {
+    let mut start = Instant::now();
+    // let db = get_remote_db();
+    // let entdb = &db.entities;
+    let entdb = get_entity_remote_db();
+    // let entdb = &get_db().entities;
+    let batch_size = get_batch_size();
+    println!("Load DB takes: {:?}", start.elapsed());
+
+    start = Instant::now();
+    let res = entfiles
+        .into_par_iter()
+        .enumerate()
+        .map(|(i, entfile)| {
+            entdb
+                .test(&format!("{}:{}", maxentsize, entfile), i)
+                .unwrap()
+        })
+        .progress()
+        .collect::<Vec<_>>();
+    println!("Fetch entities in parallel takes: {:?}", start.elapsed());
+    println!("Result: {}", res.into_iter().sum::<u32>())
 }
 
 fn fetch_ent_list_proc_par(entlist: &Vec<Vec<String>>) {
@@ -171,7 +263,7 @@ fn fetch_ent_list_proc_par(entlist: &Vec<Vec<String>>) {
                 let db = &get_db().entities;
                 args.into_iter()
                     .map(|arg| {
-                        db.batch_get(&arg)
+                        db.slice_get(&arg)
                             .unwrap()
                             .into_iter()
                             .map(|ent| ent.unwrap().id[1..].parse::<i32>().unwrap() % 2)
