@@ -36,7 +36,7 @@ pub enum KGDataError {
     GlobError(#[from] glob::GlobError),
 
     #[error(transparent)]
-    TryFromSliceErro(#[from] std::array::TryFromSliceError),
+    TryFromSliceError(#[from] std::array::TryFromSliceError),
 
     #[error(transparent)]
     RocksDBError(#[from] rocksdb::Error),
@@ -50,6 +50,10 @@ pub enum KGDataError {
     /// Error due to incorrect NNG's usage
     #[error("IPC Impl Error: {0}")]
     IPCImplError(String),
+
+    /// Error due to shared memory usage
+    #[error("Shared Memory Error: {0}")]
+    SharedMemoryError(String),
 }
 
 pub fn into_pyerr<E: Into<KGDataError>>(err: E) -> PyErr {

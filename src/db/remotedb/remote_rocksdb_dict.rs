@@ -9,13 +9,14 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 
 use super::super::interface::Equivalent;
+use super::ipcserde;
 use super::Client;
 use super::Map;
 use super::Request;
 use super::Response;
 
 pub struct BaseRemoteRocksDBDict<K: AsRef<[u8]> + Eq + Hash, V, S: Client> {
-    sockets: Vec<S>,
+    pub sockets: Vec<S>,
     deser_value: fn(&[u8]) -> Result<V, KGDataError>,
     deser_key: PhantomData<fn() -> K>,
 }
@@ -63,34 +64,29 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     where
         Q: AsRef<[u8]> + Equivalent<K>,
     {
-        // println!(
-        //     "thread id: {:?} -- socket: {}",
-        //     std::thread::current().id(),
-        //     rotate_no % self.sockets.len()
-        // );
         let socket = &self.sockets[rotate_no % self.sockets.len()];
         let msg = socket.request(&Request::ser_batch_get(keys))?;
+        let map_func = |item: &[u8]| {
+            if item.len() == 0 {
+                // key does not exist in the primary
+                Ok(None)
+            } else {
+                (self.deser_value)(item).map(|v| Some(v))
+            }
+        };
 
-        let buf: &[u8] = &msg;
-        let buf2 = zstd::stream::decode_all(buf)?;
-
-        match Response::deserialize(&buf2)? {
+        match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
             }
-            Response::SuccessBatchGet(items) => {
-                items
-                    .into_iter()
-                    .map(|item| {
-                        if item.len() == 0 {
-                            // key does not exist in the primary
-                            Ok(None)
-                        } else {
-                            (self.deser_value)(item).map(|v| Some(v))
-                        }
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            }
+            Response::SuccessBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
+            Response::SuccessCompressedBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
             )
@@ -105,24 +101,26 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
         let msg = socket.request(&Request::ser_batch_get(keys))?;
-
+        let map_func = |item: &[u8]| {
+            if item.len() == 0 {
+                // key does not exist in the primary
+                Err(KGDataError::KeyError("Key not found".to_owned()))
+            } else {
+                (self.deser_value)(item)
+            }
+        };
         match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
             }
-            Response::SuccessBatchGet(items) => {
-                items
-                    .into_iter()
-                    .map(|item| {
-                        if item.len() == 0 {
-                            // key does not exist in the primary
-                            Err(KGDataError::KeyError("Key not found".to_owned()))
-                        } else {
-                            (self.deser_value)(item)
-                        }
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            }
+            Response::SuccessBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
+            Response::SuccessCompressedBatchGet(items) => items
+                .into_iter()
+                .map(map_func)
+                .collect::<Result<Vec<_>, _>>(),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
             )
@@ -141,25 +139,28 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
         let msg = socket.request(&Request::ser_batch_get(keys))?;
-
+        let map_func = |(item, key): (&[u8], &Q)| {
+            if item.len() == 0 {
+                // key does not exist in the db
+                Err(KGDataError::KeyError("Key not found".to_owned()))
+            } else {
+                Ok((key.clone().into(), (self.deser_value)(item)?))
+            }
+        };
         match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
             }
-            Response::SuccessBatchGet(items) => {
-                items
-                    .into_iter()
-                    .zip(keys.into_iter())
-                    .map(|(item, key)| {
-                        if item.len() == 0 {
-                            // key does not exist in the db
-                            Err(KGDataError::KeyError("Key not found".to_owned()))
-                        } else {
-                            Ok((key.clone().into(), (self.deser_value)(item)?))
-                        }
-                    })
-                    .collect::<Result<HashMap<_, _>, _>>()
-            }
+            Response::SuccessBatchGet(items) => items
+                .into_iter()
+                .zip(keys.into_iter())
+                .map(map_func)
+                .collect::<Result<HashMap<_, _>, _>>(),
+            Response::SuccessCompressedBatchGet(items) => items
+                .into_iter()
+                .zip(keys.into_iter())
+                .map(map_func)
+                .collect::<Result<HashMap<_, _>, _>>(),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
             )

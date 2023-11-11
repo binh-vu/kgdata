@@ -4,12 +4,13 @@
 use std::time::{Duration, Instant};
 
 use indicatif::*;
+use kgdata::db::remotedb::shmemhelper::AllocatedMem;
+use kgdata::db::remotedb::Client;
 use kgdata::{
     db::{deser_entity, open_entity_db, Map, PredefinedDB, RemoteKGDB, RemoteRocksDBDict, KGDB},
     models::Entity,
 };
 use rayon::prelude::*;
-
 const SOCKET_BASE_URL: &str = "ipc:///dev/shm/kgdata";
 
 fn main() {
@@ -53,6 +54,10 @@ fn main() {
 
     if exptype == "thread" {
         fetch_ent_list_par(&entlist);
+    }
+
+    if exptype == "check" {
+        check_system();
     }
 
     if exptype == "thread-2" {
@@ -140,6 +145,29 @@ fn get_batch_size() -> usize {
         .as_str()
         .parse::<usize>()
         .unwrap()
+}
+
+fn check_system() {
+    let mut start = Instant::now();
+    let entdb = get_entity_remote_db();
+    for (i, socket) in entdb.sockets.iter().enumerate() {
+        let blocks = socket.get_shm().unwrap().0.get_blocks();
+        let free_blocks = blocks
+            .iter()
+            .filter(|block| AllocatedMem::is_free(block.mem, block.begin))
+            .count();
+        println!(
+            "socket {} has {} blocks (#{} frees)",
+            i,
+            blocks.len(),
+            free_blocks
+        );
+        for block in blocks {
+            if !AllocatedMem::is_free(block.mem, block.begin) {
+                println!("occupied block {}:{}", i, block.begin);
+            }
+        }
+    }
 }
 
 fn fetch_ent_list_par(entlist: &Vec<Vec<String>>) {

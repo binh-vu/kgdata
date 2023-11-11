@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::error::KGDataError;
 
-use super::ipcdeser;
+use super::ipcserde;
 
 #[derive(Debug)]
 pub enum Request<'s> {
@@ -14,9 +14,6 @@ pub enum Request<'s> {
 
     // Check if a key exists in the database
     Contains(&'s [u8]),
-
-    // Finish reading a shared memory buffer from [begin, end)
-    // ConsumedSharedMemoryBuffer((usize, usize)),
 
     // For testing
     Test(&'s str),
@@ -32,7 +29,7 @@ impl<'s> Request<'s> {
     pub fn deserialize(buf: &'s [u8]) -> Result<Self, KGDataError> {
         match buf[0] {
             Request::GET => Ok(Self::Get(&buf[1..])),
-            Request::BATCH_GET => Ok(Self::BatchGet(ipcdeser::deserialize_lst(buf))),
+            Request::BATCH_GET => Ok(Self::BatchGet(ipcserde::deserialize_lst(&buf[1..]))),
             Request::CONTAINS => Ok(Self::Contains(&buf[1..])),
             Request::TEST => Ok(Self::Test(std::str::from_utf8(&buf[1..])?)),
             _ => Err(KGDataError::IPCImplError(
@@ -71,8 +68,9 @@ impl<'s> Request<'s> {
 
     #[inline(always)]
     pub fn ser_batch_get<'t, V: AsRef<[u8]> + 't>(values: &[V]) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(ipcdeser::get_buffer_size_for_iter(values.iter()));
-        ipcdeser::serialize_iter_to_buffer(Request::BATCH_GET, values.iter(), &mut buf);
+        let mut buf = Vec::with_capacity(ipcserde::get_buffer_size_for_iter(values.iter()) + 1);
+        buf.push(Request::BATCH_GET);
+        ipcserde::serialize_iter_to_buffer(values.iter(), &mut buf);
         buf
     }
 }

@@ -1,13 +1,10 @@
-// use crate::db::remotedb::shmemhelper::SharedMemBuffer;
-
-use super::{ipcdeser, Client, Request, Response};
+use super::{ipcserde, Client, Request, Response};
 use kgdata::error::KGDataError;
 use log::info;
 use nng::{
     options::{Options, RecvTimeout},
     Error, Message, Protocol, Socket,
 };
-// use shared_memory::{Shmem, ShmemConf};
 use std::sync::Mutex;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -19,6 +16,8 @@ use thread_local::ThreadLocal;
 const CHECK_SIGNALS_INTERVAL: Duration = Duration::from_millis(200);
 const DIAL_RETRY_INTERVAL: Duration = Duration::from_millis(50);
 const DIAL_MAX_RETRIES: usize = 200; // ten seconds
+#[allow(dead_code)]
+const SHARED_MEM_SIZE: usize = 50 * 1024 * 1024; // 50 MB
 
 pub struct NNGClient {
     socket: Mutex<Socket>,
@@ -44,6 +43,7 @@ impl Client for NNGClient {
 pub struct NNGLocalClient {
     url: String,
     socket: ThreadLocal<Socket>,
+    // shm: ReadonlySharedMemBuffer,
 }
 
 impl Client for NNGLocalClient {
@@ -53,6 +53,7 @@ impl Client for NNGLocalClient {
         Ok(Self {
             url: url.to_owned(),
             socket: ThreadLocal::new(),
+            // shm: ReadonlySharedMemBuffer(SharedMemBuffer::open(&SharedMemBuffer::get_flink(url))?),
         })
     }
 
@@ -62,6 +63,10 @@ impl Client for NNGLocalClient {
         socket.send(req).map_err(from_nngerror)?;
         Ok(socket.recv()?)
     }
+
+    // fn get_shm(&self) -> Option<&ReadonlySharedMemBuffer> {
+    //     Some(&self.shm)
+    // }
 }
 
 /// Serve an instance of rocksdb at the given URL.
@@ -79,7 +84,8 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
     socket.set_opt::<RecvTimeout>(Some(CHECK_SIGNALS_INTERVAL))?;
 
     // 10 MB
-    let mut buffer = ipcdeser::VecBuffer::with_capacity(10 * 1024 * 1024);
+    let mut buffer = ipcserde::VecBuffer::with_capacity(10 * 1024 * 1024);
+    // let mut shm = SharedMemBuffer::new(&SharedMemBuffer::get_flink(url), SHARED_MEM_SIZE)?;
 
     info!("Serving a database at {}", url);
     loop {
@@ -102,12 +108,21 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
         buffer.clear();
         let resp_size = match req {
             Request::Get(key) => match db.get_pinned(key)? {
-                None => Response::ser_success_get(ipcdeser::EmptySlice {}, &mut buffer),
+                None => Response::ser_success_get(ipcserde::EmptySlice {}, &mut buffer),
                 Some(value) => Response::ser_success_get(value, &mut buffer),
             },
-            Request::BatchGet(keys) => Response::ser_success_batch_get(
+            // Request::BatchGet(keys) => {
+            //     let values = keys
+            //         .into_iter()
+            //         .map(|key| {
+            //             Ok::<_, KGDataError>(ipcserde::OptionDBPinnableSlice(db.get_pinned(key)?))
+            //         })
+            //         .collect::<Result<Vec<_>, _>>()?;
+            //     Response::ser_compressed_shm_success_batch_get(&values, &mut buffer, &mut shm)?
+            // }
+            Request::BatchGet(keys) => Response::ser_compressed_success_batch_get(
                 keys.into_iter().map(|key| {
-                    ipcdeser::OptionDBPinnableSlice(db.get_pinned(key).expect("Error getting key"))
+                    ipcserde::OptionDBPinnableSlice(db.get_pinned(key).expect("Error getting key"))
                 }),
                 &mut buffer,
             ),

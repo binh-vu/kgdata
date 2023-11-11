@@ -44,6 +44,11 @@ pub trait Buffer {
 pub struct VecBuffer(pub Vec<u8>);
 pub struct RefVecBuffer<'s>(pub &'s mut Vec<u8>);
 
+pub struct SliceBuffer<'s> {
+    pub slice: &'s mut [u8],
+    pub start: usize,
+}
+
 impl VecBuffer {
     pub fn with_capacity(cap: usize) -> Self {
         Self(Vec::with_capacity(cap))
@@ -108,34 +113,54 @@ impl Buffer for Vec<u8> {
     }
 }
 
-#[inline(always)]
-pub fn serialize_lst<V: Deref<Target = [u8]>>(code: u8, lst: &[V]) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(lst.iter().map(|item| item.len() + 4).sum::<usize>() + 5);
-    buf.push(code);
-    buf.extend_from_slice(&(lst.len() as u32).to_le_bytes());
-    for item in lst {
-        buf.extend_from_slice(&(item.len() as u32).to_le_bytes());
-        buf.extend_from_slice(item);
+impl<'s> SliceBuffer<'s> {
+    pub fn new(slice: &'s mut [u8]) -> Self {
+        Self { slice, start: 0 }
     }
-    buf
+}
+
+impl<'s> Buffer for SliceBuffer<'s> {
+    fn write_byte(&mut self, byte: u8) {
+        self.slice[self.start] = byte;
+        self.start += 1;
+    }
+
+    fn write(&mut self, content: &[u8]) {
+        self.slice[self.start..(self.start + content.len())].copy_from_slice(content);
+        self.start += content.len();
+    }
+
+    fn write_at(&mut self, content: &[u8], at: usize) {
+        self.slice[at..(at + content.len())].copy_from_slice(content);
+    }
+}
+
+impl<'s> std::io::Write for SliceBuffer<'s> {
+    fn write(&mut self, content: &[u8]) -> std::io::Result<usize> {
+        self.slice[self.start..(self.start + content.len())].copy_from_slice(content);
+        self.start += content.len();
+        Ok(content.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 #[inline]
 pub fn get_buffer_size_for_iter<'t, V: AsRef<[u8]> + 't>(
     iter: impl Iterator<Item = V> + ExactSizeIterator,
 ) -> usize {
-    return 5 + iter.map(|item| item.as_ref().len() + 4).sum::<usize>();
+    return 4 + iter.map(|item| item.as_ref().len() + 4).sum::<usize>();
 }
 
 #[inline]
 pub fn serialize_iter_to_buffer<'t, V: AsRef<[u8]> + 't>(
-    code: u8,
     iter: impl Iterator<Item = V> + ExactSizeIterator,
     buf: &mut impl Buffer,
 ) -> usize {
-    let mut size = 5;
-    buf.write_byte(code);
-    buf.write(&(iter.len().to_le_bytes()));
+    let mut size = 4;
+    buf.write(&((iter.len() as u32).to_le_bytes()));
     for item in iter {
         let item = item.as_ref();
         buf.write(&(item.len() as u32).to_le_bytes());
@@ -145,69 +170,79 @@ pub fn serialize_iter_to_buffer<'t, V: AsRef<[u8]> + 't>(
     size
 }
 
-#[inline(always)]
-pub fn serialize_optional_lst_to_buffer<V: Deref<Target = [u8]>>(
-    code: u8,
-    lst: &[Option<V>],
-    buf: &mut impl Buffer,
-) -> usize {
-    let mut size = 5;
-    buf.write_byte(code);
-    buf.write(&(lst.len() as u32).to_le_bytes());
-    for item in lst {
-        match item {
-            None => {
-                buf.write(&(0 as u32).to_le_bytes());
-                size += 4;
-            }
-            Some(x) => {
-                buf.write(&(x.len() as u32).to_le_bytes());
-                buf.write(&x);
-                size += 4 + x.len();
-            }
-        }
-    }
-    size
-}
-
-#[inline(always)]
-pub fn serialize_compressed_optional_lst_to_buffer<V: Deref<Target = [u8]>>(
-    code: u8,
-    lst: &[Option<V>],
+#[inline]
+pub fn compressed_serialize_iter_to_buffer<'t, V: AsRef<[u8]> + 't>(
+    iter: impl Iterator<Item = V> + ExactSizeIterator,
     buf: &mut VecBuffer,
 ) -> usize {
+    let origin_len = buf.0.len();
+
     let mut encoder = zstd::stream::write::Encoder::new(buf.get_mut_ref(), 3).unwrap();
-    encoder.write_all(&[code]).unwrap();
     encoder
-        .write_all(&(lst.len() as u32).to_le_bytes())
+        .write_all(&((iter.len() as u32).to_le_bytes()))
         .unwrap();
 
-    for item in lst {
-        match item {
-            None => {
-                encoder.write_all(&(0 as u32).to_le_bytes()).unwrap();
-            }
-            Some(x) => {
-                encoder.write_all(&(x.len() as u32).to_le_bytes()).unwrap();
-                encoder.write_all(&x).unwrap();
-            }
-        }
+    for item in iter {
+        let item = item.as_ref();
+        encoder
+            .write_all(&(item.len() as u32).to_le_bytes())
+            .unwrap();
+        encoder.write_all(item).unwrap();
     }
+
     encoder.flush().unwrap();
-    let refbuf = encoder.finish().unwrap();
-    refbuf.0.len()
+    encoder.finish().unwrap();
+
+    buf.0.len() - origin_len
+}
+
+#[inline]
+pub fn compressed_serialize_iter_to_buffer_2<'t, V: AsRef<[u8]> + 't>(
+    iter: impl Iterator<Item = V> + ExactSizeIterator,
+    buf: &mut SliceBuffer,
+) -> usize {
+    let origin_len = buf.start;
+
+    let mut encoder = zstd::stream::write::Encoder::new(buf, 3).unwrap();
+    encoder
+        .write_all(&((iter.len() as u32).to_le_bytes()))
+        .unwrap();
+
+    for item in iter {
+        let item = item.as_ref();
+        encoder
+            .write_all(&(item.len() as u32).to_le_bytes())
+            .unwrap();
+        encoder.write_all(item).unwrap();
+    }
+
+    encoder.flush().unwrap();
+    encoder.finish().unwrap().start - origin_len
 }
 
 #[inline(always)]
 pub fn deserialize_lst<'t>(buf: &'t [u8]) -> Vec<&'t [u8]> {
-    let n_items = u32::from_le_bytes(buf[1..5].try_into().unwrap()) as usize;
+    let n_items = u32::from_le_bytes(buf[..4].try_into().unwrap()) as usize;
     let mut out = Vec::with_capacity(n_items);
-    let mut start = 5;
+    let mut start = 4;
     for _i in 0..n_items {
         let size = u32::from_le_bytes(buf[start..(start + 4)].try_into().unwrap()) as usize;
         start += 4;
         out.push(&buf[start..(start + size)]);
         start += size;
+    }
+    out
+}
+
+#[inline(always)]
+pub fn deserialize_lst_range<'t>(buf: &'t [u8]) -> Vec<(usize, usize)> {
+    let n_items = u32::from_le_bytes(buf[..4].try_into().unwrap()) as usize;
+    let mut out = Vec::with_capacity(n_items);
+    let mut start = 4;
+    for _i in 0..n_items {
+        let size = u32::from_le_bytes(buf[start..(start + 4)].try_into().unwrap()) as usize;
+        out.push((start + 4, start + size + 4));
+        start += size + 4;
     }
     out
 }
