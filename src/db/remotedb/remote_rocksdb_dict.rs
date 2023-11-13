@@ -9,7 +9,6 @@ use rayon::prelude::*;
 use std::cmp::Eq;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::ops::Deref;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
@@ -45,7 +44,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
 
     pub fn test(&self, query: &str, rotate_no: usize) -> Result<u32, KGDataError> {
         let socket = &self.sockets[rotate_no % self.sockets.len()];
-        let msg = socket.request(&Request::ser_test(query.deref()))?;
+        let msg = socket.request(&Request::ser_test(query))?;
         match Response::deserialize(&msg)? {
             Response::Error => {
                 Err(KGDataError::IPCImplError("Remote DB encounters an error".to_owned()).into())
