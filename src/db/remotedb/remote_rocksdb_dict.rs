@@ -8,6 +8,8 @@ use std::hash::Hasher;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
+use crate::db::PredefinedDB;
+
 use super::super::interface::Equivalent;
 use super::Client;
 use super::Map;
@@ -16,12 +18,14 @@ use super::Response;
 
 pub struct BaseRemoteRocksDBDict<K: AsRef<[u8]> + Eq + Hash, V, S: Client> {
     pub sockets: Vec<S>,
+    pub dbtype: PredefinedDB,
     deser_value: fn(&[u8]) -> Result<V, KGDataError>,
     deser_key: PhantomData<fn() -> K>,
 }
 
 impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
     pub fn new<Q>(
+        dbtype: PredefinedDB,
         urls: &[Q],
         deser_value: fn(&[u8]) -> Result<V, KGDataError>,
     ) -> Result<Self, KGDataError>
@@ -33,6 +37,7 @@ impl<K: AsRef<[u8]> + Eq + Hash, V, S: Client> BaseRemoteRocksDBDict<K, V, S> {
             .map(|url| S::open(url.as_ref()))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
+            dbtype,
             sockets,
             deser_value,
             deser_key: PhantomData,

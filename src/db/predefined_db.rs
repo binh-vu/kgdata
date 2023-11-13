@@ -11,13 +11,27 @@ use crate::models::{Class, Entity, EntityMetadata, EntityOutLink, Property};
 
 #[derive(Debug, Clone, Copy)]
 pub enum PredefinedDB {
-    Entity = 1,
-    EntityMetadata = 2,
-    EntityOutLink = 3,
-    EntityRedirection = 4,
-    EntityPageRank = 5,
-    Property = 6,
-    Class = 7,
+    Entity = 0,
+    EntityMetadata = 1,
+    EntityOutLink = 2,
+    EntityRedirection = 3,
+    EntityPageRank = 4,
+    Property = 5,
+    Class = 6,
+}
+
+impl From<u8> for PredefinedDB {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => PredefinedDB::Entity,
+            1 => PredefinedDB::EntityMetadata,
+            2 => PredefinedDB::EntityOutLink,
+            3 => PredefinedDB::EntityRedirection,
+            4 => PredefinedDB::EntityPageRank,
+            5 => PredefinedDB::Property,
+            6 => PredefinedDB::Class,
+        }
+    }
 }
 
 impl PredefinedDB {

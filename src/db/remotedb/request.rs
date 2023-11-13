@@ -1,19 +1,19 @@
 use std::ops::Deref;
 
-use crate::error::KGDataError;
+use crate::{db::PredefinedDB, error::KGDataError};
 
 use super::ipcserde;
 
 #[derive(Debug)]
 pub enum Request<'s> {
     // Get a key from the database
-    Get(&'s [u8]),
+    Get((PredefinedDB, &'s [u8])),
 
     // Get multiple keys from the database
-    BatchGet(Vec<&'s [u8]>),
+    BatchGet((PredefinedDB, Vec<&'s [u8]>)),
 
     // Check if a key exists in the database
-    Contains(&'s [u8]),
+    Contains((PredefinedDB, &'s [u8])),
 
     // For testing
     Test(&'s str),
@@ -28,9 +28,12 @@ impl<'s> Request<'s> {
 
     pub fn deserialize(buf: &'s [u8]) -> Result<Self, KGDataError> {
         match buf[0] {
-            Request::GET => Ok(Self::Get(&buf[1..])),
-            Request::BATCH_GET => Ok(Self::BatchGet(ipcserde::deserialize_lst(&buf[1..]))),
-            Request::CONTAINS => Ok(Self::Contains(&buf[1..])),
+            Request::GET => Ok(Self::Get((buf[1].into(), &buf[2..]))),
+            Request::BATCH_GET => Ok(Self::BatchGet((
+                buf[1].into(),
+                ipcserde::deserialize_lst(&buf[2..]),
+            ))),
+            Request::CONTAINS => Ok(Self::Contains((buf[1].into(), &buf[2..]))),
             Request::TEST => Ok(Self::Test(std::str::from_utf8(&buf[1..])?)),
             _ => Err(KGDataError::IPCImplError(
                 "Invalid message. Please report the bug.".to_owned(),
@@ -40,19 +43,21 @@ impl<'s> Request<'s> {
     }
 
     #[inline]
-    pub fn ser_get<V: Deref<Target = [u8]>>(key: V) -> Vec<u8> {
+    pub fn ser_get<V: Deref<Target = [u8]>>(dbtype: PredefinedDB, key: V) -> Vec<u8> {
         let serkey = &key;
-        let mut buf = Vec::with_capacity(key.len() + 1);
+        let mut buf = Vec::with_capacity(key.len() + 2);
         buf.push(Request::GET);
+        buf.push(dbtype as u8);
         buf.extend_from_slice(serkey);
         buf
     }
 
     #[inline]
-    pub fn ser_contains<V: Deref<Target = [u8]>>(key: V) -> Vec<u8> {
+    pub fn ser_contains<V: Deref<Target = [u8]>>(dbtype: PredefinedDB, key: V) -> Vec<u8> {
         let serkey = &key;
-        let mut buf = Vec::with_capacity(key.len() + 1);
+        let mut buf = Vec::with_capacity(key.len() + 2);
         buf.push(Request::CONTAINS);
+        buf.push(dbtype as u8);
         buf.extend_from_slice(serkey);
         buf
     }
@@ -67,9 +72,10 @@ impl<'s> Request<'s> {
     }
 
     #[inline(always)]
-    pub fn ser_batch_get<'t, V: AsRef<[u8]> + 't>(values: &[V]) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(ipcserde::get_buffer_size_for_iter(values.iter()) + 1);
+    pub fn ser_batch_get<'t, V: AsRef<[u8]> + 't>(dbtype: PredefinedDB, values: &[V]) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(ipcserde::get_buffer_size_for_iter(values.iter()) + 2);
         buf.push(Request::BATCH_GET);
+        buf.push(dbtype as u8);
         ipcserde::serialize_iter_to_buffer(values.iter(), &mut buf);
         buf
     }

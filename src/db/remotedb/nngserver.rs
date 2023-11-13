@@ -70,7 +70,7 @@ impl Client for NNGLocalClient {
 }
 
 /// Serve an instance of rocksdb at the given URL.
-pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
+pub fn serve_db(url: &str, dbs: &[rocksdb::DB]) -> Result<(), KGDataError> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
     ctrlc::set_handler(move || {
@@ -107,7 +107,7 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
         let req = Request::deserialize(nnmsg.as_slice())?;
         buffer.clear();
         let resp_size = match req {
-            Request::Get(key) => match db.get_pinned(key)? {
+            Request::Get((dbtype, key)) => match dbs[dbtype as u8].get_pinned(key)? {
                 None => Response::ser_success_get(ipcserde::EmptySlice {}, &mut buffer),
                 Some(value) => Response::ser_success_get(value, &mut buffer),
             },
