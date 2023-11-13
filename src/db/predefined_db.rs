@@ -9,15 +9,15 @@ use crate::conversions::WDEntity;
 use crate::conversions::{WDClass, WDEntityMetadata, WDProperty};
 use crate::models::{Class, Entity, EntityMetadata, EntityOutLink, Property};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum PredefinedDB {
-    Entity,
-    EntityMetadata,
-    EntityOutLink,
-    EntityRedirection,
-    EntityPageRank,
-    Property,
-    Class,
+    Entity = 1,
+    EntityMetadata = 2,
+    EntityOutLink = 3,
+    EntityRedirection = 4,
+    EntityPageRank = 5,
+    Property = 6,
+    Class = 7,
 }
 
 impl PredefinedDB {

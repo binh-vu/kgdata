@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 
 use super::super::interface::Equivalent;
-use super::ipcserde;
 use super::Client;
 use super::Map;
 use super::Request;
