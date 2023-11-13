@@ -80,6 +80,8 @@ impl RemoteKGDB {
         datadir: &str,
         entity_urls: &[Q],
         entity_metadata_urls: &[Q],
+        entity_batch_size: usize,
+        entity_metadata_batch_size: usize,
     ) -> Result<Self, KGDataError>
     where
         Q: AsRef<str>,
@@ -92,13 +94,17 @@ impl RemoteKGDB {
                     .as_os_str(),
             )?,
             classes: open_class_db(datadir.join(PredefinedDB::Class.get_dbname()).as_os_str())?,
-            entities: RemoteRocksDBDict::new(entity_urls, deser_entity)?,
+            entities: RemoteRocksDBDict::new(entity_urls, entity_batch_size, deser_entity)?,
             entity_redirection: open_entity_redirection_db(
                 datadir
                     .join(PredefinedDB::EntityRedirection.get_dbname())
                     .as_os_str(),
             )?,
-            entity_metadata: RemoteRocksDBDict::new(entity_metadata_urls, deser_entity_metadata)?,
+            entity_metadata: RemoteRocksDBDict::new(
+                entity_metadata_urls,
+                entity_metadata_batch_size,
+                deser_entity_metadata,
+            )?,
             entity_outlink: open_entity_outlink_db(
                 datadir
                     .join(PredefinedDB::EntityOutLink.get_dbname())

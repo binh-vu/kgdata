@@ -13,19 +13,21 @@ from loguru import logger
 
 @click.command("Start the server")
 @click.option("--db", required=True, multiple=True, help="Database name(s)")
-@click.option("--socket-dir", required=True, help="Directory to store the socket")
+@click.option(
+    "--url",
+    required=True,
+    help="URL pattern to generate URL for the server. E.g., ipc:///dev/shm/name.{}.ipc or tcp://localhost:{}. Reserve a fix range 35500 for entity, 35600 for entity_metadata",
+)
 @click.option("--dbpath", required=True, help="Directory containing databases")
 @click.option("-n", "--n-workers", type=int, default=1, help="Number of DB instances")
 def start_server(
     db: tuple[Literal["entity", "entity_metadata"], ...],
-    socket_dir: str | Path,
+    url: str,
     dbpath: str,
     n_workers: int = 1,
 ):
     assert isinstance(db, tuple)
     pid_file = Path(__file__).parent / f"started_{'__'.join(sorted(db))}_servers.pid"
-    socket_dir = Path(socket_dir).absolute()
-
     if pid_file.exists():
         logger.error(
             "Server already started or not closed properly. Check the {} files",
@@ -43,6 +45,8 @@ def start_server(
                     dbname
                 ]
             )
+            start_port = {"entity": 35500, "entity_metadata": 35600}[dbname]
+            assert n_workers < 100
             for i in range(n_workers):
                 cmd = [
                     "cargo",
@@ -50,7 +54,7 @@ def start_server(
                     "--release",
                     "--",
                     dbname,
-                    f"ipc://{socket_dir}/{dbname}.{i:03d}.ipc",
+                    url.format(start_port + i),
                     paspath,
                 ]
                 logger.debug("Execute command: {}", " ".join(cmd))

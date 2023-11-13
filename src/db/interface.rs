@@ -56,20 +56,14 @@ pub trait Map<K: AsRef<[u8]> + Eq + Hash, V: Send + Sync>: Send + Sync {
     fn par_slice_get<Q: AsRef<[u8]> + Sync + Send + Equivalent<K>>(
         &self,
         keys: &[Q],
-        batch_size: usize,
     ) -> Result<Vec<Option<V>>, KGDataError>;
 
     fn par_slice_get_exist<Q: AsRef<[u8]> + Sync + Send + Equivalent<K>>(
         &self,
         keys: &[Q],
-        batch_size: usize,
     ) -> Result<Vec<V>, KGDataError>;
 
-    fn par_slice_get_exist_as_map<Q>(
-        &self,
-        keys: &[Q],
-        batch_size: usize,
-    ) -> Result<HashMap<K, V>, KGDataError>
+    fn par_slice_get_exist_as_map<Q>(&self, keys: &[Q]) -> Result<HashMap<K, V>, KGDataError>
     where
         K: Sync + Send,
         Q: AsRef<[u8]> + Into<K> + Sync + Send + Equivalent<K> + Clone;

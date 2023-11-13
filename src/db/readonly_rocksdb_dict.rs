@@ -122,10 +122,8 @@ impl<K: AsRef<[u8]> + Eq + Hash, V: Send + Sync> Map<K, V> for ReadonlyRocksDBDi
     fn par_slice_get<Q: AsRef<[u8]> + Sync + Send + Equivalent<K>>(
         &self,
         keys: &[Q],
-        batch_size: usize,
     ) -> Result<Vec<Option<V>>, KGDataError> {
         keys.into_par_iter()
-            .with_min_len(batch_size)
             .map(|key| self.get(key))
             .collect::<Result<Vec<_>, KGDataError>>()
     }
@@ -133,10 +131,8 @@ impl<K: AsRef<[u8]> + Eq + Hash, V: Send + Sync> Map<K, V> for ReadonlyRocksDBDi
     fn par_slice_get_exist<Q: AsRef<[u8]> + Sync + Send + Equivalent<K>>(
         &self,
         keys: &[Q],
-        batch_size: usize,
     ) -> Result<Vec<V>, KGDataError> {
         keys.into_par_iter()
-            .with_min_len(batch_size)
             .map(|key| {
                 self.get(key)?
                     .ok_or_else(|| KGDataError::KeyError("Key not found".to_owned()))
@@ -144,17 +140,12 @@ impl<K: AsRef<[u8]> + Eq + Hash, V: Send + Sync> Map<K, V> for ReadonlyRocksDBDi
             .collect::<Result<Vec<_>, KGDataError>>()
     }
 
-    fn par_slice_get_exist_as_map<Q>(
-        &self,
-        keys: &[Q],
-        batch_size: usize,
-    ) -> Result<HashMap<K, V>, KGDataError>
+    fn par_slice_get_exist_as_map<Q>(&self, keys: &[Q]) -> Result<HashMap<K, V>, KGDataError>
     where
         K: Sync + Send,
         Q: AsRef<[u8]> + Into<K> + Sync + Send + Equivalent<K> + Clone,
     {
         keys.into_par_iter()
-            .with_min_len(batch_size)
             .map(|key| match self.get(key)? {
                 None => Err(KGDataError::KeyError("Key not found".to_owned())),
                 Some(value) => Ok((key.clone().into(), value)),
