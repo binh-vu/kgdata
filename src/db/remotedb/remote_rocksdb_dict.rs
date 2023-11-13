@@ -3,7 +3,6 @@ use super::Client;
 use super::Map;
 use super::Request;
 use super::Response;
-use ahash::AHasher;
 use hashbrown::HashMap;
 use kgdata::error::KGDataError;
 use rayon::prelude::*;

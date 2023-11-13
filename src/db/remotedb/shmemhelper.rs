@@ -25,7 +25,7 @@ impl SharedMemBuffer {
     pub fn new(flink: &str, size: usize) -> Result<Self, KGDataError> {
         let shmem = match ShmemConf::new().size(size).flink(flink).create() {
             Ok(m) => m,
-            Err(e) => {
+            Err(_) => {
                 return Err(KGDataError::SharedMemoryError(
                     "Failed to create shared memory file".to_owned(),
                 ));
@@ -41,7 +41,7 @@ impl SharedMemBuffer {
     pub fn open(flink: &str) -> Result<Self, KGDataError> {
         let shmem = match ShmemConf::new().flink(flink).open() {
             Ok(m) => m,
-            Err(e) => {
+            Err(_) => {
                 return Err(KGDataError::SharedMemoryError(
                     "Failed to open shared memory file".to_owned(),
                 ));

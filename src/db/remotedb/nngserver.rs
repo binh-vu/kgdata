@@ -156,7 +156,6 @@ pub fn serve_db(url: &str, db: &rocksdb::DB) -> Result<(), KGDataError> {
 
                 Response::ser_success_test(sum, &mut buffer)
             }
-            _ => todo!(),
         };
         nnmsg.clear();
         nnmsg.push_back(&buffer.0[..resp_size]);
