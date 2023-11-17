@@ -94,6 +94,22 @@ class DBpediaDB:
             self.database_dir / "redirections.db", read_only=self.read_only
         )
 
+    @cached_property
+    def entity_pagerank(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def entity_metadata(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def entity_types(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def ontcount(self):
+        raise NotImplementedError()
+
 
 if __name__ == "__main__":
     import click
