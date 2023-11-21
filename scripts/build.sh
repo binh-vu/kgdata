@@ -56,7 +56,7 @@ function wikidata_db {
 # wikidata_dataset entities
 # wikidata_dataset entity_types
 
-wikidata_dataset classes
+# wikidata_dataset classes
 # wikidata_dataset properties
 
 # wikidata_dataset class_count
@@ -73,6 +73,7 @@ wikidata_dataset classes
 # wikidata_dataset entity_types_and_degrees
 # wikidata_dataset entity_outlinks
 # wikidata_dataset entity_pagerank
+wikidata_dataset entity_wiki_aliases
 
 # ======================================================================
 # WIKIPEDIA Datasets
@@ -91,7 +92,7 @@ wikidata_dataset classes
 # ======================================================================
 # WIKIDATA Databases
 
-wikidata_db classes
+# wikidata_db classes
 # wikidata_db properties
 # wikidata_db entities
 # wikidata_db entity_labels

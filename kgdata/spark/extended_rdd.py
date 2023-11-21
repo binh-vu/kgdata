@@ -22,9 +22,6 @@ from typing import (
 )
 
 import serde.json
-from pyspark.rdd import RDD, portable_hash
-from typing_extensions import TypeGuard
-
 from kgdata.spark.common import (
     are_records_unique,
     estimate_num_partitions,
@@ -32,6 +29,8 @@ from kgdata.spark.common import (
     join_repartition,
     left_outer_join_repartition,
 )
+from pyspark.rdd import RDD, portable_hash
+from typing_extensions import TypeGuard
 
 if TYPE_CHECKING:
     from kgdata.dataset import Dataset
@@ -525,6 +524,9 @@ class ExtendedRDD(Generic[T_co]):
             get_spark_context().parallelize(lst, numSlices),
             DatasetSignature.intermediate_dataset("parallelize"),
         )
+
+    def take(self: ExtendedRDD[T], num: int) -> list[T]:
+        return self.rdd.take(num)
 
     def union(self: ExtendedRDD[T], other: ExtendedRDD[U]) -> ExtendedRDD[T | U]:
         return ExtendedRDD(self.rdd.union(other.rdd), self.sig.use(other.sig))
