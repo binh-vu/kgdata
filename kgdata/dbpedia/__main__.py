@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import gc
 from typing import TYPE_CHECKING, Optional
 
 import click
-from hugedict.prelude import RocksDBDict, init_env_logger, rocksdb_load
+from hugedict.prelude import init_env_logger
+
 from kgdata.config import init_dbdir_from_env
-from kgdata.dataset import import_dataset
-from kgdata.db import GenericDB
+from kgdata.db import GenericDB, build_database
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
@@ -34,30 +33,12 @@ def dataset2db(
     def command(output: str, compact: bool, lang: Optional[str] = None):
         """Build a key-value database for storing dataset."""
         init_dbdir_from_env()
-
-        def db_options():
-            db: RocksDBDict = getattr(GenericDB(output, read_only=False), dbname)
-            return db.options, db.path
-
-        options, dbpath = db_options()
-        gc.collect()
-
-        fileformat = format or {
-            "record_type": {"type": "ndjson", "key": "id", "value": None},
-            "is_sorted": False,
-        }
-
-        ds_kwargs = {}
-        if lang is not None:
-            ds_kwargs["lang"] = lang
-
-        rocksdb_load(
-            dbpath=dbpath,
-            dbopts=options,
-            files=import_dataset("dbpedia." + dataset, ds_kwargs).get_files(),
-            format=fileformat,
-            verbose=True,
+        build_database(
+            f"kgdata.dbpedia.datasets.{dataset}.{dataset}",
+            lambda: getattr(GenericDB(output, read_only=False), dbname),
             compact=compact,
+            format=format,
+            lang=lang,
         )
 
     return command

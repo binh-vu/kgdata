@@ -1,6 +1,6 @@
 [project]
 name = "kgdata"
-version = "5.5.0"
+version = "5.5.1"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 readme = "README.md"
 authors = [{ name = "Binh Vu", email = "binh@toan2.com" }]

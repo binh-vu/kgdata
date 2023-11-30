@@ -4,18 +4,34 @@ Helper for creating rocksdb entity/class/prop databases.
 
 from __future__ import annotations
 
+import gc
 import struct
-from functools import partial
+from functools import cached_property, partial
+from importlib import import_module
 from pathlib import Path
-from typing import Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, TypeVar
 
 import orjson
-import serde.json
-from hugedict.prelude import RocksDBCompressionOptions, RocksDBDict, RocksDBOptions
+from hugedict.prelude import (
+    CacheDict,
+    RocksDBCompressionOptions,
+    RocksDBDict,
+    RocksDBOptions,
+    rocksdb_load,
+)
 from hugedict.types import HugeMutableMapping
+from loguru import logger
+
+import serde.json
+from kgdata.config import init_dbdir_from_env
+from kgdata.dataset import Dataset, import_dataset
 from kgdata.models.entity import Entity
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
+from kgdata.spark.extended_rdd import DatasetSignature
+
+if TYPE_CHECKING:
+    from hugedict.core.rocksdb import FileFormat
 
 T = TypeVar("T")
 
@@ -231,3 +247,66 @@ class GenericDB:
     @cached_property
     def ontcount(self):
         raise NotImplementedError()
+
+
+def build_database(
+    dataset: str,
+    get_db: Callable[[], Any],
+    compact: bool,
+    format: Optional[FileFormat] = None,
+    lang: Optional[str] = None,
+):
+    """Build database.
+
+    Args:
+        dataset: path to the dataset
+        get_db: get the database
+        compact: whether to compact the database
+        format: format of the files in the dataset
+    """
+
+    def db_options():
+        db = get_db()
+        while isinstance(db, CacheDict):
+            db = db.mapping
+
+        assert isinstance(db, RocksDBDict)
+        return db.options, db.path
+
+    options, dbpath = db_options()
+    gc.collect()
+
+    fileformat = format or {
+        "record_type": {"type": "ndjson", "key": "id", "value": None},
+        "is_sorted": False,
+    }
+
+    ds_kwargs = {}
+    if lang is not None:
+        ds_kwargs["lang"] = lang
+
+    module, func = dataset.rsplit(".", 1)
+    ds = getattr(import_module(module), func)(**ds_kwargs)
+    assert isinstance(ds, Dataset)
+    db_sig_file = Path(dbpath) / "_SIGNATURE"
+    if db_sig_file.exists():
+        db_sig = DatasetSignature.from_dict(serde.json.deser(db_sig_file))
+        ds_sig = ds.get_signature()
+
+        if db_sig != ds_sig:
+            raise Exception(
+                "Trying to rebuild database, but the database already exists with different signature."
+            )
+
+        logger.info("Database already exists with the same signature. Skip building.")
+        return
+
+    rocksdb_load(
+        dbpath=dbpath,
+        dbopts=options,
+        files=ds.get_files(),
+        format=fileformat,
+        verbose=True,
+        compact=compact,
+    )
+    serde.json.ser(ds.get_signature().to_dict(), db_sig_file)

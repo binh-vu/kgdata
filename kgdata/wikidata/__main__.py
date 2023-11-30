@@ -8,41 +8,27 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, cast, get_args
 
 import click
-import orjson
-import ray
-import serde.jl
-import serde.json
-from loguru import logger
-from timer import Timer
-
-from hugedict.cachedict import CacheDict
 from hugedict.prelude import (
     RocksDBDict,
     RocksDBOptions,
     init_env_logger,
     rocksdb_build_sst_file,
     rocksdb_ingest_sst_files,
-    rocksdb_load,
 )
+from timer import Timer
+
+import serde.jl
+import serde.json
 from kgdata.config import init_dbdir_from_env
-from kgdata.dataset import import_dataset
-from kgdata.spark.extended_rdd import DatasetSignature
+from kgdata.db import build_database
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.class_count import class_count
-from kgdata.wikidata.datasets.entity_metadata import entity_metadata
 from kgdata.wikidata.datasets.property_count import property_count
-from kgdata.wikidata.db import (
-    WikidataDB,
-    get_entity_label_db,
-    get_ontcount_db,
-    pack_int,
-)
+from kgdata.wikidata.db import WikidataDB, get_ontcount_db, pack_int
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
-from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
-from sm.misc.ray_helper import ray_map
 
 if TYPE_CHECKING:
-    from hugedict.hugedict.rocksdb import FileFormat
+    from hugedict.core.rocksdb import FileFormat
 
 
 def dataset2db(
@@ -66,52 +52,13 @@ def dataset2db(
     def command(output: str, compact: bool, lang: Optional[str] = None):
         """Build a key-value database for storing dataset."""
         init_dbdir_from_env()
-
-        def db_options():
-            db = getattr(WikidataDB(output, read_only=False), dbname)
-            while isinstance(db, CacheDict):
-                db = db.mapping
-
-            assert isinstance(db, RocksDBDict)
-            return db.options, db.path
-
-        options, dbpath = db_options()
-        gc.collect()
-
-        fileformat = format or {
-            "record_type": {"type": "ndjson", "key": "id", "value": None},
-            "is_sorted": False,
-        }
-
-        ds_kwargs = {}
-        if lang is not None:
-            ds_kwargs["lang"] = lang
-
-        ds = import_dataset("wikidata." + dataset, ds_kwargs)
-        db_sig_file = Path(dbpath) / "_SIGNATURE"
-        if db_sig_file.exists():
-            db_sig = DatasetSignature.from_dict(serde.json.deser(db_sig_file))
-            ds_sig = ds.get_signature()
-
-            if db_sig != ds_sig:
-                raise Exception(
-                    "Trying to rebuild database, but the database already exists with different signature."
-                )
-
-            logger.info(
-                "Database already exists with the same signature. Skip building."
-            )
-            return
-
-        rocksdb_load(
-            dbpath=dbpath,
-            dbopts=options,
-            files=ds.get_files(),
-            format=fileformat,
-            verbose=True,
+        build_database(
+            f"kgdata.wikidata.datasets.{dataset}.{dataset}",
+            lambda: getattr(WikidataDB(output, read_only=False), dbname),
             compact=compact,
+            format=format,
+            lang=lang,
         )
-        serde.json.ser(ds.get_signature().to_dict(), db_sig_file)
 
     return command
 
