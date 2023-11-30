@@ -13,6 +13,9 @@ import orjson
 import serde.json
 from hugedict.prelude import RocksDBCompressionOptions, RocksDBDict, RocksDBOptions
 from hugedict.types import HugeMutableMapping
+from kgdata.models.entity import Entity
+from kgdata.models.ont_class import OntologyClass
+from kgdata.models.ont_property import OntologyProperty
 
 T = TypeVar("T")
 
@@ -136,3 +139,95 @@ def pack_float(v: float) -> bytes:
 
 def unpack_float(v: bytes) -> float:
     return struct.unpack("<d", v)[0]
+
+
+get_entity_db = partial(
+    get_rocksdb,
+    deser_value=partial(deser_from_dict, Entity),
+    ser_value=ser_to_dict,
+    dbopts=large_dbopts,
+)
+get_entity_label_db = partial(
+    get_rocksdb,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
+    dbopts=small_dbopts,
+)
+get_entity_redirection_db = partial(
+    get_rocksdb,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
+    dbopts=small_dbopts,
+)
+get_class_db = partial(
+    get_rocksdb,
+    deser_value=partial(deser_from_dict, OntologyClass),
+    ser_value=ser_to_dict,
+    dbopts=small_dbopts,
+)
+get_prop_db = partial(
+    get_rocksdb,
+    deser_value=partial(deser_from_dict, OntologyProperty),
+    ser_value=ser_to_dict,
+    dbopts=small_dbopts,
+)
+get_redirection_db = partial(
+    get_rocksdb,
+    deser_value=partial(str, encoding="utf-8"),
+    ser_value=str.encode,
+    dbopts=small_dbopts,
+)
+
+
+class GenericDB:
+    def __init__(self, database_dir: Path | str, read_only: bool = True):
+        self.database_dir = Path(database_dir)
+        self.read_only = read_only
+
+    @cached_property
+    def entities(self):
+        return get_entity_db(
+            self.database_dir / "entities.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def entity_labels(self):
+        return get_entity_label_db(
+            self.database_dir / "entity_labels.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def entity_redirections(self):
+        return get_entity_redirection_db(
+            self.database_dir / "entity_redirections.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def classes(self):
+        return get_class_db(self.database_dir / "classes.db", read_only=self.read_only)
+
+    @cached_property
+    def props(self):
+        return get_prop_db(self.database_dir / "props.db", read_only=self.read_only)
+
+    @cached_property
+    def redirections(self):
+        return get_redirection_db(
+            self.database_dir / "redirections.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def entity_pagerank(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def entity_metadata(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def entity_types(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def ontcount(self):
+        raise NotImplementedError()

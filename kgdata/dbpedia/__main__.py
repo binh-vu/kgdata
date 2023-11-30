@@ -5,13 +5,12 @@ from typing import TYPE_CHECKING, Optional
 
 import click
 from hugedict.prelude import RocksDBDict, init_env_logger, rocksdb_load
-
 from kgdata.config import init_dbdir_from_env
 from kgdata.dataset import import_dataset
-from kgdata.dbpedia.db import DBpediaDB
+from kgdata.db import GenericDB
 
 if TYPE_CHECKING:
-    from hugedict.hugedict.rocksdb import FileFormat
+    from hugedict.core.rocksdb import FileFormat
 
 
 def dataset2db(
@@ -37,7 +36,7 @@ def dataset2db(
         init_dbdir_from_env()
 
         def db_options():
-            db: RocksDBDict = getattr(DBpediaDB(output, read_only=False), dbname)
+            db: RocksDBDict = getattr(GenericDB(output, read_only=False), dbname)
             return db.options, db.path
 
         options, dbpath = db_options()
