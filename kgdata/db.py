@@ -21,11 +21,12 @@ from hugedict.prelude import (
 )
 from hugedict.types import HugeMutableMapping
 from loguru import logger
+from rdflib import RDF, RDFS, XSD
 
 import serde.json
-from kgdata.config import init_dbdir_from_env
-from kgdata.dataset import Dataset, import_dataset
+from kgdata.dataset import Dataset
 from kgdata.models.entity import Entity
+from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
 from kgdata.spark.extended_rdd import DatasetSignature
@@ -247,6 +248,27 @@ class GenericDB:
     @cached_property
     def ontcount(self):
         raise NotImplementedError()
+
+    @cached_property
+    def default_props(self):
+        return {
+            str(RDFS.label): OntologyProperty(
+                id=str(RDFS.label),
+                label=MultiLingualString.en("label"),
+                description=MultiLingualString.en(
+                    "a human-readable version of a resource's name"
+                ),
+                aliases=MultiLingualStringList({"en": ["name"]}, "en"),
+                datatype=str(XSD.string),
+                parents=[],
+                related_properties=[],
+                equivalent_properties=[],
+                subjects=[],
+                inverse_properties=[],
+                instanceof=[str(RDF.Property)],
+                ancestors={},
+            )
+        }
 
 
 def build_database(

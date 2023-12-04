@@ -20,10 +20,12 @@ from typing import (
 
 import orjson
 import requests
-import serde.jl as jl
 from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
+
+import serde.jl as jl
 from kgdata.db import (
+    GenericDB,
     deser_from_dict,
     deser_from_tuple,
     get_rocksdb,
@@ -246,7 +248,7 @@ get_prop_domain_db = make_get_rocksdb(
 )
 
 
-class WikidataDB:
+class WikidataDB(GenericDB):
     """Helper class to make it easier to load all Wikidata databases stored in a directory.
     The Wikidata database is expected to be stored in the directory under specific names.
 

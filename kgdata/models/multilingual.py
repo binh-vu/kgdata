@@ -74,6 +74,10 @@ class MultiLingualStringList(List[str]):
         self.lang2values = lang2values
         self.lang = lang
 
+    @staticmethod
+    def en(labels: list[str]):
+        return MultiLingualStringList(lang2values={"en": labels}, lang="en")
+
     def get_all(self) -> set[str]:
         return {value for values in self.lang2values.values() for value in values}
 

@@ -5,8 +5,9 @@ from dataclasses import asdict, dataclass
 from typing import Generic, Iterable, TypeVar, Union
 
 import orjson
-from kgdata.misc.ntriples_parser import Triple, node_from_dict, node_to_dict
 from rdflib import BNode, Literal, URIRef
+
+from kgdata.misc.ntriples_parser import Triple, node_from_dict, node_to_dict
 
 V = TypeVar("V")
 
@@ -81,3 +82,9 @@ def orjson_default(o):
     if hasattr(o, "to_dict"):
         return o.to_dict()
     raise TypeError(o)
+
+
+def assert_not_bnode(o: URIRef | BNode | Literal) -> URIRef | Literal:
+    if isinstance(o, BNode):
+        raise ValueError(f"Unexpected BNode: {o}")
+    return o
