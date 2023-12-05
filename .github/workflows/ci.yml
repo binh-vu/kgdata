@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11"]
+        python: ["3.9", "3.10", "3.11"]
         platform: ["ubuntu-22.04", "macos-12", "windows-2022"]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -25,16 +25,16 @@ jobs:
             ~/.cargo  
             target
       - name: Run test
-        if: matrix.python == '3.8'
+        if: matrix.python == '3.9'
         run: cargo test --no-default-features --features pyo3/auto-initialize
       - uses: messense/maturin-action@v1
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.14
         with:
           command: build
-          args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.8') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
+          args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.9') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
       - name: Run test
-        if: matrix.python == '3.8' && !startsWith(matrix.platform, 'windows')
+        if: matrix.python == '3.9' && !startsWith(matrix.platform, 'windows')
         run: |
           python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp38*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
           pip install pytest
