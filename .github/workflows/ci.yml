@@ -36,7 +36,7 @@ jobs:
       - name: Run test
         if: matrix.python == '3.9' && !startsWith(matrix.platform, 'windows')
         run: |
-          python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp38*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
+          python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp39*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
           pip install pytest
           mv kgdata kgdata2
           pytest -xs tests/
@@ -58,7 +58,7 @@ jobs:
       - name: Build wheels
         run: |
           docker run --rm -w /project -v $(pwd):/project \
-            -e EXTRA_PATH=/opt/python/cp38-cp38/bin \
+            -e EXTRA_PATH=/opt/python/cp39-cp39/bin \
             -e PYTHON_HOMES=/opt/python \
             -e CARGO_NET_GIT_FETCH_WITH_CLI=false \
             quay.io/pypa/manylinux2014_x86_64:latest \
