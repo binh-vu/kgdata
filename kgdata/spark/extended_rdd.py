@@ -553,6 +553,21 @@ class ExtendedRDD(Generic[T_co]):
     ) -> ExtendedRDD[tuple[K, Iterable[V]]]:
         return ExtendedRDD(self.rdd.groupByKey(numPartitions, partitionFunc), self.sig)
 
+    def combineByKey(
+        self: ExtendedRDD[tuple[K, V]],
+        createCombiner: Callable[[V], U],
+        mergeValue: Callable[[U, V], U],
+        mergeCombiners: Callable[[U, U], U],
+        numPartitions: Optional[int] = None,
+        partitionFunc: Callable[[K], int] = portable_hash,
+    ) -> ExtendedRDD[tuple[K, U]]:
+        return ExtendedRDD(
+            self.rdd.combineByKey(
+                createCombiner, mergeValue, mergeCombiners, numPartitions, partitionFunc
+            ),
+            self.sig,
+        )
+
     def distinct(
         self: ExtendedRDD[T], numPartitions: Optional[int] = None
     ) -> ExtendedRDD[T]:

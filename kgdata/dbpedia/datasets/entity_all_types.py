@@ -7,7 +7,6 @@ from random import randrange
 from typing import Iterable, Optional
 
 import orjson
-
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.class_count import class_count
@@ -22,6 +21,7 @@ from kgdata.spark import are_records_unique, get_spark_context
 class EntityAllTypes(Record):
     id: str
     # mapping from type to distance of the correct types
+    # zero is the type of that entity, 1 is the parent type, 2 is grand parent, etc.
     types: dict[str, int]
 
 
