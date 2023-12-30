@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
+from rdflib import RDFS, XSD
 
 
 @dataclass
@@ -105,3 +106,22 @@ class OntologyProperty:
 
     def is_data_property(self):
         return not self.is_object_property()
+
+
+def get_default_props() -> list[OntologyProperty]:
+    return [
+        OntologyProperty(
+            id=str(RDFS.label),
+            label=MultiLingualString.en("label"),
+            description=MultiLingualString.en("A human-readable name for the subject"),
+            aliases=MultiLingualStringList.en(["name"]),
+            datatype=str(XSD.string),
+            parents=[],
+            related_properties=[],
+            equivalent_properties=[],
+            subjects=[],
+            inverse_properties=[],
+            instanceof=[],
+            ancestors={},
+        )
+    ]

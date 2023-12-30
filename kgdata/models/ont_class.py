@@ -108,6 +108,6 @@ def get_default_classes() -> list[OntologyClass]:
             properties=[],
             different_froms=[],
             equivalent_classes=[],
-            ancestors=set(),
+            ancestors={},
         )
     ]

@@ -9,7 +9,7 @@ import struct
 from functools import cached_property, partial
 from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Iterator, Mapping, Optional, TypeVar
 
 import orjson
 from hugedict.prelude import (
@@ -28,6 +28,7 @@ from kgdata.models.entity import Entity
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
+from sm.namespaces.namespace import KnowledgeGraphNamespace
 
 
 if TYPE_CHECKING:
@@ -268,6 +269,23 @@ class GenericDB:
                 ancestors={},
             )
         }
+
+
+class URIMappingWrapper(Mapping[str, T]):
+    def __init__(self, map: Mapping[str, T], kgns: KnowledgeGraphNamespace):
+        self.map = map
+        self.kgns = kgns
+    
+    def __getitem__(self, key: str) -> T:
+        return self.map[self.kgns.uri_to_id(key)]
+    
+    def __len__(self):
+        return len(self.map)
+    
+    def __iter__(self) -> Iterator[str]:
+        return (self.kgns.id_to_uri(id) for id in self.map)
+        
+
 
 
 def build_database(
