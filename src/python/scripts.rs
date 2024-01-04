@@ -37,11 +37,11 @@ impl GetRepresentativeValue {
     }
 
     pub fn get_ent_types_and_degrees_files(&self) -> String {
-        format!("{}/entity_types_and_degrees/*.gz", self.data_dir)
+        format!("{}/*entity_types_and_degrees/*.gz", self.data_dir)
     }
 
     pub fn get_ent_label_files(&self) -> String {
-        format!("{}/entity_labels/*.gz", self.data_dir)
+        format!("{}/*entity_labels/*.gz", self.data_dir)
     }
 }
 
@@ -117,10 +117,7 @@ impl GetRepresentativeValue {
                     .map(|ent| {
                         let dict = PyDict::new(py);
                         dict.set_item("id", &ent.id)?;
-                        dict.set_item(
-                            "label",
-                            multi_lingual_string_to_dict(py, &matched_ent_labels[&ent.id].label)?,
-                        )?;
+                        dict.set_item("label", &matched_ent_labels[&ent.id].label)?;
                         dict.set_item("score", self.get_score(ent, cid))?;
                         Ok(dict)
                     })
@@ -196,9 +193,10 @@ pub struct EntityTypesAndDegrees {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct EntityLabel {
     id: String,
-    label: MultiLingualString,
+    label: String,
 }
 
+#[allow(dead_code)]
 fn multi_lingual_string_to_dict<'t>(
     py: Python<'t>,
     label: &MultiLingualString,
