@@ -5,7 +5,9 @@ from typing import Mapping
 
 from kgdata.misc.ntriples_parser import node_from_dict, node_to_dict
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from rdflib import Literal, URIRef
+from rdflib import RDF, Literal, URIRef
+
+RDF_TYPE = str(RDF.type)
 
 
 @dataclass
@@ -52,6 +54,16 @@ class Entity:
                 for pid, stmts in self.props.items()
             },
         )
+
+    def get_object_prop_value(self, prop: str) -> list[str]:
+        lst = []
+        for stmt in self.props.get(prop, []):
+            if isinstance(stmt.value, URIRef):
+                lst.append(str(stmt.value))
+        return lst
+
+    def instance_of(self, instanceof: str = RDF_TYPE):
+        return self.get_object_prop_value(instanceof)
 
 
 @dataclass
