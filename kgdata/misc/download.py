@@ -128,7 +128,7 @@ class BaseDumpCollection(ABC):
         return files
 
     def create_download_jobs(
-        self, files: list[DumpFile], rootdir: str | Path
+        self, files: list[DumpFile], rootdir: str | Path, skip_if_exists: bool = True
     ) -> list[tuple[str, Path]]:
         rootdir = Path(rootdir)
         main_category_urls = {
@@ -143,6 +143,8 @@ class BaseDumpCollection(ABC):
         jobs = []
         for file in files:
             outfile = dump_dir / get_url_filename(file.url)
+            if outfile.exists() and skip_if_exists:
+                continue
             jobs.append((file.url, outfile))
         return jobs
 
