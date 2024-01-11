@@ -84,6 +84,10 @@ class MultiLingualStringList(List[str]):
     def to_dict(self):
         return {"lang2values": self.lang2values, "lang": self.lang}
 
+    @staticmethod
+    def from_dict(obj: dict):
+        return MultiLingualStringList(obj["lang2values"], obj["lang"])
+
     def to_tuple(self):
         return self.lang2values, self.lang
 
