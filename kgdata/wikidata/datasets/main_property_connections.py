@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import orjson
 from kgdata.dataset import Dataset
@@ -11,15 +12,24 @@ from kgdata.wikidata.datasets.entity_types import entity_types
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def main_property_connections():
+def get_main_property_connections_dataset(with_dep: bool = True):
     cfg = WikidataDirCfg.get_instance()
-    ds = Dataset(
+
+    if with_dep:
+        deps = [entities(), entity_types()]
+    else:
+        deps = []
+
+    return Dataset(
         cfg.main_property_connections / "*.gz",
-        deserialize=orjson.loads,
+        deserialize=deser_connection,
         name="property-connections",
-        dependencies=[entities(), entity_types()],
+        dependencies=deps,
     )
 
+
+def main_property_connections():
+    ds = get_main_property_connections_dataset(with_dep=True)
     if not ds.has_complete_data():
         (
             entities()
@@ -37,12 +47,18 @@ def main_property_connections():
             .save_like_dataset(ds, auto_coalesce=True)
         )
 
+    return ds
+
 
 instanceof = "P31"
 subclass_of = "P279"
 subproperty_of = "P1647"
 
 ignored_props = {instanceof, subclass_of, subproperty_of}
+
+
+def deser_connection(line: Union[str, bytes]) -> PConnection:
+    return PConnection.from_dict(orjson.loads(line))
 
 
 def merge_preconn(collection: dict[str, list[PrePConnection]], conn: PrePConnection):
@@ -133,7 +149,7 @@ def get_prop_connections(ent: WDEntity):
     domains = {
         stmt.value.as_entity_id_safe(): 1 for stmt in ent.props.get(instanceof, [])
     }
-    out: dict[str, list[PrePConnection]] = {}
+    out: dict[str, list[PrePConnection]] = defaultdict(list)
 
     for prop, stmts in ent.props.items():
         if prop in ignored_props:

@@ -75,6 +75,8 @@ wikidata_dataset entity_outlinks
 wikidata_dataset entity_pagerank
 wikidata_dataset entity_wiki_aliases
 
+wikidata_dataset main_property_connections
+
 # ======================================================================
 # WIKIPEDIA Datasets
 
