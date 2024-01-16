@@ -9,9 +9,19 @@ import struct
 from functools import cached_property, partial
 from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generic, Iterator, Mapping, Optional, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    Mapping,
+    Optional,
+    TypeVar,
+)
 
 import orjson
+import serde.json
 from hugedict.prelude import (
     CacheDict,
     RocksDBCompressionOptions,
@@ -22,14 +32,12 @@ from hugedict.prelude import (
 from hugedict.types import HugeMutableMapping
 from loguru import logger
 from rdflib import RDF, RDFS, XSD
+from sm.namespaces.namespace import KnowledgeGraphNamespace
 
-import serde.json
 from kgdata.models.entity import Entity
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
-from sm.namespaces.namespace import KnowledgeGraphNamespace
-
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
@@ -249,8 +257,7 @@ class GenericDB:
     def ontcount(self):
         raise NotImplementedError()
 
-    @cached_property
-    def default_props(self):
+    def get_default_props(self):
         return {
             str(RDFS.label): OntologyProperty(
                 id=str(RDFS.label),
@@ -275,17 +282,15 @@ class URIMappingWrapper(Mapping[str, T]):
     def __init__(self, map: Mapping[str, T], kgns: KnowledgeGraphNamespace):
         self.map = map
         self.kgns = kgns
-    
+
     def __getitem__(self, key: str) -> T:
         return self.map[self.kgns.uri_to_id(key)]
-    
+
     def __len__(self):
         return len(self.map)
-    
+
     def __iter__(self) -> Iterator[str]:
         return (self.kgns.id_to_uri(id) for id in self.map)
-        
-
 
 
 def build_database(
