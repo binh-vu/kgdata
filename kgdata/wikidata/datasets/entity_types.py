@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import orjson
-
 from kgdata.dataset import Dataset
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.models.wdentity import WDEntity
+from sm.misc.funcs import filter_duplication
 
 
 def entity_types() -> Dataset[tuple[str, list[str]]]:
@@ -31,10 +31,4 @@ def entity_types() -> Dataset[tuple[str, list[str]]]:
 
 
 def get_instanceof(ent: WDEntity) -> tuple[str, list[str]]:
-    instanceof = "P31"
-    return (
-        ent.id,
-        list(
-            {stmt.value.as_entity_id_safe() for stmt in ent.props.get(instanceof, [])}
-        ),
-    )
+    return (ent.id, filter_duplication(ent.instance_of()))
