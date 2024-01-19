@@ -18,6 +18,7 @@ class WikidataDirCfg:
         # directorys contain dumps and their splitted files
         # for the name of the dumps, see the corresponding function `self.get_X_file` in this class
         self.dumps = datadir / "000_dumps"
+        self.modification = datadir / "001_modifications"
         self.entity_dump = datadir / "012_entity_dump"
         self.page_dump = datadir / "010_page_dump"
         self.entity_redirection_dump = datadir / "011_entity_redirection_dump"
@@ -27,8 +28,6 @@ class WikidataDirCfg:
         self.entity_redirections = datadir / "022_entity_redirections"
         self.entities = datadir / "023_entities"
         self.entity_types = datadir / "024_entity_types"
-
-        self.modification = datadir / "030_modifications"
 
         self.classes = datadir / "040_classes"
         self.properties = datadir / "041_properties"
