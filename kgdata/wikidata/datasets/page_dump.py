@@ -15,16 +15,17 @@ def page_dump() -> Dataset[str]:
     dump_date = cfg.get_dump_date()
 
     ds = Dataset.string(
-        cfg.page_dump / "*.gz", name=f"page-dump/{dump_date}", dependencies=[]
+        cfg.page_dump / "*.zst", name=f"page-dump/{dump_date}", dependencies=[]
     )
     if not ds.has_complete_data():
         split_a_file(
             infile=cfg.get_page_dump_file(),
-            outfile=cfg.page_dump / "part.sql.gz",
+            outfile=cfg.page_dump / "part.sql.zst",
             record_iter=_record_iter,
             record_postprocess="kgdata.wikidata.datasets.page_dump._record_postprocess",
             n_writers=8,
             override=False,
+            compression_level=9,
         )
         ds.sign(ds.get_name(), ds.get_dependencies())
     return ds
@@ -47,5 +48,5 @@ def _record_postprocess(line: bytes):
 
 
 if __name__ == "__main__":
-    WikidataDirCfg.init("~/kgdata/wikidata/20211213")
+    WikidataDirCfg.init("/var/tmp/kgdata/wikidata/20230619")
     page_dump()

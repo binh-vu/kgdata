@@ -7,7 +7,16 @@ from gzip import GzipFile
 from io import TextIOWrapper
 from multiprocessing import Process, Queue
 from pathlib import Path
-from typing import BinaryIO, Callable, ContextManager, Iterable, List, Tuple, Union
+from typing import (
+    BinaryIO,
+    Callable,
+    ContextManager,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import serde.byteline
 from serde.helper import get_open_fn
@@ -41,6 +50,7 @@ def split_a_file(
     override: bool = False,
     n_writers: int = 8,
     n_records_per_file: int = 64000,
+    compression_level: Optional[int] = None,
 ):
     r"""Split a file containing a list of records into smaller files stored in a directory.
     The list of records are written in a round-robin fashion by multiple writers (processes)
@@ -60,6 +70,7 @@ def split_a_file(
         override: whether to override existing files.
         n_writers: number of parallel writers.
         n_records_per_file: number of records per file.
+        compression_level: compression level of output files. if None, use default compression level.
     """
     outfile = Path(outfile)
     outdir = outfile.parent
@@ -82,7 +93,13 @@ def split_a_file(
         writers.append(
             Process(
                 target=write_to_file,
-                args=(writer_file, n_records_per_file, record_postprocess, queues[i]),
+                args=(
+                    writer_file,
+                    n_records_per_file,
+                    record_postprocess,
+                    queues[i],
+                    compression_level,
+                ),
             )
         )
         writers[i].start()
@@ -135,6 +152,7 @@ def write_to_file(
     n_records_per_file: int,
     record_postprocessing: str,
     queue: Queue,
+    compression_level: Optional[int],
 ):
     """Write records from a queue to a file.
 
@@ -143,11 +161,12 @@ def write_to_file(
         n_records_per_file: number of records per file
         record_postprocessing: name/path to import the function that post-process an record. the function can return None to skip the record.
         queue: a queue that yields records to be written to a file, when it yields None, the writer stops.
+        compression_level: compression level of output files. if None, use default compression level.
     """
     file_counter = 0
 
     outfile = outfile_template.format(auto=file_counter)
-    writer = get_open_fn(outfile)(outfile, "wb")
+    writer = get_open_fn(outfile, compression_level=compression_level)(outfile, "wb")
     n_records = 0
 
     postprocess_fn = import_func(record_postprocessing)

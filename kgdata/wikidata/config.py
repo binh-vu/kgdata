@@ -63,7 +63,10 @@ class WikidataDirCfg:
         return res[0]
 
     def get_entity_dump_file(self):
-        return self._get_file(self.dumps / "*wikidata-*all*.json.bz2")
+        try:
+            return self._get_file(self.dumps / "*wikidata-*all*.json.zst")
+        except:
+            return self._get_file(self.dumps / "*wikidata-*all*.json.bz2")
 
     def get_page_dump_file(self):
         return self._get_file(self.dumps / "*wikidatawiki-*page*.sql.gz")

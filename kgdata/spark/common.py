@@ -14,6 +14,7 @@ from typing import (
     Generic,
     Iterable,
     List,
+    Literal,
     Optional,
     Sequence,
     Tuple,
@@ -22,8 +23,10 @@ from typing import (
 )
 
 import orjson
+import zstandard as zstd
 from loguru import logger
-from pyspark import RDD, SparkConf, SparkContext
+from pyspark import RDD, SparkConf, SparkContext, TaskContext
+from sm.misc.funcs import assert_not_null
 
 # SparkContext singleton
 _sc = None
@@ -84,6 +87,8 @@ def get_spark_context():
                 "spark.executor.instances",
                 "spark.driver.memory",
                 "spark.driver.maxResultSize",
+                "spark.driver.extraLibraryPath",
+                "spark.executor.extraLibraryPath",
             ]
             if has_key(key)
         ]
@@ -480,7 +485,54 @@ def estimate_num_partitions(rdd: RDD[str] | RDD[bytes], partition_size: int) -> 
     return math.ceil(total_size / partition_size)
 
 
+def save_as_text_file(
+    rdd: RDD[str] | RDD[bytes],
+    outdir: Path,
+    compression: Optional[Literal["gz", "zst"]],
+    compression_level: Optional[int] = None,
+):
+    if compression == "gz" or compression is None:
+        return rdd.saveAsTextFile(
+            str(outdir),
+            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
+            if compression == "gz"
+            else None,
+        )
+
+    if compression == "zst":
+        compression_level = compression_level or 3
+
+        def save_partition(partition: Iterable[str] | Iterable[bytes]):
+            partition_id = assert_not_null(TaskContext.get()).partitionId()
+            lst = []
+            it = iter(partition)
+            first_val = next(it, None)
+            if isinstance(first_val, str):
+                lst.append(first_val.encode())
+                for x in it:
+                    lst.append(x.encode())  # type: ignore
+            else:
+                lst.append(first_val)
+                for x in it:
+                    lst.append(x)
+            datasize = sum(len(x) + 1 for x in lst)  # 1 for newline
+            cctx = zstd.ZstdCompressor(level=compression_level, write_content_size=True)
+
+            with open(outdir / f"part-{partition_id:05d}.zst", "wb") as fh:
+                with cctx.stream_writer(fh, size=datasize) as f:
+                    for record in lst:
+                        f.write(record)
+                        f.write(b"\n")
+
+        rdd.foreachPartition(save_partition)
+        (outdir / "_SUCCESS").touch()
+        return
+
+    raise Exception(f"Unknown compression: {compression}")
+
+
 @dataclass
 class EmptyBroadcast(Generic[V]):
+    value: V
     value: V
     value: V

@@ -22,6 +22,10 @@ from typing import (
 )
 
 import serde.json
+from pyspark.rdd import RDD, portable_hash
+from typing_extensions import TypeGuard
+
+from kgdata.misc.funcs import deser_zstd_records
 from kgdata.spark.common import (
     are_records_unique,
     estimate_num_partitions,
@@ -29,8 +33,6 @@ from kgdata.spark.common import (
     join_repartition,
     left_outer_join_repartition,
 )
-from pyspark.rdd import RDD, portable_hash
-from typing_extensions import TypeGuard
 
 if TYPE_CHECKING:
     from kgdata.dataset import Dataset
@@ -244,6 +246,9 @@ class ExtendedRDD(Generic[T_co]):
         file_pattern = Path(dataset.file_pattern)
         if file_pattern.suffix == ".gz":
             compressionCodecClass = "org.apache.hadoop.io.compress.GzipCodec"
+        elif file_pattern.suffix == ".zst":
+            # this is a dummy codec for our custom version of save_as_text_file
+            compressionCodecClass = "kgdata.compress.ZstdCodec"
         else:
             # this to make sure the dataset file pattern matches the generated file from spark.
             assert file_pattern.suffix == "" and file_pattern.name.startswith(
@@ -316,6 +321,14 @@ class ExtendedRDD(Generic[T_co]):
             max_num_partitions: if auto_coalesce is enable and this variable is not None, this will be the maximum number of partitions to coalesce to.
         """
         outdir = str(outdir)
+
+        # if compressionCodecClass == "kgdata.compress.ZstdCodec":
+        #     compression = "zst"
+        # elif compressionCodecClass == "org.apache.hadoop.io.compress.GzipCodec":
+        #     compression = "gz"
+        # else:
+        #     assert compressionCodecClass is None
+        #     compression = None
 
         if not auto_coalesce:
             self.rdd.saveAsTextFile(outdir, compressionCodecClass=compressionCodecClass)
@@ -473,7 +486,8 @@ class ExtendedRDD(Generic[T_co]):
     def textFile(
         indir: StrPath, minPartitions: Optional[int] = None, use_unicode: bool = True
     ):
-        sigfile = Path(indir) / "_SIGNATURE"
+        indir = Path(indir)
+        sigfile = indir / "_SIGNATURE"
         if sigfile.exists():
             sig = serde.json.deser(sigfile, DatasetSignature)
             assert sig.is_valid()
@@ -484,8 +498,25 @@ class ExtendedRDD(Generic[T_co]):
                 checksum="",
                 dependencies={},
             )
+
+        # to support zst files (indir)
+        if (
+            indir.is_dir()
+            and any(
+                file.name.startswith("part-") and file.name.endswith(".zst")
+                for file in indir.iterdir()
+            )
+        ) or indir.name.endswith(".zst"):
+            return ExtendedRDD(
+                get_spark_context()
+                .binaryFiles(str(indir), minPartitions)
+                .flatMap(lambda x: deser_zstd_records(x[1])),
+                sig,
+            )
+
         return ExtendedRDD(
-            get_spark_context().textFile(str(indir), minPartitions, use_unicode), sig
+            get_spark_context().textFile(str(indir), minPartitions, use_unicode),
+            sig,
         )
 
     @staticmethod
