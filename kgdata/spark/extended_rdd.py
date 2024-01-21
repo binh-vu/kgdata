@@ -14,6 +14,7 @@ from typing import (
     Generic,
     Hashable,
     Iterable,
+    Literal,
     Optional,
     Protocol,
     Sequence,
@@ -32,6 +33,8 @@ from kgdata.spark.common import (
     get_spark_context,
     join_repartition,
     left_outer_join_repartition,
+    save_as_text_file,
+    text_file,
 )
 
 if TYPE_CHECKING:
@@ -219,7 +222,7 @@ class ExtendedRDD(Generic[T_co]):
         shutil.rmtree(outfile + "_tmp")
 
     def save_like_dataset(
-        self,
+        self: ExtendedRDD[str] | ExtendedRDD[bytes],
         dataset: "Dataset",
         checksum: bool = True,
         auto_coalesce: bool = False,
@@ -228,6 +231,7 @@ class ExtendedRDD(Generic[T_co]):
         min_num_partitions: int = 64,
         max_num_partitions: int = 1024,
         trust_dataset_dependencies: bool = False,
+        compression_level: Optional[int] = None,
     ) -> None:
         """Save this RDD as a dataset similar to the given dataset. By default, checksum of the dataset is computed
         so we can be confident that the data hasn't changed yet, or multiple copied are indeed equal.
@@ -242,19 +246,21 @@ class ExtendedRDD(Generic[T_co]):
             min_num_partitions: if auto_coalesce is enable and this variable is not None, this will be the minimum number of partitions to coalesce to.
             max_num_partitions: if auto_coalesce is enable and this variable is not None, this will be the maximum number of partitions to coalesce to.
             trust_dataset_dependencies: whether to trust the dataset dependencies. If this is False, we will verify the dataset dependencies and ensure that they are equal.
+            compression_level: compression level to use. This is only used when compression is zst.
         """
         file_pattern = Path(dataset.file_pattern)
         if file_pattern.suffix == ".gz":
-            compressionCodecClass = "org.apache.hadoop.io.compress.GzipCodec"
+            compression = "gz"
         elif file_pattern.suffix == ".zst":
             # this is a dummy codec for our custom version of save_as_text_file
-            compressionCodecClass = "kgdata.compress.ZstdCodec"
+            compression = "zst"
+            compression_level = compression_level or 3
         else:
             # this to make sure the dataset file pattern matches the generated file from spark.
             assert file_pattern.suffix == "" and file_pattern.name.startswith(
                 "part-"
             ), file_pattern.name
-            compressionCodecClass = None
+            compression = None
 
         # verify dataset dependencies
         if trust_dataset_dependencies:
@@ -283,7 +289,8 @@ class ExtendedRDD(Generic[T_co]):
 
         self.save_as_dataset(
             dataset.get_data_directory(),
-            compressionCodecClass=compressionCodecClass,
+            compression=compression,
+            compression_level=compression_level,
             name=dataset.name,
             checksum=checksum,
             auto_coalesce=auto_coalesce,
@@ -294,9 +301,10 @@ class ExtendedRDD(Generic[T_co]):
         )
 
     def save_as_dataset(
-        self,
+        self: ExtendedRDD[str] | ExtendedRDD[bytes],
         outdir: StrPath,
-        compressionCodecClass: Optional[str] = None,
+        compression: Optional[Literal["gz", "zst"]] = None,
+        compression_level: Optional[int] = None,
         name: Optional[str] = None,
         checksum: bool = True,
         auto_coalesce: bool = False,
@@ -310,7 +318,8 @@ class ExtendedRDD(Generic[T_co]):
 
         # Arguments
             outdir: output directory
-            compressionCodecClass: compression codec class to use
+            compression: compression to use. If None, no compression is used.
+            compression_level: compression level to use. This is only used when compression is zst.
             name: name of the dataset, by default, we use the output directory name
             checksum: whether to compute checksum of the dataset. Usually, we don't need to compute the checksum
                 for intermediate datasets.
@@ -322,23 +331,13 @@ class ExtendedRDD(Generic[T_co]):
         """
         outdir = str(outdir)
 
-        # if compressionCodecClass == "kgdata.compress.ZstdCodec":
-        #     compression = "zst"
-        # elif compressionCodecClass == "org.apache.hadoop.io.compress.GzipCodec":
-        #     compression = "gz"
-        # else:
-        #     assert compressionCodecClass is None
-        #     compression = None
-
         if not auto_coalesce:
-            self.rdd.saveAsTextFile(outdir, compressionCodecClass=compressionCodecClass)
+            save_as_text_file(self.rdd, Path(outdir), compression, compression_level)
         else:
             tmp_dir = str(outdir) + "_tmp"
-            self.rdd.saveAsTextFile(
-                tmp_dir, compressionCodecClass=compressionCodecClass
-            )
+            save_as_text_file(self.rdd, Path(tmp_dir), compression, compression_level)
 
-            rdd = get_spark_context().textFile(tmp_dir)
+            rdd = text_file(Path(tmp_dir))
             num_partitions = math.ceil(
                 sum((os.path.getsize(file) for file in glob.glob(tmp_dir + "/part-*")))
                 / partition_size
@@ -346,8 +345,11 @@ class ExtendedRDD(Generic[T_co]):
             num_partitions = max(min_num_partitions, num_partitions)
             num_partitions = min(max_num_partitions, num_partitions)
 
-            rdd.coalesce(num_partitions, shuffle).saveAsTextFile(
-                outdir, compressionCodecClass=compressionCodecClass
+            save_as_text_file(
+                rdd.coalesce(num_partitions, shuffle),
+                Path(outdir),
+                compression,
+                compression_level,
             )
             shutil.rmtree(tmp_dir)
 
@@ -499,25 +501,7 @@ class ExtendedRDD(Generic[T_co]):
                 dependencies={},
             )
 
-        # to support zst files (indir)
-        if (
-            indir.is_dir()
-            and any(
-                file.name.startswith("part-") and file.name.endswith(".zst")
-                for file in indir.iterdir()
-            )
-        ) or indir.name.endswith(".zst"):
-            return ExtendedRDD(
-                get_spark_context()
-                .binaryFiles(str(indir), minPartitions)
-                .flatMap(lambda x: deser_zstd_records(x[1])),
-                sig,
-            )
-
-        return ExtendedRDD(
-            get_spark_context().textFile(str(indir), minPartitions, use_unicode),
-            sig,
-        )
+        return ExtendedRDD(text_file(indir, minPartitions, use_unicode), sig)
 
     @staticmethod
     def binaryFiles(

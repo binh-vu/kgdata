@@ -28,6 +28,8 @@ from loguru import logger
 from pyspark import RDD, SparkConf, SparkContext, TaskContext
 from sm.misc.funcs import assert_not_null
 
+from kgdata.misc.funcs import deser_zstd_records
+
 # SparkContext singleton
 _sc = None
 
@@ -42,7 +44,7 @@ V = TypeVar("V")
 V2 = TypeVar("V2")
 
 
-def get_spark_context():
+def get_spark_context() -> SparkContext:
     """Get spark context
 
     Returns
@@ -529,6 +531,28 @@ def save_as_text_file(
         return
 
     raise Exception(f"Unknown compression: {compression}")
+
+
+def text_file(
+    filepattern: Path, min_partitions: Optional[int] = None, use_unicode: bool = True
+):
+    """Drop-in replacement for SparkContext.textFile that supports zstd files."""
+    filepattern = Path(filepattern)
+    # to support zst files (indir)
+    if (
+        filepattern.is_dir()
+        and any(
+            file.name.startswith("part-") and file.name.endswith(".zst")
+            for file in filepattern.iterdir()
+        )
+    ) or filepattern.name.endswith(".zst"):
+        return (
+            get_spark_context()
+            .binaryFiles(str(filepattern), min_partitions)
+            .flatMap(lambda x: deser_zstd_records(x[1]))
+        )
+
+    return get_spark_context().textFile(str(filepattern), min_partitions, use_unicode)
 
 
 @dataclass

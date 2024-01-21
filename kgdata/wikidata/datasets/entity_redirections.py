@@ -139,18 +139,19 @@ def entity_redirections() -> Dataset[tuple[str, str]]:
         lst = serde.csv.deser(redirection_file, delimiter="\t")
 
         unk_target_ds = Dataset.string(
-            cfg.entity_redirections / "unknown_target_entities/part-*"
+            cfg.entity_redirections / "unknown_target_entities/part-*",
+            name="entity-redirections/unknown-target-entities",
+            dependencies=[redirection_ds, entity_ids()],
         )
 
         if not unk_target_ds.has_complete_data():
             (
                 ExtendedRDD.parallelize(list(set(x[1] for x in lst)))
                 .subtract(entity_ids().get_extended_rdd())
-                .save_as_dataset(
-                    cfg.entity_redirections / "unknown_target_entities",
-                    name="entity-redirections/unknown-target-entities",
-                    auto_coalesce=True,
+                .save_like_dataset(
+                    dataset=unk_target_ds,
                     checksum=False,
+                    auto_coalesce=True,
                 )
             )
 
