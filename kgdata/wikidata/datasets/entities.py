@@ -58,7 +58,7 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
         dependencies=[entity_dump()],
     )
     fixed_ds = Dataset(
-        cfg.entities / lang / "*.gz",
+        cfg.entities / lang / "*.zst",
         deserialize=deser_entity,
         name=f"entities/{lang}/fixed",
         dependencies=[entity_dump(), entity_ids(), entity_redirections()],
@@ -130,6 +130,7 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
                 auto_coalesce=True,
                 shuffle=True,
                 trust_dataset_dependencies=True,
+                compression_level=9,
             )
         )
         need_verification = True
@@ -300,5 +301,14 @@ def extract_invalid_qualifier(ent: WDEntity) -> Optional[WDEntity]:
 
 
 if __name__ == "__main__":
-    WikidataDirCfg.init("~/kgdata/wikidata/20211213")
+    WikidataDirCfg.init("/var/tmp/kgdata/wikidata/20230619")
+    # from sm.misc.ray_helper import ray_map
+
+    # def deser(infile):
+    #     (infile, "rb")
+
+    # ray_map(
+    #     (WikidataDirCfg.get_instance().entities / "en").glob("*.zst"),
+    # )
+
     print("Total:", entities().get_rdd().count())

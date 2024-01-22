@@ -29,7 +29,7 @@ def redirection_dump(lang: str = "en"):
         )
 
         (
-            ExtendedRDD.textFile(str(cfg.redirection_dump / f"raw-{lang}/*.gz"))
+            ExtendedRDD.textFile(cfg.redirection_dump / f"raw-{lang}/*.gz")
             .filter(ignore_comment)
             .map(ntriple_loads)
             .map(norm_redirection)  # extracted redirection (source -> target)

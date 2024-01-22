@@ -28,6 +28,7 @@ from typing_extensions import TypeGuard
 
 from kgdata.misc.funcs import deser_zstd_records
 from kgdata.spark.common import (
+    StrPath,
     are_records_unique,
     estimate_num_partitions,
     get_spark_context,
@@ -57,7 +58,6 @@ V3 = TypeVar("V3")
 
 
 S = TypeVar("S", bound=SupportsOrdering)
-StrPath = Union[Path, str]
 NEW_DATASET_NAME = "__new__"
 NO_CHECKSUM = (b"\x00" * 32).hex()
 
@@ -335,9 +335,11 @@ class ExtendedRDD(Generic[T_co]):
             save_as_text_file(self.rdd, Path(outdir), compression, compression_level)
         else:
             tmp_dir = str(outdir) + "_tmp"
+            if os.path.exists(tmp_dir):
+                shutil.rmtree(tmp_dir)
             save_as_text_file(self.rdd, Path(tmp_dir), compression, compression_level)
 
-            rdd = text_file(Path(tmp_dir))
+            rdd = text_file(tmp_dir)
             num_partitions = math.ceil(
                 sum((os.path.getsize(file) for file in glob.glob(tmp_dir + "/part-*")))
                 / partition_size
@@ -356,9 +358,7 @@ class ExtendedRDD(Generic[T_co]):
         name = name or os.path.basename(outdir)
         if checksum:
             # compute checksum and save it to a file -- reload from the file so we do not have to process the data again.
-            ds_checksum = ExtendedRDD(
-                get_spark_context().textFile(outdir), self.sig
-            ).hash()
+            ds_checksum = ExtendedRDD(text_file(outdir), self.sig).hash()
         else:
             ds_checksum = b"\x00" * 32
 
@@ -542,6 +542,9 @@ class ExtendedRDD(Generic[T_co]):
 
     def take(self: ExtendedRDD[T], num: int) -> list[T]:
         return self.rdd.take(num)
+
+    def count(self) -> int:
+        return self.rdd.count()
 
     def union(self: ExtendedRDD[T], other: ExtendedRDD[U]) -> ExtendedRDD[T | U]:
         return ExtendedRDD(self.rdd.union(other.rdd), self.sig.use(other.sig))

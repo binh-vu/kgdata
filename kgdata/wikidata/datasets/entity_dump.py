@@ -60,4 +60,4 @@ def _record_postprocess(record: str):
 
 if __name__ == "__main__":
     WikidataDirCfg.init("/var/tmp/kgdata/wikidata/20230619")
-    entity_dump()
+    print(entity_dump().get_extended_rdd().count())

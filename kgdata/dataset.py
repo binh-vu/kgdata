@@ -32,7 +32,7 @@ from tqdm.auto import tqdm
 from kgdata.config import init_dbdir_from_env
 from kgdata.misc.query import PropQuery, every
 from kgdata.spark import ExtendedRDD, SparkLikeInterface, get_spark_context
-from kgdata.spark.common import does_result_dir_exist
+from kgdata.spark.common import does_result_dir_exist, text_file
 from kgdata.spark.extended_rdd import DatasetSignature
 
 V = TypeVar("V")
@@ -95,7 +95,7 @@ class Dataset(Generic[T_co]):
         return files
 
     def get_rdd(self) -> RDD[T_co]:
-        rdd = get_spark_context().textFile(str(self.file_pattern))
+        rdd = text_file(Path(self.file_pattern))
         if self.prefilter is not None:
             rdd = rdd.filter(self.prefilter)
 

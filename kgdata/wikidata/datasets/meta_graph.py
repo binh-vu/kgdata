@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple, TypeAlias, Union
 
 import orjson
+from sm.misc.funcs import filter_duplication
+
 from kgdata.dataset import Dataset
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
@@ -12,16 +14,15 @@ from kgdata.wikidata.datasets.entity_outlinks import entity_outlinks
 from kgdata.wikidata.datasets.entity_types import entity_types
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdvalue import WDValue, WDValueKind
-from sm.misc.funcs import filter_duplication
 
 
 def meta_graph():
     cfg = WikidataDirCfg.get_instance()
 
     ds = Dataset(
-        cfg.entity_types / "*.gz",
+        cfg.meta_graph / "*.gz",
         deserialize=orjson.loads,
-        name="entity-types",
+        name="meta-graph",
         dependencies=[entities(), entity_outlinks(), entity_types()],
     )
 

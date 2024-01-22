@@ -1,6 +1,7 @@
 """Utility functions for Apache Spark."""
 from __future__ import annotations
 
+import hashlib
 import math
 import os
 import random
@@ -20,6 +21,7 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    cast,
 )
 
 import orjson
@@ -32,7 +34,7 @@ from kgdata.misc.funcs import deser_zstd_records
 
 # SparkContext singleton
 _sc = None
-
+StrPath = Union[Path, str]
 
 R1 = TypeVar("R1")
 R2 = TypeVar("R2")
@@ -506,26 +508,47 @@ def save_as_text_file(
 
         def save_partition(partition: Iterable[str] | Iterable[bytes]):
             partition_id = assert_not_null(TaskContext.get()).partitionId()
-            lst = []
             it = iter(partition)
             first_val = next(it, None)
+            if first_val is None:
+                # empty partition
+                return
+
+            lst = []
+
             if isinstance(first_val, str):
-                lst.append(first_val.encode())
+                first_val = first_val.encode()
+                if not first_val.endswith(b"\n"):
+                    lst.append(first_val + b"\n")
+                else:
+                    lst.append(first_val)
+
                 for x in it:
-                    lst.append(x.encode())  # type: ignore
-            else:
-                lst.append(first_val)
-                for x in it:
+                    x = x.encode()  # type: ignore
+                    if not x.endswith(b"\n"):
+                        x = x + b"\n"
                     lst.append(x)
-            datasize = sum(len(x) + 1 for x in lst)  # 1 for newline
+            else:
+                if not first_val.endswith(b"\n"):
+                    lst.append(first_val + b"\n")
+                else:
+                    lst.append(first_val)
+                for x in it:
+                    if not x.endswith(b"\n"):
+                        x = x + b"\n"
+                    lst.append(x)
+
+            lst[-1] = lst[-1][:-1]  # exclude last \n
+
+            datasize = sum(len(x) for x in lst)
             cctx = zstd.ZstdCompressor(level=compression_level, write_content_size=True)
 
             with open(outdir / f"part-{partition_id:05d}.zst", "wb") as fh:
                 with cctx.stream_writer(fh, size=datasize) as f:
-                    for record in lst:
-                        f.write(record)
-                        f.write(b"\n")
+                    for x in lst:
+                        f.write(x)
 
+        outdir.mkdir(parents=True, exist_ok=True)
         rdd.foreachPartition(save_partition)
         (outdir / "_SUCCESS").touch()
         return
@@ -534,7 +557,7 @@ def save_as_text_file(
 
 
 def text_file(
-    filepattern: Path, min_partitions: Optional[int] = None, use_unicode: bool = True
+    filepattern: StrPath, min_partitions: Optional[int] = None, use_unicode: bool = True
 ):
     """Drop-in replacement for SparkContext.textFile that supports zstd files."""
     filepattern = Path(filepattern)
@@ -546,13 +569,62 @@ def text_file(
             for file in filepattern.iterdir()
         )
     ) or filepattern.name.endswith(".zst"):
+        if filepattern.is_dir():
+            n_parts = sum(
+                1 for file in filepattern.iterdir() if file.name.startswith("part-")
+            )
+        else:
+            n_parts = sum(1 for _ in filepattern.parent.glob("*.zst"))
+
         return (
             get_spark_context()
-            .binaryFiles(str(filepattern), min_partitions)
-            .flatMap(lambda x: deser_zstd_records(x[1]))
+            .binaryFiles(str(filepattern))
+            .repartition(n_parts)
+            .flatMap(lambda x: deser_zstd_records(x[1]), preservesPartitioning=True)
         )
 
     return get_spark_context().textFile(str(filepattern), min_partitions, use_unicode)
+
+
+def diff_rdd(rdd1: RDD[str], rdd2: RDD[str], key: Callable[[str], str]):
+    """Compare content of two RDDs
+
+    Parameters
+    ----------
+    rdd1 : RDD[str]
+        first RDD
+    rdd2 : RDD[str]
+        second RDD
+    key : Callable[[str], str]
+        function that extract key from a record
+
+    Returns
+    -------
+    RDD[str]
+        records that are in rdd1 but not in rdd2
+    """
+
+    def convert(x):
+        k = key(x)
+        if not isinstance(x, bytes):
+            x = x.encode()
+        return k, hashlib.sha256(x).digest().hex()
+
+    max_size = 100
+    records = (
+        rdd1.map(convert)
+        .fullOuterJoin(rdd2.map(convert))
+        .filter(lambda x: x[1][0] != x[1][1])
+        .take(max_size)
+    )
+    if len(records) == 0:
+        print("No difference")
+        return
+    print(
+        f"Found {'at least' if len(records) >= max_size else ''} {len(records)} difference:"
+    )
+    for r in records:
+        print(r[0], r[1][0], r[1][1])
 
 
 @dataclass

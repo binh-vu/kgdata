@@ -152,6 +152,7 @@ def entity_redirections() -> Dataset[tuple[str, str]]:
                     dataset=unk_target_ds,
                     checksum=False,
                     auto_coalesce=True,
+                    trust_dataset_dependencies=True,
                 )
             )
 

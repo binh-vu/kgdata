@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib
-from io import BytesIO
+from io import BufferedReader, BytesIO, TextIOWrapper
 from typing import Type
 
 import zstandard as zstd
@@ -46,4 +46,6 @@ def import_attr(attr_ident: str):
 def deser_zstd_records(dat: bytes):
     cctx = zstd.ZstdDecompressor()
     datobj = BytesIO(dat)
-    return [x.decode() for x in cctx.stream_reader(datobj).readall().splitlines()]
+    # readlines will result in an extra \n at the end
+    # we do not want this because it's different from spark implementation
+    return cctx.stream_reader(datobj).readall().splitlines()

@@ -41,7 +41,7 @@ def generic_extractor_dump(lang: str = "en") -> Dataset[RDFResource]:
             )
 
         (
-            ExtendedRDD.textFile(str(split_dump_dir / "*/*.gz"))
+            ExtendedRDD.textFile(split_dump_dir / "*/*.gz")
             .filter(ignore_comment)
             .map(ntriple_loads)
             .groupBy(lambda x: x[0])

@@ -6,13 +6,14 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import Any, Callable, Iterable
 
+from rdflib import OWL, RDF, RDFS, BNode, URIRef
+
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
 from kgdata.spark import ExtendedRDD
 from kgdata.splitter import split_a_file, split_a_list
-from rdflib import OWL, RDF, RDFS, BNode, URIRef
 
 rdf_type = str(RDF.type)
 rdfs_label = str(RDFS.label)
@@ -65,7 +66,7 @@ def ontology_dump() -> Dataset[RDFResource]:
         )
 
         (
-            ExtendedRDD.textFile(str(step1_dir / "*.gz"))
+            ExtendedRDD.textFile(step1_dir / "*.gz")
             .filter(ignore_comment)
             .map(ntriple_loads)
             .groupBy(lambda x: x[0])
