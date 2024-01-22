@@ -1,49 +1,60 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial
 from operator import add
-from typing import Dict, Iterable, List, Optional, Tuple, TypeAlias, Union
+from typing import Optional
 
 import orjson
-from sm.misc.funcs import filter_duplication
-
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.wikidata.config import WikidataDirCfg
-from kgdata.wikidata.datasets.entities import entities
-from kgdata.wikidata.datasets.entity_outlinks import entity_outlinks
-from kgdata.wikidata.datasets.entity_types import entity_types
 from kgdata.wikidata.datasets.meta_graph import MetaEntity, meta_graph
-from kgdata.wikidata.models.wdentity import WDEntity
-from kgdata.wikidata.models.wdvalue import WDValue, WDValueKind
+
+
+def get_predicate_count_dataset(with_dep: bool = True):
+    cfg = WikidataDirCfg.get_instance()
+
+    # have information about the domains and ranges of predicates
+    return Dataset(
+        cfg.meta_graph_stats / "predicate_count/*.gz",
+        deserialize=partial(deser_from_dict, PCount),
+        name="meta-graph-stats/predicate-count",
+        dependencies=[meta_graph()] if with_dep else [],
+    )
+
+
+def get_predicate_conn_dataset(with_dep: bool = True):
+    cfg = WikidataDirCfg.get_instance()
+
+    # have information about the domains and ranges of predicates
+    return Dataset(
+        cfg.meta_graph_stats / "predicate_conn/*.gz",
+        deserialize=partial(deser_from_dict, PConnection),
+        name="meta-graph-stats/predicate-conn",
+        dependencies=[meta_graph()] if with_dep else [],
+    )
+
+
+def get_predicate_occurrence_dataset(with_dep: bool = True):
+    cfg = WikidataDirCfg.get_instance()
+
+    # have information about the domains and ranges of predicates
+    return Dataset(
+        cfg.meta_graph_stats / "predicate_occurrence/*.gz",
+        deserialize=partial(deser_from_dict, POccurrence),
+        name="meta-graph-stats/predicate-occurrence",
+        dependencies=[meta_graph()] if with_dep else [],
+    )
 
 
 def meta_graph_stats():
     cfg = WikidataDirCfg.get_instance()
 
+    predicate_count_ds = get_predicate_count_dataset()
     # have information about the domains and ranges of predicates
-    predicate_count_ds = Dataset(
-        cfg.meta_graph_stats / "predicate_count/*.gz",
-        deserialize=partial(deser_from_dict, PCount),
-        name="meta-graph-stats/predicate-count",
-        dependencies=[meta_graph()],
-    )
-
-    predicate_conn_ds = Dataset(
-        cfg.meta_graph_stats / "predicate_conn/*.gz",
-        deserialize=partial(deser_from_dict, PConnection),
-        name="meta-graph-stats/predicate-conn",
-        dependencies=[meta_graph()],
-    )
-
-    predicate_occurrence_ds = Dataset(
-        cfg.meta_graph_stats / "predicate_occurrence/*.gz",
-        deserialize=partial(deser_from_dict, PConnection),
-        name="meta-graph-stats/predicate-occurrence",
-        dependencies=[meta_graph()],
-    )
+    predicate_conn_ds = get_predicate_conn_dataset()
+    predicate_occurrence_ds = get_predicate_occurrence_dataset()
 
     if not predicate_count_ds.has_complete_data():
         (
