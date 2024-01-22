@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import partial
 from typing import Dict, Iterable, List, Optional, Tuple, TypeAlias, Union
 
 import orjson
 from sm.misc.funcs import filter_duplication
 
 from kgdata.dataset import Dataset
+from kgdata.db import deser_from_dict
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
 from kgdata.wikidata.datasets.entity_outlinks import entity_outlinks
@@ -21,7 +23,7 @@ def meta_graph():
 
     ds = Dataset(
         cfg.meta_graph / "*.gz",
-        deserialize=orjson.loads,
+        deserialize=partial(deser_from_dict, MetaEntity),
         name="meta-graph",
         dependencies=[entities(), entity_outlinks(), entity_types()],
     )

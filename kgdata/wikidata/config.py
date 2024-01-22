@@ -51,6 +51,7 @@ class WikidataDirCfg:
         self.entity_wiki_aliases = datadir / "077_entity_wiki_aliases"
 
         self.meta_graph = datadir / "080_meta_graph"
+        self.meta_graph_stats = datadir / "081_meta_graph_stats"
 
         # deprecated
         self.wp2wd = datadir / "wp2wd"

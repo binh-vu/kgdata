@@ -50,32 +50,33 @@ function wikidata_db {
 # # python -m kgdata.wikidata.datasets -d entity_redirection_dump --sign
 # # python -m kgdata.wikidata.datasets -d page_dump --sign
 
-wikidata_dataset page_ids
-wikidata_dataset entity_ids
-wikidata_dataset entity_redirections
-wikidata_dataset entities
-wikidata_dataset entity_types
+# wikidata_dataset page_ids
+# wikidata_dataset entity_ids
+# wikidata_dataset entity_redirections
+# wikidata_dataset entities
+# wikidata_dataset entity_types
 
-wikidata_dataset classes
-wikidata_dataset properties
+# wikidata_dataset classes
+# wikidata_dataset properties
 
-wikidata_dataset class_count
-wikidata_dataset property_count
-wikidata_dataset property_domains
-wikidata_dataset property_ranges
+# wikidata_dataset class_count
+# wikidata_dataset property_count
+# wikidata_dataset property_domains
+# wikidata_dataset property_ranges
 
-wikidata_dataset cross_wiki_mapping
+# wikidata_dataset cross_wiki_mapping
 
-wikidata_dataset entity_metadata
-wikidata_dataset entity_all_types
-wikidata_dataset entity_degrees
-wikidata_dataset entity_labels
-wikidata_dataset entity_types_and_degrees
-wikidata_dataset entity_outlinks
-wikidata_dataset entity_pagerank
-wikidata_dataset entity_wiki_aliases
+# wikidata_dataset entity_metadata
+# wikidata_dataset entity_all_types
+# wikidata_dataset entity_degrees
+# wikidata_dataset entity_labels
+# wikidata_dataset entity_types_and_degrees
+# wikidata_dataset entity_outlinks
+# wikidata_dataset entity_pagerank
+# wikidata_dataset entity_wiki_aliases
 
-wikidata_dataset meta_graph
+# wikidata_dataset meta_graph
+wikidata_dataset meta_graph_stats
 
 # ======================================================================
 # WIKIPEDIA Datasets
