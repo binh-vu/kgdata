@@ -12,7 +12,8 @@ from kgdata.spark.extended_rdd import DatasetSignature
 
 @click.command()
 @click.argument("input_dir", type=click.Path(exists=True))
-def make_signatures(input_dir: Path):
+def make_signatures(input_dir: Path | str):
+    input_dir = Path(input_dir)
     signatures = {}
     for sigfile in sorted(input_dir.glob("**/*/_SIGNATURE")):
         sig = DatasetSignature.from_dict(serde.json.deser(sigfile))
@@ -21,7 +22,8 @@ def make_signatures(input_dir: Path):
             "checksum": sig.checksum,
             "dependencies": sorted(sig.dependencies.keys()),
         }
-    return signatures
+
+    serde.json.ser(signatures, input_dir / "aggregated_signatures.json", indent=2)
 
 
 if __name__ == "__main__":
