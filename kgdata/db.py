@@ -92,12 +92,14 @@ class make_get_rocksdb(Generic[T]):
             serde.json.ser(
                 {
                     "version": self.version,
-                    "opts": {
-                        k: v if isinstance(v, (str, int)) else v.to_dict()
-                        for k, v in self.dbopts.items()
-                    }
-                    if self.dbopts is not None
-                    else None,
+                    "opts": (
+                        {
+                            k: v if isinstance(v, (str, int)) else v.to_dict()
+                            for k, v in self.dbopts.items()
+                        }
+                        if self.dbopts is not None
+                        else None
+                    ),
                 },
                 version_file,
             )
@@ -274,7 +276,23 @@ class GenericDB:
                 inverse_properties=[],
                 instanceof=[str(RDF.Property)],
                 ancestors={},
-            )
+            ),
+            str(RDF.type): OntologyProperty(
+                id=str(RDF.type),
+                label=MultiLingualString.en("type"),
+                description=MultiLingualString.en(
+                    "Is used to state that a resource is an instance of a class"
+                ),
+                aliases=MultiLingualStringList({"en": ["instance of"]}, "en"),
+                datatype=str(XSD.anyURI),
+                parents=[],
+                related_properties=[],
+                equivalent_properties=[],
+                subjects=[],
+                inverse_properties=[],
+                instanceof=[str(RDF.Property)],
+                ancestors={},
+            ),
         }
 
 
