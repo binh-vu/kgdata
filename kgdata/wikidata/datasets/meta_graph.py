@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict, Iterable, List, Optional, Tuple, TypeAlias, Union
+from typing import Iterable, Optional
 
 import orjson
 from sm.misc.funcs import filter_duplication
@@ -79,9 +78,11 @@ def meta_graph():
                 props={
                     pid: [
                         MetaStatement(
-                            value=map_target_ent_to_types[stmt.value[0]]
-                            if stmt.value is not None
-                            else None,
+                            value=(
+                                map_target_ent_to_types[stmt.value[0]]
+                                if stmt.value is not None
+                                else None
+                            ),
                             qualifiers={
                                 k: [
                                     map_target_ent_to_types[v[0]]
@@ -138,7 +139,7 @@ class MetaEntity:
 
 
 # list of classes that target entity is an instance of, None if target entity is a literal
-TargetMetaClass: TypeAlias = Optional[list[str]]
+TargetMetaClass = Optional[list[str]]
 
 
 @dataclass
