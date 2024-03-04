@@ -145,6 +145,36 @@ class EntityOutLinks:
         return {"id": self.id, "targets": sorted(self.targets)}
 
 
+@dataclass
+class EntityMetadata:
+
+    id: str
+    label: MultiLingualString
+    description: MultiLingualString
+    aliases: MultiLingualStringList
+    instanceof: list[str]
+    subclassof: list[str]
+    subpropertyof: list[str]
+
+    def to_tuple(self):
+        return (
+            self.id,
+            self.label.to_tuple(),
+            self.description.to_tuple(),
+            self.aliases.to_tuple(),
+            self.instanceof,
+            self.subclassof,
+            self.subpropertyof,
+        )
+
+    @staticmethod
+    def from_tuple(t):
+        t[1] = MultiLingualString(t[1][0], t[1][1])
+        t[2] = MultiLingualString(t[2][0], t[2][1])
+        t[3] = MultiLingualStringList(t[3][0], t[3][1])
+        return EntityMetadata(t[0], t[1], t[2], t[3], t[4], t[5], t[6])
+
+
 def apply_redirection_to_term(
     term: URIRef | Literal, redirection: Mapping[str, str]
 ) -> URIRef | Literal:

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add DBpedia `entity_metadata` dataset
+
 ### Fixed
 
 - Improve type hints in various places.
