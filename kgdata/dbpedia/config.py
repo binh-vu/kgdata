@@ -31,7 +31,6 @@ class DBpediaDirCfg:
         self.ontology_dump = datadir / "ontology_dump"
         self.mapping_extractor_dump = datadir / "mapping_extractor_dump"
         self.generic_extractor_dump = datadir / "generic_extractor_dump"
-        self.redirection_dump = datadir / "redirection_dump"
 
         self.classes = datadir / "classes"
         self.class_count = datadir / "class_count"
@@ -40,9 +39,11 @@ class DBpediaDirCfg:
         self.entities = datadir / "entities"
         self.entity_types = datadir / "entity_types"
         self.entity_labels = datadir / "entity_labels"
+        self.entity_metadata = datadir / "entity_metadata"
         self.entity_all_types = datadir / "entity_all_types"
         self.entity_degrees = datadir / "entity_degrees"
         self.entity_types_and_degrees = datadir / "entity_types_and_degrees"
+        self.entity_redirections = datadir / "entity_redirections"
 
         # mapping from dbpedia resource to wikipedia id
         self.page_id_dump = datadir / "page_id_dump"

@@ -1,20 +1,19 @@
 import orjson
-from rdflib import URIRef
-
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entities import entities
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.splitter import split_a_file
+from rdflib import URIRef
 
 
-def redirection_dump(lang: str = "en"):
+def entity_redirections(lang: str = "en"):
     cfg = DBpediaDirCfg.get_instance()
     dump_date = cfg.get_dump_date()
 
-    ds = Dataset(
-        cfg.redirection_dump / f"final-{lang}/*.gz",
+    ds: Dataset[tuple[str, str]] = Dataset(
+        cfg.entity_redirections / f"final-{lang}/*.gz",
         deserialize=orjson.loads,
         name=f"redirection-dump/{dump_date}-{lang}",
         dependencies=[entities(lang)],
@@ -23,13 +22,13 @@ def redirection_dump(lang: str = "en"):
     if not ds.has_complete_data():
         split_a_file(
             infile=cfg.get_redirection_dump_file(lang),
-            outfile=cfg.redirection_dump / f"raw-{lang}/part.ttl.gz",
+            outfile=cfg.entity_redirections / f"raw-{lang}/part.ttl.gz",
             n_writers=8,
             override=False,
         )
 
         (
-            ExtendedRDD.textFile(cfg.redirection_dump / f"raw-{lang}/*.gz")
+            ExtendedRDD.textFile(cfg.entity_redirections / f"raw-{lang}/*.gz")
             .filter(ignore_comment)
             .map(ntriple_loads)
             .map(norm_redirection)  # extracted redirection (source -> target)
