@@ -20,10 +20,9 @@ from typing import (
 
 import orjson
 import requests
+import serde.jl as jl
 from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
-
-import serde.jl as jl
 from kgdata.db import (
     GenericDB,
     deser_from_dict,
@@ -353,14 +352,12 @@ class WikidataDB(GenericDB):
     @overload
     def attr(
         self, attr: Literal["aliases", "instanceof"]
-    ) -> HugeMutableMapping[str, list[str]]:
-        ...
+    ) -> HugeMutableMapping[str, list[str]]: ...
 
     @overload
     def attr(
         self, attr: Literal["label", "description"]
-    ) -> HugeMutableMapping[str, str]:
-        ...
+    ) -> HugeMutableMapping[str, str]: ...
 
     def attr(self, attr: EntAttr):
         return get_entity_attr_db(
@@ -392,9 +389,15 @@ if __name__ == "__main__":
     @click.argument("keys", nargs=-1)
     def cli(data_dir: str, dbname: str, keys: list[str]):
         db = getattr(WikidataDB(data_dir), dbname)
-        for k in keys:
-            print("key:", k)
-            print("value:", db[k])
-            print("")
+        if len(keys) > 0:
+            for k in keys:
+                print("key:", k)
+                print("value:", db[k])
+                print("")
+        else:
+            for k in db.keys():
+                print("key:", k)
+                print("value:", db[k])
+                break
 
     cli()

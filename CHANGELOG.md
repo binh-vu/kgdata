@@ -10,6 +10,7 @@
 
 - Rename DBpedia `redirection_dump` dataset to `entity_redirections`.
 - DBpedia `entity_labels` dataset now use the common class `kgdata.models.entity.EntityLabel` to make it similar to Wikidata.
+- `kgdata.wikidata.db` cli can print the first key-value in the database when no keys are provided.
 
 ## [2.3.3](https://github.com/binh-vu/kgdata/tree/2.3.3) (2022-07-06)
 
