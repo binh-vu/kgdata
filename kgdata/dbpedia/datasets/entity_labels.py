@@ -1,27 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from functools import partial
 
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entities import entities
-from kgdata.models.entity import Entity
-from kgdata.models.multilingual import MultiLingualString
-
-
-@dataclass
-class EntityLabel:
-    id: str
-    label: MultiLingualString
-
-    @staticmethod
-    def from_dict(obj: dict):
-        return EntityLabel(obj["id"], MultiLingualString.from_dict(obj["label"]))
-
-    def to_dict(self):
-        return {"id": self.id, "label": self.label.to_dict()}
+from kgdata.models.entity import Entity, EntityLabel
 
 
 def entity_labels() -> Dataset[EntityLabel]:
@@ -47,4 +32,4 @@ def entity_labels() -> Dataset[EntityLabel]:
 
 
 def get_labels(ent: Entity) -> EntityLabel:
-    return EntityLabel(ent.id, ent.label)
+    return EntityLabel.from_entity(ent)

@@ -34,4 +34,4 @@ def entity_labels() -> Dataset[EntityLabel]:
 
 
 def get_labels(ent: WDEntity) -> EntityLabel:
-    return EntityLabel(ent.id, ent.label)
+    return EntityLabel(ent.id, str(ent.label))
