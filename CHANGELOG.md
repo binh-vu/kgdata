@@ -1,6 +1,6 @@
 # CHANGE LOG
 
-## [Unreleased]
+## [6.5.0]
 
 ### Added
 
