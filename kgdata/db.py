@@ -30,14 +30,13 @@ from hugedict.prelude import (
     rocksdb_load,
 )
 from hugedict.types import HugeMutableMapping
-from loguru import logger
-from rdflib import RDF, RDFS, XSD
-from sm.namespaces.namespace import KnowledgeGraphNamespace
-
-from kgdata.models.entity import Entity
+from kgdata.models.entity import Entity, EntityMetadata
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty
+from loguru import logger
+from rdflib import RDF, RDFS, XSD
+from sm.namespaces.namespace import KnowledgeGraphNamespace
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
@@ -186,6 +185,12 @@ get_entity_redirection_db = partial(
     ser_value=str.encode,
     dbopts=small_dbopts,
 )
+get_entity_metadata_db = partial(
+    get_rocksdb,
+    deser_value=partial(deser_from_tuple, EntityMetadata),
+    ser_value=ser_to_tuple,
+    dbopts=large_dbopts,
+)
 get_class_db = partial(
     get_rocksdb,
     deser_value=partial(deser_from_dict, OntologyClass),
@@ -249,7 +254,9 @@ class GenericDB:
 
     @cached_property
     def entity_metadata(self):
-        raise NotImplementedError()
+        return get_entity_metadata_db(
+            self.database_dir / "entity_metadata.db", read_only=self.read_only
+        )
 
     @cached_property
     def entity_types(self):
@@ -374,3 +381,26 @@ def build_database(
         compact=compact,
     )
     serde.json.ser(ds.get_signature().to_dict(), db_sig_file)
+
+
+if __name__ == "__main__":
+    import click
+
+    @click.command()
+    @click.option("-d", "--data-dir", required=True, help="database directory")
+    @click.option("-n", "--dbname", required=True, help="database name")
+    @click.argument("keys", nargs=-1)
+    def cli(data_dir: str, dbname: str, keys: list[str]):
+        db = getattr(GenericDB(data_dir), dbname)
+        if len(keys) > 0:
+            for k in keys:
+                print("key:", k)
+                print("value:", db[k])
+                print("")
+        else:
+            for k in db.keys():
+                print("key:", k)
+                print("value:", db[k])
+                break
+
+    cli()

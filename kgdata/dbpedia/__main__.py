@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Optional
 
 import click
 from hugedict.prelude import init_env_logger
-
 from kgdata.config import init_dbdir_from_env
 from kgdata.db import GenericDB, build_database
 
@@ -54,13 +53,29 @@ dbpedia.add_command(dataset2db("classes"))
 dbpedia.add_command(dataset2db("properties", "props"))
 dbpedia.add_command(
     dataset2db(
-        "redirection_dump",
-        "redirections",
+        "entity_metadata",
+        format={
+            "record_type": {"type": "ndjson", "key": "0", "value": None},
+            "is_sorted": False,
+        },
+    )
+)
+dbpedia.add_command(
+    dataset2db(
+        "entity_labels",
+        format={
+            "record_type": {"type": "ndjson", "key": "id", "value": "label"},
+            "is_sorted": False,
+        },
+    )
+)
+dbpedia.add_command(
+    dataset2db(
+        "entity_redirections",
         format={
             "record_type": {"type": "tuple2", "key": None, "value": None},
             "is_sorted": False,
         },
-        command_name="redirections",
     )
 )
 

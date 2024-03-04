@@ -21,6 +21,11 @@ function wikipedia_dataset {
     python -m kgdata.wikipedia.datasets -d $1 ${@:2}
 }
 
+function dbpedia_db {
+    echo "Build dbpedia database: $1 storing at $DBP_DBDIR"
+    python -m kgdata.dbpedia $1 -c -o $DBP_DBDIR
+}
+
 function wikidata_db {
     echo "Build wikidata database: $1 storing at $WD_DBDIR"
     python -m kgdata.wikidata $1 -c -o $WD_DBDIR
@@ -38,8 +43,9 @@ function wikidata_db {
 # dbpedia_dataset entity_all_types
 # dbpedia_dataset entity_degrees
 # dbpedia_dataset entity_types_and_degrees
-# dbpedia_dataset redirection_dump
-# dbpedia_dataset entity_labels
+dbpedia_dataset entity_labels
+dbpedia_dataset entity_metadata
+dbpedia_dataset entity_redirections
 
 # ======================================================================
 # WIKIDATA Datasets
@@ -76,7 +82,7 @@ function wikidata_db {
 # wikidata_dataset entity_wiki_aliases
 
 # wikidata_dataset meta_graph
-wikidata_dataset meta_graph_stats
+# wikidata_dataset meta_graph_stats
 
 # ======================================================================
 # WIKIPEDIA Datasets
@@ -91,6 +97,18 @@ wikidata_dataset meta_graph_stats
 # wikipedia_dataset linked_relational_tables
 # wikipedia_dataset easy_tables
 # wikipedia_dataset easy_tables_metadata
+
+# ======================================================================
+# DBpedia Databases
+
+dbpedia_db classes
+dbpedia_db properties
+dbpedia_db entities
+dbpedia_db entity_labels
+dbpedia_db entity_metadata
+dbpedia_db entity_redirections
+# dbpedia_db entity_types
+# dbpedia_db entity_outlinks
 
 # ======================================================================
 # WIKIDATA Databases

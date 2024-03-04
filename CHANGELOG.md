@@ -5,6 +5,7 @@
 ### Added
 
 - Add DBpedia `entity_metadata` dataset
+- Add `entity_metadata` databases and scripts to build DBpedia databases (`entity_metadata`, `entity_labels`, `entity_redirections`)
 
 ### Fixed
 
