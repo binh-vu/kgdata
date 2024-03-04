@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
-
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 
 
@@ -24,9 +23,9 @@ class WDEntityMetadata:
     label: MultiLingualString
     description: MultiLingualString
     aliases: MultiLingualStringList
-    instanceof: List[str]
-    subclassof: List[str]
-    subpropertyof: List[str]
+    instanceof: list[str]
+    subclassof: list[str]
+    subpropertyof: list[str]
 
     def to_tuple(self):
         return (

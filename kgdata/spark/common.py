@@ -1,4 +1,5 @@
 """Utility functions for Apache Spark."""
+
 from __future__ import annotations
 
 import hashlib
@@ -26,11 +27,10 @@ from typing import (
 
 import orjson
 import zstandard as zstd
+from kgdata.misc.funcs import deser_zstd_records
 from loguru import logger
 from pyspark import RDD, SparkConf, SparkContext, TaskContext
 from sm.misc.funcs import assert_not_null
-
-from kgdata.misc.funcs import deser_zstd_records
 
 # SparkContext singleton
 _sc = None
@@ -498,9 +498,11 @@ def save_as_text_file(
     if compression == "gz" or compression is None:
         return rdd.saveAsTextFile(
             str(outdir),
-            compressionCodecClass="org.apache.hadoop.io.compress.GzipCodec"
-            if compression == "gz"
-            else None,
+            compressionCodecClass=(
+                "org.apache.hadoop.io.compress.GzipCodec"
+                if compression == "gz"
+                else None
+            ),
         )
 
     if compression == "zst":
@@ -558,7 +560,7 @@ def save_as_text_file(
 
 def text_file(
     filepattern: StrPath, min_partitions: Optional[int] = None, use_unicode: bool = True
-):
+) -> RDD[str]:
     """Drop-in replacement for SparkContext.textFile that supports zstd files."""
     filepattern = Path(filepattern)
     # to support zst files (indir)
@@ -580,7 +582,10 @@ def text_file(
             get_spark_context()
             .binaryFiles(str(filepattern))
             .repartition(n_parts)
-            .flatMap(lambda x: deser_zstd_records(x[1]), preservesPartitioning=True)
+            .flatMap(
+                lambda x: [x.decode() for x in deser_zstd_records(x[1])],
+                preservesPartitioning=True,
+            )
         )
 
     return get_spark_context().textFile(str(filepattern), min_partitions, use_unicode)

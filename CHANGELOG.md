@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Improve type hints in various places.
+
 ### Changed
 
 - Rename DBpedia `redirection_dump` dataset to `entity_redirections`.
