@@ -6,6 +6,10 @@
 
 - Add classes & properties to `dbpedia.datasets.entities` dataset.
 
+### Changed
+
+- Reuse `EntityTypeAndDegree` from wikidata datasets for the `dbpedia.datasets.entity_types_and_degrees` dataset.
+
 ## [6.5.0]
 
 ### Added

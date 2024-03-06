@@ -1,24 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional
 
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entity_all_types import EntityAllTypes, entity_all_types
 from kgdata.dbpedia.datasets.entity_degrees import EntityDegree, entity_degrees
-from kgdata.misc.resource import Record
-
-
-@dataclass
-class EntityTypeAndDegree(Record):
-    id: str
-    types: dict[str, int]
-    indegree: int
-    outdegree: int
-
-    wikipedia_indegree: Optional[int] = None
-    wikipedia_outdegree: Optional[int] = None
+from kgdata.wikidata.datasets.entity_types_and_degrees import EntityTypeAndDegree
 
 
 def entity_types_and_degrees(lang: str = "en") -> Dataset[EntityTypeAndDegree]:
