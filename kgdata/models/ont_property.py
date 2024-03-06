@@ -102,7 +102,7 @@ class OntologyProperty:
         }
 
     def is_object_property(self):
-        return self.datatype == "http://www.w3.org/2001/XMLSchema#anyURI"
+        return self.datatype in ["entity", "http://www.w3.org/2001/XMLSchema#anyURI"]
 
     def is_data_property(self):
         return not self.is_object_property()

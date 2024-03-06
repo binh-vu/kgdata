@@ -5,6 +5,7 @@
 ### Fixed
 
 - Add classes & properties to `dbpedia.datasets.entities` dataset.
+- Fix `OntologyProperty.is_object_property` function (missing `entity` datatype)
 
 ### Changed
 

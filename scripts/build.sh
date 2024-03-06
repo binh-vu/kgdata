@@ -36,15 +36,15 @@ function wikidata_db {
 
 # dbpedia_dataset generic_extractor_dump
 # dbpedia_dataset mapping_extractor_dump
-# dbpedia_dataset entities
 # dbpedia_dataset ontology_dump
 # dbpedia_dataset classes
 # dbpedia_dataset properties
-# dbpedia_dataset entity_all_types
-# dbpedia_dataset entity_degrees
-# dbpedia_dataset entity_types_and_degrees
+dbpedia_dataset entities
 dbpedia_dataset entity_labels
 dbpedia_dataset entity_metadata
+dbpedia_dataset entity_all_types
+dbpedia_dataset entity_degrees
+dbpedia_dataset entity_types_and_degrees
 dbpedia_dataset entity_redirections
 
 # ======================================================================
@@ -107,8 +107,6 @@ dbpedia_db entities
 dbpedia_db entity_labels
 dbpedia_db entity_metadata
 dbpedia_db entity_redirections
-# dbpedia_db entity_types
-# dbpedia_db entity_outlinks
 
 # ======================================================================
 # WIKIDATA Databases
