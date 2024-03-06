@@ -4,24 +4,26 @@ from dataclasses import dataclass
 from functools import lru_cache, partial
 from typing import Iterable, Optional
 
-from rdflib import BNode, Literal, URIRef
-
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
+from kgdata.dbpedia.datasets.classes import classes
 from kgdata.dbpedia.datasets.generic_extractor_dump import generic_extractor_dump
 from kgdata.dbpedia.datasets.mapping_extractor_dump import mapping_extractor_dump
-from kgdata.dbpedia.datasets.ontology_dump import rdf_type
+from kgdata.dbpedia.datasets.ontology_dump import ontology_dump, rdf_type
 from kgdata.dbpedia.datasets.properties import (
     as_multilingual,
     assert_all_literal,
+    properties,
     rdfs_comment,
     rdfs_label,
 )
 from kgdata.misc.resource import RDFResource, Record
 from kgdata.models.entity import Entity, Statement
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
+from kgdata.models.ont_class import OntologyClass
 from kgdata.wikipedia.misc import get_title_from_url
+from rdflib import OWL, BNode, Literal, URIRef
 
 
 @lru_cache()
@@ -41,7 +43,7 @@ def entities(lang: str = "en") -> Dataset[Entity]:
         cfg.entities / f"infer-{lang}/*.gz",
         deserialize=partial(deser_from_dict, Entity),
         name=f"entities/final-{lang}",
-        dependencies=[merge_ds],
+        dependencies=[merge_ds, ontology_dump()],
     )
 
     if not merge_ds.has_complete_data():
@@ -64,6 +66,11 @@ def entities(lang: str = "en") -> Dataset[Entity]:
                 rdd.flatMap(infer_new_data).map(lambda t: (t.subject, t)).groupByKey()
             )
             .map(merge_new_triple)
+            .union(
+                ontology_dump()
+                .get_extended_rdd()
+                .map(partial(to_entity, dump_lang=lang))
+            )
             .map(ser_to_dict)
             .save_like_dataset(final_ds, auto_coalesce=True, shuffle=True)
         )
@@ -83,7 +90,7 @@ def merge_resources(
     return r1.merge(r2)
 
 
-def to_entity(resource: RDFResource, dump_lang: str):
+def to_entity(resource: RDFResource, dump_lang: str) -> Entity:
     label = extract_entity_label(resource, dump_lang)
     default_lang = label.lang
 

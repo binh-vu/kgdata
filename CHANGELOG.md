@@ -1,5 +1,11 @@
 # CHANGE LOG
 
+## [Unreleased]
+
+### Fixed
+
+- Add classes & properties to `dbpedia.datasets.entities` dataset.
+
 ## [6.5.0]
 
 ### Added
