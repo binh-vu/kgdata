@@ -1,6 +1,12 @@
 # CHANGE LOG
 
-## [6.5.1]
+## [6.5.2] (2024-03-08)
+
+### Fixed
+
+- Update hugedict to `2.12.0` to fix rocksdb loader error (affect `entity_labels` database)
+
+## [6.5.1] (2024-03-08)
 
 ### Fixed
 
