@@ -1,5 +1,11 @@
 # CHANGE LOG
 
+## [Unreleased]
+
+### Changed
+
+- Reuse code: `GenericDB.get_default_props` now calls `ont_property.get_default_props`.
+
 ## [6.5.2] (2024-03-08)
 
 ### Fixed

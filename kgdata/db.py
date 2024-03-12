@@ -33,7 +33,7 @@ from hugedict.types import HugeMutableMapping
 from kgdata.models.entity import Entity, EntityMetadata
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
-from kgdata.models.ont_property import OntologyProperty
+from kgdata.models.ont_property import OntologyProperty, get_default_props
 from loguru import logger
 from rdflib import RDF, RDFS, XSD
 from sm.namespaces.namespace import KnowledgeGraphNamespace
@@ -267,40 +267,7 @@ class GenericDB:
         raise NotImplementedError()
 
     def get_default_props(self):
-        return {
-            str(RDFS.label): OntologyProperty(
-                id=str(RDFS.label),
-                label=MultiLingualString.en("label"),
-                description=MultiLingualString.en(
-                    "a human-readable version of a resource's name"
-                ),
-                aliases=MultiLingualStringList({"en": ["name"]}, "en"),
-                datatype=str(XSD.string),
-                parents=[],
-                related_properties=[],
-                equivalent_properties=[],
-                subjects=[],
-                inverse_properties=[],
-                instanceof=[str(RDF.Property)],
-                ancestors={},
-            ),
-            str(RDF.type): OntologyProperty(
-                id=str(RDF.type),
-                label=MultiLingualString.en("type"),
-                description=MultiLingualString.en(
-                    "Is used to state that a resource is an instance of a class"
-                ),
-                aliases=MultiLingualStringList({"en": ["instance of"]}, "en"),
-                datatype=str(XSD.anyURI),
-                parents=[],
-                related_properties=[],
-                equivalent_properties=[],
-                subjects=[],
-                inverse_properties=[],
-                instanceof=[str(RDF.Property)],
-                ancestors={},
-            ),
-        }
+        return {p.id: p for p in get_default_props()}
 
 
 class URIMappingWrapper(Mapping[str, T]):
