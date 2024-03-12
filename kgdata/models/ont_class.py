@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from rdflib import OWL
+from rdflib import OWL, RDFS
 
 
 @dataclass
@@ -109,5 +109,18 @@ def get_default_classes() -> list[OntologyClass]:
             different_froms=[],
             equivalent_classes=[],
             ancestors={},
-        )
+        ),
+        OntologyClass(
+            id=str(RDFS.Resource),
+            label=MultiLingualString({"en": "Resource"}, "en"),
+            description=MultiLingualString(
+                {"en": "The class resource, everything."}, "en"
+            ),
+            aliases=MultiLingualStringList({"en": []}, "en"),
+            parents=[],
+            properties=[],
+            different_froms=[],
+            equivalent_classes=[],
+            ancestors={},
+        ),
     ]

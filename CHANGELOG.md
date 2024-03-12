@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add default classes & properties: `rdf:Resource` and `rdf:type`.
+
 ### Changed
 
 - Reuse code: `GenericDB.get_default_props` now calls `ont_property.get_default_props`.

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
-from rdflib import RDFS, XSD
+from rdflib import RDF, RDFS, XSD
 
 
 @dataclass
@@ -123,5 +123,21 @@ def get_default_props() -> list[OntologyProperty]:
             inverse_properties=[],
             instanceof=[],
             ancestors={},
-        )
+        ),
+        OntologyProperty(
+            id=str(RDF.type),
+            label=MultiLingualString.en("type"),
+            description=MultiLingualString.en(
+                "Is used to state that a resource is an instance of a class"
+            ),
+            aliases=MultiLingualStringList({"en": ["instance of"]}, "en"),
+            datatype=str(XSD.anyURI),
+            parents=[],
+            related_properties=[],
+            equivalent_properties=[],
+            subjects=[],
+            inverse_properties=[],
+            instanceof=[str(RDF.Property)],
+            ancestors={},
+        ),
     ]
