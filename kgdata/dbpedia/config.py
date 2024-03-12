@@ -29,6 +29,7 @@ class DBpediaDirCfg:
 
         self.dumps = datadir / "dumps"
         self.ontology_dump = datadir / "ontology_dump"
+        self.modifications = datadir / "modifications"
         self.mapping_extractor_dump = datadir / "mapping_extractor_dump"
         self.generic_extractor_dump = datadir / "generic_extractor_dump"
 
@@ -74,6 +75,9 @@ class DBpediaDirCfg:
 
     def get_redirection_dump_file(self, lang: str = "en"):
         return self._get_file(self.dumps / f"redirects_lang={lang}.ttl.bz2")
+
+    def get_redirection_modified_file(self):
+        return self.modifications / "redirections.csv"
 
     def get_wikilink_dump_file(self, lang: str = "en"):
         return self._get_file(self.dumps / f"wikilinks_lang={lang}.ttl.bz2")

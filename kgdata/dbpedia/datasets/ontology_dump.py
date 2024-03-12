@@ -6,14 +6,14 @@ from collections import defaultdict
 from functools import lru_cache
 from typing import Any, Callable, Iterable
 
-from rdflib import OWL, RDF, RDFS, BNode, URIRef
-
+import serde.csv
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
 from kgdata.misc.resource import RDFResource
 from kgdata.spark import ExtendedRDD
 from kgdata.splitter import split_a_file, split_a_list
+from rdflib import OWL, RDF, RDFS, BNode, URIRef
 
 rdf_type = str(RDF.type)
 rdfs_label = str(RDFS.label)
@@ -83,6 +83,12 @@ def ontology_dump() -> Dataset[RDFResource]:
         # fix broken references
         resources = step2_ds.get_list()
 
+        # remove resources that have been redirected
+        redirected_resources = {
+            x[0] for x in serde.csv.deser(cfg.get_redirection_modified_file())
+        }
+        resources = [r for r in resources if r.id not in redirected_resources]
+
         classes = {r.id: r for r in resources if is_class(r)}
         props = {r.id: r for r in resources if is_prop(r)}
 
@@ -130,7 +136,8 @@ def ontology_dump() -> Dataset[RDFResource]:
                 [line for id, lines in logs.items() for line in ["* " + id] + lines]
             )
         )
-        final_ds.sign("ontology-dump/final", [step2_ds])
+        assert final_ds.name is not None
+        final_ds.sign(final_ds.name, [step2_ds])
 
     if not (cfg.ontology_dump / "predicates.txt").exists():
         (

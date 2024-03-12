@@ -5,6 +5,7 @@
 ### Added
 
 - Add default classes & properties: `rdf:Resource` and `rdf:type`.
+- Supports manual corrections in DBpedia such as `dbo:collectionSize` to `dbo:country`.
 
 ### Changed
 

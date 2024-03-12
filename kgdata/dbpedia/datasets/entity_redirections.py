@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import orjson
+import serde.csv
 from kgdata.dataset import Dataset
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.entities import entities
 from kgdata.misc.ntriples_parser import Triple, ignore_comment, ntriple_loads
+from kgdata.spark.common import get_spark_context
 from kgdata.spark.extended_rdd import ExtendedRDD
 from kgdata.splitter import split_a_file
 from rdflib import URIRef
@@ -27,6 +31,8 @@ def entity_redirections(lang: str = "en"):
             override=False,
         )
 
+        extra_redirections = serde.csv.deser(cfg.get_redirection_modified_file())
+
         (
             ExtendedRDD.textFile(cfg.entity_redirections / f"raw-{lang}/*.gz")
             .filter(ignore_comment)
@@ -38,8 +44,11 @@ def entity_redirections(lang: str = "en"):
                 entities(lang).get_extended_rdd().map(lambda r: (r.id, 1))
             )  # join with entities to filter out non-existing entities
             .flatMap(lambda x: x[1][0])  # get back the redirections
+            .union(ExtendedRDD.parallelize(extra_redirections))
             .map(orjson.dumps)
-            .save_like_dataset(ds, auto_coalesce=True, shuffle=True)
+            .save_like_dataset(
+                ds, auto_coalesce=True, shuffle=True, trust_dataset_dependencies=True
+            )
         )
 
     return ds
