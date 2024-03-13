@@ -46,6 +46,8 @@ dbpedia_dataset entity_metadata
 dbpedia_dataset entity_all_types
 dbpedia_dataset entity_degrees
 dbpedia_dataset entity_types_and_degrees
+dbpedia_dataset meta_graph
+dbpedia_dataset meta_graph_stats
 
 # ======================================================================
 # WIKIDATA Datasets

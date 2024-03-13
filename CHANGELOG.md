@@ -6,6 +6,7 @@
 
 - Add default classes & properties: `rdf:Resource` and `rdf:type`.
 - Supports manual corrections in DBpedia such as `dbo:collectionSize` to `dbo:country`.
+- Add `dbpedia.datasets.meta_graph` and `dbpedia.datasets.meta_graph_stats` datasets.
 
 ### Changed
 

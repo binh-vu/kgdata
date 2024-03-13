@@ -52,6 +52,9 @@ class DBpediaDirCfg:
 
         self.wikilinks = datadir / "wikilinks"
 
+        self.meta_graph = datadir / "meta_graph"
+        self.meta_graph_stats = datadir / "meta_graph_stats"
+
     @lru_cache
     def get_dump_date(self):
         res = re.findall(r"\d{8}", str(self.datadir))
