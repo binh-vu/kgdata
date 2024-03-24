@@ -7,19 +7,8 @@ from kgdata.models.multilingual import MultiLingualString, MultiLingualStringLis
 from rdflib import OWL, RDFS
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class OntologyClass:
-    __slots__ = (
-        "id",
-        "label",
-        "description",
-        "aliases",
-        "parents",
-        "properties",
-        "different_froms",
-        "equivalent_classes",
-        "ancestors",
-    )
     id: str
     label: MultiLingualString
     description: MultiLingualString

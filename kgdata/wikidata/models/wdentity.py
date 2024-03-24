@@ -8,19 +8,8 @@ from kgdata.wikidata.models.wdstatement import WDStatement
 from kgdata.wikidata.models.wdvalue import WDValue
 
 
-@dataclass
+@dataclass(slots=True)
 class WDEntity:
-    __slots__ = (
-        "id",
-        "type",
-        "datatype",
-        "label",
-        "description",
-        "aliases",
-        "props",
-        "sitelinks",
-    )
-
     id: str
     # possible values ["item", "property"]
     type: Literal["item", "property"]

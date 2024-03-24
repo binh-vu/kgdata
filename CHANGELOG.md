@@ -1,6 +1,6 @@
 # CHANGE LOG
 
-## [Unreleased]
+## [7.0.0] (2024-03-24)
 
 ### Added
 
@@ -11,6 +11,11 @@
 ### Changed
 
 - Reuse code: `GenericDB.get_default_props` now calls `ont_property.get_default_props`.
+- Drop support for Python 3.9 to use new features in dataclass
+
+### Fixed
+
+- Fix domains/ranges of ontology properties
 
 ## [6.5.2] (2024-03-08)
 

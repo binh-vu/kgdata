@@ -4,9 +4,6 @@ import re
 from functools import partial
 from urllib.parse import urlparse
 
-from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
-from sm.misc.funcs import assert_not_null
-
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
@@ -15,6 +12,8 @@ from kgdata.misc.hierarchy import build_ancestors
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_property import OntologyProperty
 from kgdata.splitter import split_a_list
+from rdflib import OWL, RDF, RDFS, BNode, Literal, URIRef
+from sm.misc.funcs import assert_not_null
 
 rdf_type = str(RDF.type)
 rdfs_label = str(RDFS.label)
@@ -76,7 +75,8 @@ def to_prop(resource: RDFResource, default_lang: str = "en") -> OntologyProperty
         equivalent_properties=[
             str(term) for term in resource.props.get(str(OWL.equivalentProperty), [])
         ],
-        subjects=[str(term) for term in resource.props.get(str(RDFS.domain), [])],
+        domains=[str(term) for term in resource.props.get(str(RDFS.domain), [])],
+        ranges=[str(term) for term in resource.props.get(str(RDFS.range), [])],
         inverse_properties=[],
         instanceof=[str(term) for term in resource.props.get(rdf_type, [])],
         ancestors={},

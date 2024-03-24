@@ -36,18 +36,18 @@ function wikidata_db {
 
 # dbpedia_dataset generic_extractor_dump
 # dbpedia_dataset mapping_extractor_dump
-dbpedia_dataset ontology_dump
-dbpedia_dataset classes
-dbpedia_dataset properties
-dbpedia_dataset entities
-dbpedia_dataset entity_redirections
-dbpedia_dataset entity_labels
-dbpedia_dataset entity_metadata
-dbpedia_dataset entity_all_types
-dbpedia_dataset entity_degrees
-dbpedia_dataset entity_types_and_degrees
-dbpedia_dataset meta_graph
-dbpedia_dataset meta_graph_stats
+# dbpedia_dataset ontology_dump
+# dbpedia_dataset classes
+# dbpedia_dataset properties
+# dbpedia_dataset entities
+# dbpedia_dataset entity_redirections
+# dbpedia_dataset entity_labels
+# dbpedia_dataset entity_metadata
+# dbpedia_dataset entity_all_types
+# dbpedia_dataset entity_degrees
+# dbpedia_dataset entity_types_and_degrees
+# dbpedia_dataset meta_graph
+# dbpedia_dataset meta_graph_stats
 
 # ======================================================================
 # WIKIDATA Datasets
@@ -65,7 +65,7 @@ dbpedia_dataset meta_graph_stats
 # wikidata_dataset entity_types
 
 # wikidata_dataset classes
-# wikidata_dataset properties
+wikidata_dataset properties
 
 # wikidata_dataset class_count
 # wikidata_dataset property_count
@@ -103,18 +103,18 @@ dbpedia_dataset meta_graph_stats
 # ======================================================================
 # DBpedia Databases
 
-dbpedia_db classes
-dbpedia_db properties
-dbpedia_db entities
-dbpedia_db entity_labels
-dbpedia_db entity_metadata
-dbpedia_db entity_redirections
+# dbpedia_db classes
+# dbpedia_db properties
+# dbpedia_db entities
+# dbpedia_db entity_labels
+# dbpedia_db entity_metadata
+# dbpedia_db entity_redirections
 
 # ======================================================================
 # WIKIDATA Databases
 
 # wikidata_db classes
-# wikidata_db properties
+wikidata_db properties
 # wikidata_db entities
 # wikidata_db entity_labels
 # wikidata_db entity_metadata

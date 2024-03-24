@@ -1,40 +1,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, Optional
 
 from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from rdflib import RDF, RDFS, XSD
 
 
-@dataclass
+@dataclass(kw_only=True, slots=True)
 class OntologyProperty:
-    __slots__ = (
-        "id",
-        "label",
-        "description",
-        "aliases",
-        "datatype",
-        "parents",
-        "related_properties",
-        "equivalent_properties",
-        "subjects",
-        "inverse_properties",
-        "instanceof",
-        "ancestors",
-    )
     id: str
     label: MultiLingualString
     description: MultiLingualString
     aliases: MultiLingualStringList
     datatype: str
+    instanceof: list[str]
     parents: list[str]
+    ancestors: dict[str, int]
+    inverse_properties: list[str]
     related_properties: list[str]
     equivalent_properties: list[str]
-    subjects: list[str]
-    inverse_properties: list[str]
-    instanceof: list[str]
-    ancestors: dict[str, int]
+
+    # domains
+    domains: Optional[list[str]]
+    # ranges
+    ranges: Optional[list[str]]
 
     @staticmethod
     def empty(id: str):
@@ -47,7 +37,8 @@ class OntologyProperty:
             parents=[],
             related_properties=[],
             equivalent_properties=[],
-            subjects=[],
+            domains=None,
+            ranges=None,
             inverse_properties=[],
             instanceof=[],
             ancestors={},
@@ -95,7 +86,8 @@ class OntologyProperty:
             "parents": self.parents,
             "related_properties": self.related_properties,
             "equivalent_properties": self.equivalent_properties,
-            "subjects": self.subjects,
+            "domains": self.domains,
+            "ranges": self.ranges,
             "inverse_properties": self.inverse_properties,
             "instanceof": self.instanceof,
             "ancestors": self.ancestors,
@@ -119,7 +111,8 @@ def get_default_props() -> list[OntologyProperty]:
             parents=[],
             related_properties=[],
             equivalent_properties=[],
-            subjects=[],
+            domains=None,
+            ranges=None,
             inverse_properties=[],
             instanceof=[],
             ancestors={},
@@ -135,7 +128,8 @@ def get_default_props() -> list[OntologyProperty]:
             parents=[],
             related_properties=[],
             equivalent_properties=[],
-            subjects=[],
+            domains=None,
+            ranges=None,
             inverse_properties=[],
             instanceof=[str(RDF.Property)],
             ancestors={},
