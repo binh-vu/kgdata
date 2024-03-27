@@ -23,9 +23,6 @@ from typing import (
 )
 
 import serde.json
-from pyspark.rdd import RDD, portable_hash
-from typing_extensions import TypeGuard
-
 from kgdata.misc.funcs import deser_zstd_records
 from kgdata.spark.common import (
     StrPath,
@@ -37,14 +34,15 @@ from kgdata.spark.common import (
     save_as_text_file,
     text_file,
 )
+from pyspark.rdd import RDD, portable_hash
+from typing_extensions import TypeGuard
 
 if TYPE_CHECKING:
     from kgdata.dataset import Dataset
 
 
 class SupportsOrdering(Protocol):
-    def __lt__(self, other: SupportsOrdering) -> bool:
-        ...
+    def __lt__(self, other: SupportsOrdering) -> bool: ...
 
 
 T = TypeVar("T")
@@ -171,6 +169,16 @@ class DatasetSignature:
             checksum=obj["checksum"],
             dependencies={
                 dd["name"]: DatasetSignature.from_dict(dd) for dd in obj["dependencies"]
+            },
+        )
+
+    def remove_created_at(self) -> DatasetSignature:
+        return DatasetSignature(
+            name=self.name,
+            created_at="",
+            checksum=self.checksum,
+            dependencies={
+                k: dep.remove_created_at() for k, dep in self.dependencies.items()
             },
         )
 

@@ -1,5 +1,11 @@
 # CHANGE LOG
 
+## [Unreleased]
+
+### Added
+
+- Add option to verify signature of datasets
+
 ## [7.0.0] (2024-03-24)
 
 ### Added

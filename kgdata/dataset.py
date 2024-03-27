@@ -25,15 +25,14 @@ import serde.byteline
 import serde.json
 import serde.textline
 from hugedict.misc import Chain2, identity
-from loguru import logger
-from pyspark import RDD
-from tqdm.auto import tqdm
-
 from kgdata.config import init_dbdir_from_env
 from kgdata.misc.query import PropQuery, every
 from kgdata.spark import ExtendedRDD, SparkLikeInterface, get_spark_context
 from kgdata.spark.common import does_result_dir_exist, text_file
 from kgdata.spark.extended_rdd import DatasetSignature
+from loguru import logger
+from pyspark import RDD
+from tqdm.auto import tqdm
 
 V = TypeVar("V")
 V2 = TypeVar("V2")
@@ -232,9 +231,11 @@ class Dataset(Generic[T_co]):
         """
         return Dataset(
             file_pattern=self.file_pattern,
-            deserialize=Chain2(func, self.deserialize)
-            if self.deserialize is not identity
-            else func,  # type: ignore
+            deserialize=(
+                Chain2(func, self.deserialize)
+                if self.deserialize is not identity
+                else func
+            ),  # type: ignore
             prefilter=self.prefilter,
             postfilter=self.postfilter,
             is_deser_identity=False,
@@ -306,6 +307,29 @@ class Dataset(Generic[T_co]):
         if mark_success:
             if not (outdir / "_SUCCESS").exists():
                 (outdir / "_SUCCESS").touch()
+
+    def verify_signature(self):
+        """Verify the signature of the dataset if it is consistent with the saved signature."""
+        saved_sig = self.get_signature().remove_created_at()
+        assert self.name is not None
+        compute_sig = (
+            ExtendedRDD.textFile(self.file_pattern)
+            .create_sig(
+                self.name,
+                [
+                    dep if isinstance(dep, DatasetSignature) else dep.get_signature()
+                    for dep in self.get_dependencies()
+                ],
+                checksum=True,
+            )
+            .remove_created_at()
+        )
+
+        if saved_sig != compute_sig:
+            logger.error("Signature of dataset {} does not match", self.name)
+            logger.error("Saved signature: {}", saved_sig.to_dict())
+            logger.error("Computed signature: {}", compute_sig.to_dict())
+            raise Exception("Signature does not match")
 
     def get_data_directory(self) -> Path:
         """Return the directory containing the data. It supports two formats:
@@ -545,6 +569,13 @@ def make_dataset_cli(kgname: str):
         help="Sign the dataset if it hasn't been signed",
     )
     @click.option(
+        "--verify-signature",
+        is_flag=True,
+        required=False,
+        default=False,
+        help="Verify the signature of the dataset",
+    )
+    @click.option(
         "-p",
         "--partition",
         type=int,
@@ -560,6 +591,7 @@ def make_dataset_cli(kgname: str):
     def cli(
         dataset: str,
         sign: bool = False,
+        verify_signature: bool = False,
         partition: int = 0,
         take: int = 0,
         query: str = "",
@@ -586,6 +618,9 @@ def make_dataset_cli(kgname: str):
                 ds.get_name(),
                 ds.get_dependencies(),
             )
+
+        if verify_signature:
+            ds.verify_signature()
 
         if partition > 0:
             files = ds.get_files()
