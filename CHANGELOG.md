@@ -5,6 +5,7 @@
 ### Added
 
 - Add option to verify signature of datasets
+- Add functions to get `meta_graph_stats`, `easy_tables_metadata`, `easy_table` datasets without dependencies
 
 ### Fixed
 

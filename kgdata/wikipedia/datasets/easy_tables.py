@@ -2,8 +2,6 @@ import re
 from functools import partial
 from typing import Callable, List
 
-from rsoup.core import Table
-
 from kgdata.dataset import Dataset
 from kgdata.wikipedia.config import WikipediaDirCfg
 from kgdata.wikipedia.datasets.linked_relational_tables import (
@@ -12,19 +10,24 @@ from kgdata.wikipedia.datasets.linked_relational_tables import (
     ser_linked_tables,
 )
 from kgdata.wikipedia.models.linked_html_table import LinkedHTMLTable
+from rsoup.core import Table
+
+
+def get_easy_tables_dataset(with_dep: bool = True) -> Dataset[LinkedHTMLTable]:
+    cfg = WikipediaDirCfg.get_instance()
+    return Dataset(
+        file_pattern=cfg.easy_tables / "*.gz",
+        deserialize=deser_linked_tables,
+        name="easy-tables",
+        dependencies=[linked_relational_tables()] if with_dep else [],
+    )
 
 
 def easy_tables() -> Dataset[LinkedHTMLTable]:
     """Tables that can be labeled automatically easily.
     The table is easy or not is determined by :py:func:`kgdata.wikipedia.easy_table.is_easy_table`.
     """
-    cfg = WikipediaDirCfg.get_instance()
-    ds = Dataset(
-        file_pattern=cfg.easy_tables / "*.gz",
-        deserialize=deser_linked_tables,
-        name="easy-tables",
-        dependencies=[linked_relational_tables()],
-    )
+    ds = get_easy_tables_dataset()
 
     # step 1: generate stats of which tables passed which tests
 

@@ -5,7 +5,6 @@ from functools import lru_cache
 from typing import List, Optional
 
 import orjson
-
 from kgdata.dataset import Dataset
 from kgdata.spark import left_outer_join
 from kgdata.spark.extended_rdd import ExtendedRDD
@@ -21,16 +20,19 @@ class TableMetadata:
     page_types: List[str]
 
 
-@lru_cache()
-def easy_tables_metadata() -> Dataset[TableMetadata]:
+def get_easy_tables_metadata_dataset(with_dep: bool = True) -> Dataset[TableMetadata]:
     cfg = WikipediaDirCfg.get_instance()
-    ds = Dataset(
+    return Dataset(
         file_pattern=cfg.easy_tables_metadata / "*.gz",
         deserialize=deser_easy_tables_metadata,
         name="easy-tables-metadata",
-        dependencies=[entity_types(), easy_tables()],
+        dependencies=[entity_types(), easy_tables()] if with_dep else [],
     )
 
+
+@lru_cache()
+def easy_tables_metadata() -> Dataset[TableMetadata]:
+    ds = get_easy_tables_metadata_dataset()
     if not ds.has_complete_data():
         entity_type_rdd = entity_types().get_extended_rdd()
         table_rdd = (

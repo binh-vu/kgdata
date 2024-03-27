@@ -49,8 +49,6 @@ def get_predicate_occurrence_dataset(with_dep: bool = True):
 
 
 def meta_graph_stats():
-    cfg = WikidataDirCfg.get_instance()
-
     predicate_count_ds = get_predicate_count_dataset()
     # have information about the domains and ranges of predicates
     predicate_conn_ds = get_predicate_conn_dataset()
