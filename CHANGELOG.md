@@ -6,6 +6,10 @@
 
 - Add option to verify signature of datasets
 
+### Fixed
+
+- Fix domain/ranges of dbpedia property dataset
+
 ## [7.0.0] (2024-03-24)
 
 ### Added

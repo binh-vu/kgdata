@@ -23,7 +23,8 @@ class OntologyProperty:
 
     # domains
     domains: Optional[list[str]]
-    # ranges
+    # ranges -- different from the definition, we only store the ranges if the property is an object property
+    # for data property, use datatype instead
     ranges: Optional[list[str]]
 
     @staticmethod

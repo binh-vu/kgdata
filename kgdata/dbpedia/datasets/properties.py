@@ -17,6 +17,8 @@ from sm.misc.funcs import assert_not_null
 
 rdf_type = str(RDF.type)
 rdfs_label = str(RDFS.label)
+rdfs_domain = str(RDFS.domain)
+rdfs_range = str(RDFS.range)
 rdfs_comment = str(RDFS.comment)
 rdfs_subpropertyof = str(RDFS.subPropertyOf)
 
@@ -64,6 +66,17 @@ def to_prop(resource: RDFResource, default_lang: str = "en") -> OntologyProperty
             description.lang = default_lang
             description.lang2value[default_lang] = ""
 
+    domains = None
+    if rdfs_domain in resource.props:
+        domains = [str(term) for term in resource.props.get(rdfs_domain, [])]
+
+    ranges = None
+    if (
+        OWL.ObjectProperty in resource.props.get(rdf_type, [])
+        and rdfs_range in resource.props
+    ):
+        ranges = [str(term) for term in resource.props.get(rdfs_range, [])]
+
     return OntologyProperty(
         id=resource.id,
         label=label,
@@ -75,8 +88,8 @@ def to_prop(resource: RDFResource, default_lang: str = "en") -> OntologyProperty
         equivalent_properties=[
             str(term) for term in resource.props.get(str(OWL.equivalentProperty), [])
         ],
-        domains=[str(term) for term in resource.props.get(str(RDFS.domain), [])],
-        ranges=[str(term) for term in resource.props.get(str(RDFS.range), [])],
+        domains=domains,
+        ranges=ranges,
         inverse_properties=[],
         instanceof=[str(term) for term in resource.props.get(rdf_type, [])],
         ancestors={},
@@ -99,7 +112,7 @@ def as_multilingual(terms: list[Literal], default_lang: str = "en"):
 
 
 def extract_datatype(resource: RDFResource) -> str:
-    if OWL.ObjectProperty in resource.props.get(str(RDF.type), []):
+    if OWL.ObjectProperty in resource.props.get(rdf_type, []):
         return "entity"
 
     ranges = resource.props.get(str(RDFS.range), [])
