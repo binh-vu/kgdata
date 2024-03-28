@@ -952,7 +952,7 @@ dependencies = [
 
 [[package]]
 name = "kgdata"
-version = "3.9.0"
+version = "4.0.1"
 dependencies = [
  "ahash",
  "anyhow",

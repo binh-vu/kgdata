@@ -306,6 +306,11 @@ impl<'de> Deserialize<'de> for WDProperty {
                                 ))
                             })?;
                         }
+                        "constraints" => {
+                            let _constraints: Vec<WDStatement> = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser property's constraints: {}", e.to_string()))
+                            })?;
+                        }
                         _ => {
                             return Err(M::Error::unknown_field(
                                 key,
@@ -323,6 +328,7 @@ impl<'de> Deserialize<'de> for WDProperty {
                                     "inverse_properties",
                                     "instanceof",
                                     "ancestors",
+                                    "constraints"
                                 ],
                             ));
                         }

@@ -10,6 +10,7 @@
 ### Fixed
 
 - Fix domain/ranges of dbpedia property dataset & make them not optional
+- Fix deserializing wikidata property in Rust
 
 ## [7.0.0] (2024-03-24)
 
