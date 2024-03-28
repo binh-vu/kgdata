@@ -22,10 +22,10 @@ class OntologyProperty:
     equivalent_properties: list[str]
 
     # domains
-    domains: Optional[list[str]]
+    domains: list[str]
     # ranges -- different from the definition, we only store the ranges if the property is an object property
     # for data property, use datatype instead
-    ranges: Optional[list[str]]
+    ranges: list[str]
 
     @staticmethod
     def empty(id: str):
@@ -38,8 +38,8 @@ class OntologyProperty:
             parents=[],
             related_properties=[],
             equivalent_properties=[],
-            domains=None,
-            ranges=None,
+            domains=[],
+            ranges=[],
             inverse_properties=[],
             instanceof=[],
             ancestors={},
@@ -112,8 +112,8 @@ def get_default_props() -> list[OntologyProperty]:
             parents=[],
             related_properties=[],
             equivalent_properties=[],
-            domains=None,
-            ranges=None,
+            domains=[],
+            ranges=[],
             inverse_properties=[],
             instanceof=[],
             ancestors={},
@@ -129,8 +129,8 @@ def get_default_props() -> list[OntologyProperty]:
             parents=[],
             related_properties=[],
             equivalent_properties=[],
-            domains=None,
-            ranges=None,
+            domains=[],
+            ranges=[],
             inverse_properties=[],
             instanceof=[str(RDF.Property)],
             ancestors={},

@@ -60,8 +60,8 @@ class WDProperty(OntologyProperty):
                 assert False, f"Unknown type: {stmt.value.to_dict()}"
 
         constraints = ent.props.get("P2302", [])
-        domains = None
-        ranges = None
+        domains = []
+        ranges = []
         for stmt in constraints:
             entid = stmt.value.as_entity_id_safe()
             # subject type constraint

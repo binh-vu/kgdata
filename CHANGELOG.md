@@ -1,6 +1,6 @@
 # CHANGE LOG
 
-## [Unreleased]
+## [7.1.0] (2024-03-28)
 
 ### Added
 
@@ -9,7 +9,7 @@
 
 ### Fixed
 
-- Fix domain/ranges of dbpedia property dataset
+- Fix domain/ranges of dbpedia property dataset & make them not optional
 
 ## [7.0.0] (2024-03-24)
 

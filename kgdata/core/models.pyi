@@ -9,7 +9,7 @@ from typing import (
     ValuesView,
 )
 
-from kgdata.core.base import RustMapView, RustVecView, RustSetView
+from kgdata.core.base import RustMapView, RustVecView
 
 V = TypeVar("V")
 
@@ -52,13 +52,15 @@ class Property:
     label: MultiLingualStringView
     description: MultiLingualStringView
     aliases: MultiLingualStringListView
+    datatype: str
+    instanceof: RustVecView[str]
     parents: RustVecView[str]
+    ancestors: RustMapView[str, int]
+    inverse_properties: RustVecView[str]
     related_properties: RustVecView[str]
     equivalent_properties: RustVecView[str]
-    subjects: RustVecView[str]
-    inverse_properties: RustVecView[str]
-    instanceof: RustVecView[str]
-    ancestors: RustSetView[str]
+    domains: RustVecView[str]
+    ranges: RustVecView[str]
 
     def is_object_property(self) -> bool: ...
     def is_data_property(self) -> bool: ...

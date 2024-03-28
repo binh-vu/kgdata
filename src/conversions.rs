@@ -212,7 +212,8 @@ impl<'de> Deserialize<'de> for WDProperty {
                 let mut parents = None;
                 let mut related_properties = None;
                 let mut equivalent_properties = None;
-                let mut subjects = None;
+                let mut domains = None;
+                let mut ranges = None;
                 let mut inverse_properties = None;
                 let mut instanceof = None;
                 let mut ancestors = None;
@@ -271,9 +272,14 @@ impl<'de> Deserialize<'de> for WDProperty {
                                 ))
                             })?;
                         }
-                        "subjects" => {
-                            subjects = map.next_value().map_err(|e| {
-                                Error::custom(format!("deser entity's subjects: {}", e.to_string()))
+                        "domains" => {
+                            domains = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser entity's domains: {}", e.to_string()))
+                            })?;
+                        }
+                        "ranges" => {
+                            ranges = map.next_value().map_err(|e| {
+                                Error::custom(format!("deser entity's ranges: {}", e.to_string()))
                             })?;
                         }
                         "inverse_properties" => {
@@ -312,7 +318,8 @@ impl<'de> Deserialize<'de> for WDProperty {
                                     "parents",
                                     "related_properties",
                                     "equivalent_properties",
-                                    "subjects",
+                                    "domains",
+                                    "ranges",
                                     "inverse_properties",
                                     "instanceof",
                                     "ancestors",
@@ -331,24 +338,26 @@ impl<'de> Deserialize<'de> for WDProperty {
                     related_properties.ok_or_else(|| Error::missing_field("related_properties"))?;
                 let equivalent_properties = equivalent_properties
                     .ok_or_else(|| Error::missing_field("equivalent_properties"))?;
-                let subjects = subjects.ok_or_else(|| Error::missing_field("subjects"))?;
                 let inverse_properties =
                     inverse_properties.ok_or_else(|| Error::missing_field("inverse_properties"))?;
                 let instanceof = instanceof.ok_or_else(|| Error::missing_field("instanceof"))?;
                 let ancestors = ancestors.ok_or_else(|| Error::missing_field("ancestors"))?;
+                let domains = domains.ok_or_else(|| Error::missing_field("domains"))?;
+                let ranges = ranges.ok_or_else(|| Error::missing_field("ranges"))?;
                 Ok(WDProperty(Property {
                     id,
                     label,
                     description,
                     aliases,
                     datatype,
+                    instanceof,
                     parents,
+                    ancestors,
+                    inverse_properties,
                     related_properties,
                     equivalent_properties,
-                    subjects,
-                    inverse_properties,
-                    instanceof,
-                    ancestors,
+                    domains,
+                    ranges,
                 }))
             }
         }

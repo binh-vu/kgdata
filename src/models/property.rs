@@ -11,13 +11,14 @@ pub struct Property {
     pub description: MultiLingualString,
     pub aliases: MultiLingualStringList,
     pub datatype: DataType,
+    pub instanceof: Vec<String>,
     pub parents: Vec<String>,
+    pub ancestors: HashMap<String, usize>,
+    pub inverse_properties: Vec<String>,
     pub related_properties: Vec<String>,
     pub equivalent_properties: Vec<String>,
-    pub subjects: Vec<String>,
-    pub inverse_properties: Vec<String>,
-    pub instanceof: Vec<String>,
-    pub ancestors: HashMap<String, usize>,
+    pub domains: Vec<String>,
+    pub ranges: Vec<String>,
 }
 
 impl Property {

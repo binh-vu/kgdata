@@ -68,7 +68,7 @@ dbpedia_dataset properties
 # wikidata_dataset entity_types
 
 # wikidata_dataset classes
-# wikidata_dataset properties
+wikidata_dataset properties
 
 # wikidata_dataset class_count
 # wikidata_dataset property_count
@@ -119,7 +119,7 @@ dbpedia_db properties
 # WIKIDATA Databases
 
 # wikidata_db classes
-# wikidata_db properties
+wikidata_db properties
 # wikidata_db entities
 # wikidata_db entity_labels
 # wikidata_db entity_metadata
