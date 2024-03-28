@@ -12,7 +12,6 @@ from kgdata.dbpedia.datasets.entities import entities
 from kgdata.dbpedia.datasets.entity_types import entity_types
 from kgdata.models.entity import Entity
 from rdflib import Literal, URIRef
-from regex import F
 from sm.misc.funcs import filter_duplication
 
 
