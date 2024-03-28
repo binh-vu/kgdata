@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        python: ["3.9", "3.10", "3.11", "3.12"]
+        python: ["3.10", "3.11", "3.12"]
         platform: ["ubuntu-22.04", "macos-12", "windows-2022"]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -25,18 +25,18 @@ jobs:
             ~/.cargo  
             target
       - name: Run test
-        if: matrix.python == '3.9'
+        if: matrix.python == '3.10'
         run: cargo test --no-default-features --features pyo3/auto-initialize
       - uses: messense/maturin-action@v1
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.14
         with:
           command: build
-          args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.9') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
+          args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.10') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
       - name: Run test
-        if: matrix.python == '3.9' && !startsWith(matrix.platform, 'windows')
+        if: matrix.python == '3.10' && !startsWith(matrix.platform, 'windows')
         run: |
-          python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp39*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
+          python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp310*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
           pip install pytest
           mv kgdata kgdata2
           pytest -xs tests/
@@ -58,7 +58,7 @@ jobs:
       - name: Build wheels
         run: |
           docker run --rm -w /project -v $(pwd):/project \
-            -e EXTRA_PATH=/opt/python/cp39-cp39/bin \
+            -e EXTRA_PATH=/opt/python/cp310-cp310/bin \
             -e PYTHON_HOMES=/opt/python \
             -e CARGO_NET_GIT_FETCH_WITH_CLI=false \
             quay.io/pypa/manylinux2014_x86_64:latest \
