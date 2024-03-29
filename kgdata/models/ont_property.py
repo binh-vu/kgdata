@@ -16,6 +16,7 @@ class OntologyProperty:
     datatype: str
     instanceof: list[str]
     parents: list[str]
+    # do not include the property itself
     ancestors: dict[str, int]
     inverse_properties: list[str]
     related_properties: list[str]

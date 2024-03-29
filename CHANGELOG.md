@@ -6,6 +6,10 @@
 
 - Add `entity_types` db
 
+### Fixed
+
+- Fix domain/ranges of dbpedia property dataset
+
 ## [7.1.0] (2024-03-28)
 
 ### Added

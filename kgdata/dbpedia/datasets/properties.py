@@ -66,11 +66,11 @@ def to_prop(resource: RDFResource, default_lang: str = "en") -> OntologyProperty
             description.lang = default_lang
             description.lang2value[default_lang] = ""
 
-    domains = None
+    domains = []
     if rdfs_domain in resource.props:
         domains = [str(term) for term in resource.props.get(rdfs_domain, [])]
 
-    ranges = None
+    ranges = []
     if (
         OWL.ObjectProperty in resource.props.get(rdf_type, [])
         and rdfs_range in resource.props

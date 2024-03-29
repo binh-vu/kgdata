@@ -111,6 +111,7 @@ wikidata_dataset properties
 # dbpedia_db classes
 dbpedia_db properties
 # dbpedia_db entities
+# dbpedia_db entity_types
 # dbpedia_db entity_labels
 # dbpedia_db entity_metadata
 # dbpedia_db entity_redirections
