@@ -78,6 +78,15 @@ dbpedia.add_command(
         },
     )
 )
+dbpedia.add_command(
+    dataset2db(
+        "entity_types",
+        format={
+            "record_type": {"type": "tuple2", "key": None, "value": None},
+            "is_sorted": False,
+        },
+    )
+)
 
 if __name__ == "__main__":
     init_env_logger()

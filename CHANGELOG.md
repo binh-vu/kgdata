@@ -1,5 +1,11 @@
 # CHANGE LOG
 
+## [Unreleased]
+
+### Added
+
+- Add `entity_types` db
+
 ## [7.1.0] (2024-03-28)
 
 ### Added

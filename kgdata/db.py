@@ -179,6 +179,11 @@ get_entity_label_db = partial(
     ser_value=str.encode,
     dbopts=small_dbopts,
 )
+get_entity_type_db: make_get_rocksdb[list[str]] = make_get_rocksdb(
+    deser_value=orjson.loads,
+    ser_value=orjson.dumps,
+    dbopts=small_dbopts,
+)
 get_entity_redirection_db = partial(
     get_rocksdb,
     deser_value=partial(str, encoding="utf-8"),
@@ -260,7 +265,9 @@ class GenericDB:
 
     @cached_property
     def entity_types(self):
-        raise NotImplementedError()
+        return get_entity_type_db(
+            self.database_dir / "entity_types.db", read_only=self.read_only
+        )
 
     @cached_property
     def ontcount(self):
