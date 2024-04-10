@@ -14,6 +14,8 @@ from kgdata.wikidata.datasets.entity_degrees import EntityDegree, entity_degrees
 @dataclass
 class EntityTypeAndDegree(Record):
     id: str
+    # mapping from type to distance of the correct types
+    # zero is the type of that entity, 1 is the parent type, 2 is grand parent, etc.
     types: dict[str, int]
     indegree: int
     outdegree: int
