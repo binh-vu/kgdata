@@ -22,6 +22,7 @@ class WikidataDirCfg:
         self.entity_dump = datadir / "012_entity_dump"
         self.page_dump = datadir / "010_page_dump"
         self.entity_redirection_dump = datadir / "011_entity_redirection_dump"
+        self.triple_truthy_dump = datadir / "013_triple_truthy_dump"
 
         self.page_ids = datadir / "020_page_ids"
         self.entity_ids = datadir / "021_entity_ids"
@@ -53,6 +54,9 @@ class WikidataDirCfg:
         self.meta_graph = datadir / "080_meta_graph"
         self.meta_graph_stats = datadir / "081_meta_graph_stats"
 
+        self.mention_to_entities = datadir / "090_mention_to_entities"
+        self.norm_mentions = datadir / "091_norm_mentions"
+
         # deprecated
         self.wp2wd = datadir / "wp2wd"
         self.search = datadir / "search"
@@ -68,6 +72,9 @@ class WikidataDirCfg:
             return self._get_file(self.dumps / "*wikidata-*all*.json.zst")
         except:
             return self._get_file(self.dumps / "*wikidata-*all*.json.bz2")
+
+    def get_triple_truthy_dump_file(self):
+        return self._get_file(self.dumps / "*wikidata-*truthy*.nt.*")
 
     def get_page_dump_file(self):
         return self._get_file(self.dumps / "*wikidatawiki-*page*.sql.gz")

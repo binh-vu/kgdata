@@ -40,7 +40,7 @@ function wikidata_db {
 # dbpedia_dataset mapping_extractor_dump
 # dbpedia_dataset ontology_dump
 # dbpedia_dataset classes
-dbpedia_dataset properties
+# dbpedia_dataset properties
 # dbpedia_dataset entities
 # dbpedia_dataset entity_redirections
 # dbpedia_dataset entity_labels
@@ -68,7 +68,7 @@ dbpedia_dataset properties
 # wikidata_dataset entity_types
 
 # wikidata_dataset classes
-wikidata_dataset properties
+# wikidata_dataset properties
 
 # wikidata_dataset class_count
 # wikidata_dataset property_count
@@ -88,6 +88,9 @@ wikidata_dataset properties
 # wikidata_dataset meta_graph
 # wikidata_dataset meta_graph_stats
 
+# wikidata_dataset mention_to_entities
+wikidata_dataset norm_mentions
+
 # ----- unverified dataset -----
 
 # ======================================================================
@@ -99,6 +102,7 @@ wikidata_dataset properties
 # wikipedia_dataset article_links
 # wikipedia_dataset article_metadata
 # wikipedia_dataset html_tables
+# wikipedia_dataset mention_to_articles
 
 # wikipedia_dataset relational_tables
 # wikipedia_dataset linked_relational_tables
@@ -109,7 +113,7 @@ wikidata_dataset properties
 # DBpedia Databases
 
 # dbpedia_db classes
-dbpedia_db properties
+# dbpedia_db properties
 # dbpedia_db entities
 # dbpedia_db entity_types
 # dbpedia_db entity_labels
@@ -120,7 +124,7 @@ dbpedia_db properties
 # WIKIDATA Databases
 
 # wikidata_db classes
-wikidata_db properties
+# wikidata_db properties
 # wikidata_db entities
 # wikidata_db entity_labels
 # wikidata_db entity_metadata
@@ -132,3 +136,5 @@ wikidata_db properties
 # wikidata_db property_domains
 # wikidata_db property_ranges
 # wikidata_db ontology_count
+# wikidata_db mention_to_entities
+wikidata_db norm_mentions

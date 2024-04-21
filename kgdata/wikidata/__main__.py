@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, cast, get_args
 
 import click
+import serde.jl
+import serde.json
 from hugedict.prelude import (
     RocksDBDict,
     RocksDBOptions,
@@ -15,10 +17,6 @@ from hugedict.prelude import (
     rocksdb_build_sst_file,
     rocksdb_ingest_sst_files,
 )
-from timer import Timer
-
-import serde.jl
-import serde.json
 from kgdata.config import init_dbdir_from_env
 from kgdata.db import build_database
 from kgdata.wikidata.config import WikidataDirCfg
@@ -26,6 +24,7 @@ from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.property_count import property_count
 from kgdata.wikidata.db import WikidataDB, get_ontcount_db, pack_int
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
+from timer import Timer
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
@@ -192,6 +191,34 @@ wikidata.add_command(
         },
     )
 )
+wikidata.add_command(
+    dataset2db(
+        dataset="mention_to_entities",
+        dbname="mention_to_entities",
+        format={
+            "record_type": {
+                "type": "ndjson",
+                "key": "mention",
+                "value": "target_entities",
+            },
+            "is_sorted": False,
+        },
+    )
+)
+wikidata.add_command(
+    dataset2db(
+        dataset="norm_mentions",
+        dbname="norm_mentions",
+        format={
+            "record_type": {
+                "type": "tuple2",
+                "key": None,
+                "value": None,
+            },
+            "is_sorted": False,
+        },
+    )
+)
 
 
 @click.command(name="ontcount")
@@ -222,7 +249,6 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
     gc.collect()
 
     import ray
-
     from sm.misc.ray_helper import ray_map, ray_put
 
     ray.init()

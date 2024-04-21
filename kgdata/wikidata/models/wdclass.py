@@ -56,3 +56,12 @@ class WDClass(OntologyClass):
             equivalent_classes=self.equivalent_classes,
             ancestors=self.ancestors,
         )
+
+    def fmt(self):
+        return "\n".join(
+            [
+                f"label: {self.label} ({self.id})",
+                f"description: {self.description}",
+                f"parents: {self.parents}",
+            ]
+        )

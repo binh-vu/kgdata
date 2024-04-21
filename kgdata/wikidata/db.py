@@ -40,12 +40,14 @@ from kgdata.db import (
     unpack_int,
 )
 from kgdata.models.entity import EntityOutLinks
+from kgdata.wikidata.datasets.mention_to_entities import MentionToEntities
 from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
 from kgdata.wikidata.models import WDClass, WDProperty
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
+from sm.misc.funcs import import_func
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel, WDEntityWikiLink)
 
@@ -245,6 +247,26 @@ get_prop_domain_db = make_get_rocksdb(
     ser_value=orjson.dumps,
     dbopts=small_dbopts,
 )
+get_mention_to_entities_db: make_get_rocksdb[list[tuple[str, tuple[int, int]]]] = (
+    make_get_rocksdb(
+        deser_value=orjson.loads,
+        ser_value=orjson.dumps,
+        dbopts=small_dbopts,
+    )
+)
+get_norm_mentions_db: make_get_rocksdb[list[tuple[str, tuple[int, int]]]] = (
+    make_get_rocksdb(
+        deser_value=orjson.loads,
+        ser_value=orjson.dumps,
+        dbopts=small_dbopts,
+    )
+)
+get_label2ids_db = partial(
+    get_rocksdb,
+    deser_value=orjson.loads,
+    ser_value=orjson.dumps,
+    dbopts=small_dbopts,
+)
 
 
 class WikidataDB(GenericDB):
@@ -349,6 +371,24 @@ class WikidataDB(GenericDB):
             self.database_dir / "entity_outlinks.db", read_only=self.read_only
         )
 
+    @cached_property
+    def mention_to_entities(self):
+        return get_mention_to_entities_db(
+            self.database_dir / "mention_to_entities.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def norm_mentions(self):
+        return get_norm_mentions_db(
+            self.database_dir / "norm_mentions.db", read_only=self.read_only
+        )
+
+    @cached_property
+    def label2ids(self):
+        return get_label2ids_db(
+            self.database_dir / "label2ids.db", read_only=self.read_only
+        )
+
     @overload
     def attr(
         self, attr: Literal["aliases", "instanceof"]
@@ -386,18 +426,25 @@ if __name__ == "__main__":
     @click.command()
     @click.option("-d", "--data-dir", required=True, help="database directory")
     @click.option("-n", "--dbname", required=True, help="database name")
+    @click.option("-f", "--format", default="", help="function to format the value")
     @click.argument("keys", nargs=-1)
-    def cli(data_dir: str, dbname: str, keys: list[str]):
+    def cli(data_dir: str, dbname: str, format: str, keys: list[str]):
+        if format == "":
+            fmt = str
+        else:
+            fmt1 = import_func(format)
+            fmt = lambda x: v.decode() if isinstance((v := fmt1(x)), bytes) else v
+
         db = getattr(WikidataDB(data_dir), dbname)
         if len(keys) > 0:
             for k in keys:
                 print("key:", k)
-                print("value:", db[k])
+                print("value:", fmt(db[k]))
                 print("")
         else:
             for k in db.keys():
                 print("key:", k)
-                print("value:", db[k])
+                print("value:", fmt(db[k]))
                 break
 
     cli()

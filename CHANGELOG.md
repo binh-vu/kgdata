@@ -5,6 +5,7 @@
 ### Added
 
 - Add `entity_types` db
+- Add `norm_mentions`, `mention_to_entities` dbs
 
 ### Fixed
 
