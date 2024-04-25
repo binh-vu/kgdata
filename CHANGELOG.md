@@ -1,6 +1,6 @@
 # CHANGE LOG
 
-## [Unreleased]
+## [7.0.1] (2024-04-25)
 
 ### Added
 
@@ -10,6 +10,10 @@
 ### Fixed
 
 - Fix domain/ranges of dbpedia property dataset
+
+### Changed
+
+- Upgrade RDFLib
 
 ## [7.1.0] (2024-03-28)
 
