@@ -10,6 +10,7 @@
 ### Fixed
 
 - Fix domain/ranges of dbpedia property dataset
+- Fix missing dependencies (ftfy)
 
 ### Changed
 
