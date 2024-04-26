@@ -37,8 +37,6 @@ jobs:
         if: matrix.python == '3.10' && !startsWith(matrix.platform, 'windows')
         run: |
           mv kgdata kgdata2  
-          pip freeze | grep kgdata
-          python -c 'import kgdata'
           python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp310*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
           pip install pytest
           pytest -xs tests/
