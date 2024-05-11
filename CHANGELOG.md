@@ -1,5 +1,11 @@
 # CHANGE LOG
 
+## [7.0.2] (2024-05-10)
+
+### Fixed
+
+- Remove unused imports
+
 ## [7.0.1] (2024-04-25)
 
 ### Added

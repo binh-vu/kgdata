@@ -23,6 +23,8 @@ import requests
 import serde.jl as jl
 from hugedict.prelude import CacheDict, RocksDBDict
 from hugedict.types import HugeMutableMapping
+from sm.misc.funcs import import_func
+
 from kgdata.db import (
     GenericDB,
     deser_from_dict,
@@ -40,14 +42,12 @@ from kgdata.db import (
     unpack_int,
 )
 from kgdata.models.entity import EntityOutLinks
-from kgdata.wikidata.datasets.mention_to_entities import MentionToEntities
 from kgdata.wikidata.extra_ent_db import EntAttr, get_entity_attr_db
 from kgdata.wikidata.models import WDClass, WDProperty
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdentitylabel import WDEntityLabel
 from kgdata.wikidata.models.wdentitylink import WDEntityWikiLink
 from kgdata.wikidata.models.wdentitymetadata import WDEntityMetadata
-from sm.misc.funcs import import_func
 
 V = TypeVar("V", WDEntity, WDClass, WDProperty, WDEntityLabel, WDEntityWikiLink)
 
@@ -447,4 +447,5 @@ if __name__ == "__main__":
                 print("value:", fmt(db[k]))
                 break
 
+    cli()
     cli()
