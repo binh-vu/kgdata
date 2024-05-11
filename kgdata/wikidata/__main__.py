@@ -17,6 +17,9 @@ from hugedict.prelude import (
     rocksdb_build_sst_file,
     rocksdb_ingest_sst_files,
 )
+from sm.misc.ray_helper import ray_map, ray_put
+from timer import Timer
+
 from kgdata.config import init_dbdir_from_env
 from kgdata.db import build_database
 from kgdata.wikidata.config import WikidataDirCfg
@@ -24,7 +27,6 @@ from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.property_count import property_count
 from kgdata.wikidata.db import WikidataDB, get_ontcount_db, pack_int
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
-from timer import Timer
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
@@ -248,11 +250,7 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
     ).options
     gc.collect()
 
-    import ray
-    from sm.misc.ray_helper import ray_map, ray_put
-
-    ray.init()
-
+    
     def _build_sst_file(
         infile: str, temp_dir: str, posfix: str, options: RocksDBOptions
     ):

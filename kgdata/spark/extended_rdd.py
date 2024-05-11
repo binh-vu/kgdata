@@ -23,7 +23,9 @@ from typing import (
 )
 
 import serde.json
-from kgdata.misc.funcs import deser_zstd_records
+from typing_extensions import TypeGuard
+
+from kgdata.misc.optional_import import RDD, portable_hash
 from kgdata.spark.common import (
     StrPath,
     are_records_unique,
@@ -34,8 +36,6 @@ from kgdata.spark.common import (
     save_as_text_file,
     text_file,
 )
-from pyspark.rdd import RDD, portable_hash
-from typing_extensions import TypeGuard
 
 if TYPE_CHECKING:
     from kgdata.dataset import Dataset

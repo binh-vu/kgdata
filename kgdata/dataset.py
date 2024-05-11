@@ -25,14 +25,15 @@ import serde.byteline
 import serde.json
 import serde.textline
 from hugedict.misc import Chain2, identity
+from loguru import logger
+from tqdm.auto import tqdm
+
 from kgdata.config import init_dbdir_from_env
+from kgdata.misc.optional_import import RDD
 from kgdata.misc.query import PropQuery, every
 from kgdata.spark import ExtendedRDD, SparkLikeInterface, get_spark_context
 from kgdata.spark.common import does_result_dir_exist, text_file
 from kgdata.spark.extended_rdd import DatasetSignature
-from loguru import logger
-from pyspark import RDD
-from tqdm.auto import tqdm
 
 V = TypeVar("V")
 V2 = TypeVar("V2")
