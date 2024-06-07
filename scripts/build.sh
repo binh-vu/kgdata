@@ -89,7 +89,7 @@ function wikidata_db {
 # wikidata_dataset meta_graph_stats
 
 # wikidata_dataset mention_to_entities
-wikidata_dataset norm_mentions
+# wikidata_dataset norm_mentions
 
 # ----- unverified dataset -----
 
@@ -123,7 +123,7 @@ wikidata_dataset norm_mentions
 # ======================================================================
 # WIKIDATA Databases
 
-# wikidata_db classes
+wikidata_db classes
 # wikidata_db properties
 # wikidata_db entities
 # wikidata_db entity_labels
@@ -137,4 +137,4 @@ wikidata_dataset norm_mentions
 # wikidata_db property_ranges
 # wikidata_db ontology_count
 # wikidata_db mention_to_entities
-wikidata_db norm_mentions
+# wikidata_db norm_mentions

@@ -4,7 +4,6 @@ import shutil
 from functools import partial
 
 import orjson
-
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.misc.hierarchy import build_ancestors
