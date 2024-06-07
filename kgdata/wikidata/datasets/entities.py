@@ -3,11 +3,11 @@ from typing import Dict, Optional, Set, Union
 
 import orjson
 from loguru import logger
-from pyspark import Broadcast
 from sm.misc.funcs import filter_duplication, is_not_null
 
 from kgdata.dataset import Dataset
 from kgdata.misc.funcs import split_tab_2
+from kgdata.misc.optional_import import Broadcast
 from kgdata.spark import get_spark_context
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump

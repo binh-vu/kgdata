@@ -1,5 +1,17 @@
 # CHANGE LOG
 
+## [7.0.4] (2024-05-11)
+
+### Fixed
+
+- Fix code to not require `spark` or `ray` unless really need it
+
+## [7.0.2] (2024-05-10)
+
+### Fixed
+
+- Remove unused imports
+
 ## [7.0.1] (2024-04-25)
 
 ### Added

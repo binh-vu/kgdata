@@ -27,10 +27,17 @@ from typing import (
 
 import orjson
 import zstandard as zstd
-from kgdata.misc.funcs import deser_zstd_records
 from loguru import logger
-from pyspark import RDD, SparkConf, SparkContext, TaskContext
 from sm.misc.funcs import assert_not_null
+
+from kgdata.misc.funcs import deser_zstd_records
+from kgdata.misc.optional_import import (
+    RDD,
+    SparkConf,
+    SparkContext,
+    TaskContext,
+    require_spark,
+)
 
 # SparkContext singleton
 _sc = None
@@ -46,6 +53,7 @@ V = TypeVar("V")
 V2 = TypeVar("V2")
 
 
+@require_spark
 def get_spark_context() -> SparkContext:
     """Get spark context
 
@@ -459,7 +467,7 @@ def fix_rdd():
     # template to fix an rdd
     # ###############################
     # TODO: set input file
-    indir = "/nas/home/binhvu/workspace/sm-dev/data/wikidata/step_2/schema"
+    indir = os.path.expanduser("~/workspace/sm-dev/data/wikidata/step_2/schema")
     infile = indir + "/class_schema"
 
     # ###############################
@@ -634,6 +642,4 @@ def diff_rdd(rdd1: RDD[str], rdd2: RDD[str], key: Callable[[str], str]):
 
 @dataclass
 class EmptyBroadcast(Generic[V]):
-    value: V
-    value: V
     value: V

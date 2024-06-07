@@ -30,13 +30,12 @@ from hugedict.prelude import (
     rocksdb_load,
 )
 from hugedict.types import HugeMutableMapping
+from loguru import logger
+from sm.namespaces.namespace import KnowledgeGraphNamespace
+
 from kgdata.models.entity import Entity, EntityMetadata
-from kgdata.models.multilingual import MultiLingualString, MultiLingualStringList
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty, get_default_props
-from loguru import logger
-from rdflib import RDF, RDFS, XSD
-from sm.namespaces.namespace import KnowledgeGraphNamespace
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
@@ -377,4 +376,5 @@ if __name__ == "__main__":
                 print("value:", db[k])
                 break
 
+    cli()
     cli()
