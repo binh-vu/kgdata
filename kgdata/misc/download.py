@@ -1,4 +1,5 @@
 """Utilities for downloading knowledge graph dumps"""
+
 from __future__ import annotations
 
 import contextlib
@@ -6,6 +7,7 @@ import datetime
 import os
 import re
 import subprocess
+import time
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
@@ -29,8 +31,7 @@ class DumpFile:
 
 class BaseDumpCollection(ABC):
     @abstractmethod
-    def get_main_category(self) -> str:
-        ...
+    def get_main_category(self) -> str: ...
 
     def get_categories(self) -> dict[str, list[DumpFile]]:
         return {
@@ -375,6 +376,7 @@ def wget(url: str, outfile: Path | str):
 
 
 class WGet:
+    MAX_RETRY = 15
     RECENT_OUTPUT_SIZE = 100
 
     @dataclass
@@ -383,6 +385,7 @@ class WGet:
         outfile: Path
         process: subprocess.Popen
         pbar: tqdm
+        retry: int = 0
         process_output: deque[str] = field(default_factory=deque)
 
     def __init__(self):
@@ -397,41 +400,110 @@ class WGet:
         finally:
             obj.grateful_stop()
 
+    def _download(self, url: str, outfile: Optional[Path] = None, n_retry: int = 0):
+        if url not in self.jobs or n_retry > 0:
+            # create the job
+            if n_retry > 0:
+                outfile = self.jobs[url].outfile
+            else:
+                assert outfile is not None
+
+            p = subprocess.Popen(
+                [
+                    "wget",
+                    "-c",
+                    "-O",
+                    str(outfile),
+                    url,
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            pbar = tqdm(
+                desc=f"Download {outfile.name}",
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                miniters=1,
+                total=0,
+            )
+            self.jobs[url] = WGet.Job(url, outfile, p, pbar, retry=n_retry)
+
+        job = self.jobs[url]
+        if job.retry >= WGet.MAX_RETRY:
+            logger.error(
+                "[PID={}] Error while downloading URL: {}.\nReason: Fail to start the job after {} retries.\nOutput:\n{}",
+                job.process.pid,
+                job.url,
+                job.retry,
+                "\n".join(job.process_output),
+            )
+            raise RuntimeError("Too many retries")
+
+        # try to get the initial progress
+        total_bytes = -1
+        # find the total bytes by reading the first 100 lines
+        for _ in range(100):
+            line = self.read_job_output_line(job)
+            if line.startswith("Length: "):
+                m = re.match(r"Length: (\d+)", line)
+                assert m is not None
+                total_bytes = int(m.group(1))
+                break
+
+        if total_bytes == -1:
+            returncode = job.process.poll()
+            if returncode is not None and returncode != 0:
+                # the process has already terminated because of an error -- retry it.
+                # TODO: determine the cause and whether we should retry.
+                time.sleep(1.0)
+                return self._download(job.url, job.outfile, n_retry=job.retry + 1)
+
+            logger.error(
+                "[PID={}] Error while downloading URL: {}.\nReason: Can't determine the file size.\nOutput:\n{}",
+                job.process.pid,
+                job.url,
+                "\n".join(job.process_output),
+            )
+            raise RuntimeError("Failed to determine the download progress")
+
+        # read to the progress bar to find the current bytes
+        current_bytes = -1
+        for _ in range(100):
+            line = self.read_job_output_line(job)
+            if (b := self.read_bytes(line)) is not None:
+                current_bytes = b
+
+        if current_bytes == -1:
+            logger.error(
+                "[PID={}] Error while downloading URL: {}.\nReason: Can't determine the current progress.\nOutput:\n{}",
+                job.process.pid,
+                job.url,
+                "\n".join(job.process_output),
+            )
+            raise RuntimeError("Failed to determine the download progress")
+
+        job.pbar.total = total_bytes
+        job.pbar.update(current_bytes)
+        job.pbar.refresh()
+        return job
+
     def download(self, url: str, outfile: Path):
         """Start a wget process to download a file"""
         if self.is_successful_downloaded(outfile):
             logger.info("Skip download {} because it already exists", outfile.name)
             return
 
-        p = subprocess.Popen(
-            [
-                "wget",
-                "-c",
-                "-O",
-                str(outfile),
-                url,
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-        pbar = tqdm(
-            desc=f"Download {outfile.name}",
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-            miniters=1,
-            total=0,
-        )
-        self.jobs[url] = WGet.Job(url, outfile, p, pbar)
+        if outfile.exists():
+            logger.info(
+                "File {} exists but not marked as success. Redownload it", outfile.name
+            )
+            outfile.unlink()
+
+        self._download(url, outfile)
 
     def monitor(self):
         """Monitoring the download processes"""
-        for job in self.jobs.values():
-            current_bytes, total_bytes = self.get_download_progress(job.url)
-            job.pbar.total = total_bytes
-            job.pbar.update(current_bytes)
-            job.pbar.refresh()
-
         jobs = list(self.jobs.values())
         while len(self.jobs) > 0:
             for job in jobs:
@@ -446,8 +518,9 @@ class WGet:
                 if (b := self.read_bytes(line)) is not None:
                     job.pbar.update(b - job.pbar.n)
 
-        for job in list(self.jobs.values()):
-            self.on_job_finish(job.url)
+        assert len(self.jobs) == 0
+        # for job in list(self.jobs.values()):
+        #     self.on_job_finish(job.url)
 
     def on_job_finish(self, url: str):
         job = self.jobs[url]
@@ -477,47 +550,6 @@ class WGet:
     def is_successful_downloaded(self, outfile: Path) -> bool:
         """Check if the file is successfully downloaded"""
         return (outfile.parent / (outfile.name + ".success")).exists()
-
-    def get_download_progress(self, url: str):
-        """Consuming some of the output of wget to get the download progress"""
-        job = self.jobs[url]
-
-        total_bytes = -1
-        # find the total bytes
-        for _ in range(100):
-            line = self.read_job_output_line(job)
-            if line.startswith("Length: "):
-                m = re.match(r"Length: (\d+)", line)
-                assert m is not None
-                total_bytes = int(m.group(1))
-                break
-
-        if total_bytes == -1:
-            logger.error(
-                "[PID={}] Error while downloading URL: {}.\nReason: Can't determine the file size.\nOutput:\n{}",
-                job.process.pid,
-                job.url,
-                "\n".join(job.process_output),
-            )
-            raise RuntimeError("Failed to determine the download progress")
-
-        # read to the progress bar to find the current bytes
-        current_bytes = -1
-        for _ in range(100):
-            line = self.read_job_output_line(job)
-            if (b := self.read_bytes(line)) is not None:
-                current_bytes = b
-
-        if current_bytes == -1:
-            logger.error(
-                "[PID={}] Error while downloading URL: {}.\nReason: Can't determine the current progress.\nOutput:\n{}",
-                job.process.pid,
-                job.url,
-                "\n".join(job.process_output),
-            )
-            raise RuntimeError("Failed to determine the download progress")
-
-        return current_bytes, total_bytes
 
     def read_job_output_line(self, job: Job) -> str:
         line = self.read_line(job.process)
