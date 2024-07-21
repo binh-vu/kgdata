@@ -1,12 +1,14 @@
 from functools import lru_cache
 from operator import itemgetter
 
-from sm.misc.funcs import identity_func
-from tqdm import tqdm
-
 from kgdata.dataset import Dataset
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
+from kgdata.wikidata.datasets.triple_truthy_dump_derivatives import (
+    triple_truthy_dump_derivatives,
+)
+from sm.misc.funcs import identity_func
+from tqdm import tqdm
 
 
 def is_entity_id(id: str) -> bool:
@@ -25,17 +27,32 @@ def is_entity_id(id: str) -> bool:
 def entity_ids() -> Dataset[str]:
     """Get Wikidata entity ids"""
     cfg = WikidataDirCfg.get_instance()
-    id_ds = Dataset.string(
-        cfg.entity_ids / "ids/*.gz", name="entity-ids", dependencies=[entity_dump()]
-    )
 
-    if not id_ds.has_complete_data():
-        (
-            entity_dump()
-            .get_extended_rdd()
-            .map(itemgetter("id"))
-            .save_like_dataset(id_ds, auto_coalesce=True)
+    if not cfg.has_json_dump():
+        assert cfg.has_truthy_dump()
+        id_ds = Dataset.string(
+            cfg.entity_ids / "ids/*.gz",
+            name="entity-ids",
+            dependencies=[triple_truthy_dump_derivatives().entities],
         )
+        if not id_ds.has_complete_data():
+            (
+                triple_truthy_dump_derivatives()
+                .entities.get_extended_rdd()
+                .map(lambda e: e.id)
+                .save_like_dataset(id_ds, auto_coalesce=True)
+            )
+    else:
+        id_ds = Dataset.string(
+            cfg.entity_ids / "ids/*.gz", name="entity-ids", dependencies=[entity_dump()]
+        )
+        if not id_ds.has_complete_data():
+            (
+                entity_dump()
+                .get_extended_rdd()
+                .map(itemgetter("id"))
+                .save_like_dataset(id_ds, auto_coalesce=True)
+            )
 
     if not (cfg.entity_ids / "identifiers.txt").exists():
         (
@@ -50,12 +67,15 @@ def entity_ids() -> Dataset[str]:
         seen_prefixes = set()
 
         # open in bytes mode to use .tell to get the current byte position
-        with open(str(cfg.entity_ids / "identifiers.txt"), "rb") as f, tqdm(
-            total=(cfg.entity_ids / "identifiers.txt").stat().st_size,
-            unit="B",
-            unit_scale=True,
-            desc="verifying entity ids",
-        ) as pbar:
+        with (
+            open(str(cfg.entity_ids / "identifiers.txt"), "rb") as f,
+            tqdm(
+                total=(cfg.entity_ids / "identifiers.txt").stat().st_size,
+                unit="B",
+                unit_scale=True,
+                desc="verifying entity ids",
+            ) as pbar,
+        ):
             n_ids = 0
             last_bytes = 0
             prev_id = ""

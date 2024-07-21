@@ -4,16 +4,16 @@ from dataclasses import dataclass
 from typing import Iterable, Optional
 
 import orjson
-from sm.misc.funcs import assert_not_null
-
 from kgdata.dataset import Dataset
 from kgdata.misc.resource import Record
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
+from kgdata.wikidata.datasets.entity_sitelinks import EntitySiteLinks, entity_sitelinks
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikipedia.datasets.article_metadata import ArticleMetadata, article_metadata
 from kgdata.wikipedia.misc import get_title_from_url
 from kgdata.wikipedia.models.html_article import HTMLArticle
+from sm.misc.funcs import assert_not_null
 
 
 @dataclass
@@ -33,13 +33,13 @@ def cross_wiki_mapping(
         cfg.cross_wiki_mapping / "from-wikidata/*.gz",
         deserialize=WikipediaWikidataMapping.deser,
         name="cross-wiki-mapping/from-wikidata",
-        dependencies=[entities()],
+        dependencies=[entity_sitelinks()],
     )
 
     need_verification = False
     if not wd_ds.has_complete_data():
         (
-            entities()
+            entity_sitelinks()
             .get_extended_rdd()
             .flatMap(extract_sitelink)
             .map(WikipediaWikidataMapping.ser)
@@ -158,7 +158,7 @@ def resolve_multiple_mapping(
         return ent
 
 
-def extract_sitelink(ent: WDEntity) -> list[WikipediaWikidataMapping]:
+def extract_sitelink(ent: WDEntity | EntitySiteLinks) -> list[WikipediaWikidataMapping]:
     title2sites = {}
     for sitelink in ent.sitelinks.values():
         title = sitelink.title

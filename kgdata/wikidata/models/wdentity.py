@@ -222,3 +222,12 @@ class SiteLink:
 
     def to_tuple(self):
         return (self.site, self.title, self.badges, self.url)
+
+    @staticmethod
+    def from_dict(o: dict) -> SiteLink:
+        return SiteLink(
+            o["site"],
+            o["title"],
+            badges=o["badges"],
+            url=o.get("url", None),
+        )

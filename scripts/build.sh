@@ -61,11 +61,16 @@ function wikidata_db {
 # # python -m kgdata.wikidata.datasets -d page_dump --sign
 
 # ----- verified dataset -----
+# wikidata_dataset triple_truthy_dump
+# wikidata_dataset triple_truthy_dump_derivatives
+
 # wikidata_dataset page_ids
 # wikidata_dataset entity_ids
 # wikidata_dataset entity_redirections
 # wikidata_dataset entities
 # wikidata_dataset entity_types
+# wikidata_dataset entity_sitelinks
+# wikidata_dataset page_article_dump
 
 # wikidata_dataset classes
 # wikidata_dataset properties
@@ -123,7 +128,7 @@ function wikidata_db {
 # ======================================================================
 # WIKIDATA Databases
 
-wikidata_db classes
+# wikidata_db classes
 # wikidata_db properties
 # wikidata_db entities
 # wikidata_db entity_labels

@@ -7,9 +7,6 @@ from typing import Dict
 
 import serde.csv
 import serde.textline
-from sm.misc.funcs import is_not_null
-from tqdm import tqdm
-
 from kgdata.dataset import Dataset
 from kgdata.misc.funcs import split_tab_2
 from kgdata.spark.extended_rdd import ExtendedRDD
@@ -17,6 +14,11 @@ from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_ids import entity_ids, is_entity_id
 from kgdata.wikidata.datasets.entity_redirection_dump import entity_redirection_dump
 from kgdata.wikidata.datasets.page_ids import page_ids, parse_sql_values
+from kgdata.wikidata.datasets.triple_truthy_dump_derivatives import (
+    triple_truthy_dump_derivatives,
+)
+from sm.misc.funcs import is_not_null
+from tqdm import tqdm
 
 
 @lru_cache()
@@ -33,6 +35,10 @@ def entity_redirections() -> Dataset[tuple[str, str]]:
         Dataset[tuple[str, str]]
     """
     cfg = WikidataDirCfg.get_instance()
+
+    if not cfg.has_json_dump():
+        assert cfg.has_truthy_dump()
+        return triple_truthy_dump_derivatives().redirections
 
     raw_ds = Dataset(
         cfg.entity_redirections / "raw/part-*",

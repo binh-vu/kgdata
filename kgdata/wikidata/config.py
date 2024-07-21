@@ -23,12 +23,15 @@ class WikidataDirCfg:
         self.page_dump = datadir / "010_page_dump"
         self.entity_redirection_dump = datadir / "011_entity_redirection_dump"
         self.triple_truthy_dump = datadir / "013_triple_truthy_dump"
+        self.page_article_dump = datadir / "014_page_article_dump"
 
+        self.truthy_dump_derivatives = datadir / "019_truthy_dump_derivatives"
         self.page_ids = datadir / "020_page_ids"
         self.entity_ids = datadir / "021_entity_ids"
         self.entity_redirections = datadir / "022_entity_redirections"
         self.entities = datadir / "023_entities"
         self.entity_types = datadir / "024_entity_types"
+        self.entity_sitelinks = datadir / "025_entity_sitelinks"
 
         self.classes = datadir / "040_classes"
         self.properties = datadir / "041_properties"
@@ -67,6 +70,20 @@ class WikidataDirCfg:
         assert len(res) == 1
         return res[0]
 
+    def has_json_dump(self):
+        try:
+            self.get_entity_dump_file()
+        except FileNotFoundError:
+            return False
+        return True
+
+    def has_truthy_dump(self):
+        try:
+            self.get_triple_truthy_dump_file()
+        except FileNotFoundError:
+            return False
+        return True
+
     def get_entity_dump_file(self):
         try:
             return self._get_file(self.dumps / "*wikidata-*all*.json.zst")
@@ -79,6 +96,11 @@ class WikidataDirCfg:
     def get_page_dump_file(self):
         return self._get_file(self.dumps / "*wikidatawiki-*page*.sql.gz")
 
+    def get_page_article_dump_files(self):
+        return self._get_files(
+            self.dumps / "pages-articles/wikidatawiki-*pages-articles*.xml*.bz2"
+        )
+
     def get_redirect_dump_file(self):
         return self._get_file(self.dumps / "*wikidatawiki-*redirect*.sql.gz")
 
@@ -86,10 +108,17 @@ class WikidataDirCfg:
         file = str(file)
         match_files = glob(file)
         if len(match_files) == 0:
-            raise Exception("No file found: {}".format(file))
+            raise FileNotFoundError("No file found: {}".format(file))
         if len(match_files) > 1:
             raise Exception("Multiple files found: {}".format(file))
         return Path(match_files[0])
+
+    def _get_files(self, file: Union[str, Path]):
+        file = str(file)
+        match_files = glob(file)
+        if len(match_files) == 0:
+            raise Exception("No file found: {}".format(file))
+        return [Path(file) for file in match_files]
 
     @staticmethod
     def get_instance():

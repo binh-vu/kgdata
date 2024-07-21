@@ -1,9 +1,5 @@
 from functools import lru_cache, partial
-from typing import Dict, Optional, Set, Union
-
-import orjson
-from loguru import logger
-from sm.misc.funcs import filter_duplication, is_not_null
+from typing import Dict, Optional, Set
 
 from kgdata.dataset import Dataset
 from kgdata.misc.funcs import split_tab_2
@@ -13,8 +9,15 @@ from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entity_dump import entity_dump
 from kgdata.wikidata.datasets.entity_ids import entity_ids
 from kgdata.wikidata.datasets.entity_redirections import entity_redirections
+from kgdata.wikidata.datasets.triple_truthy_dump_derivatives import (
+    deser_entity,
+    ser_entity,
+    triple_truthy_dump_derivatives,
+)
 from kgdata.wikidata.models.wdentity import WDEntity
 from kgdata.wikidata.models.wdstatement import WDStatement
+from loguru import logger
+from sm.misc.funcs import filter_duplication, is_not_null
 
 
 @lru_cache()
@@ -35,10 +38,20 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
     """
     cfg = WikidataDirCfg.get_instance()
 
+    if cfg.has_json_dump():
+        prelim_ent_ds = entity_dump()
+        prelim_ent_rdd = prelim_ent_ds.get_extended_rdd().map(
+            partial(WDEntity.from_wikidump, lang=lang)
+        )
+    else:
+        assert cfg.has_truthy_dump()
+        prelim_ent_ds = triple_truthy_dump_derivatives().entities
+        prelim_ent_rdd = prelim_ent_ds.get_extended_rdd()
+
     dangling_id_ds = Dataset.string(
         cfg.entities / "dangling_ids" / "*.gz",
         name="entities/dangling-ids",
-        dependencies=[entity_dump(), entity_ids()],
+        dependencies=[prelim_ent_ds, entity_ids()],
     )
     unk_id_ds = Dataset.string(
         cfg.entities / "unknown_ids/part-*",
@@ -55,22 +68,19 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
         cfg.entities / "error_invalid_qualifiers/part-*",
         deserialize=deser_entity,
         name="entities/error-invalid-qualifiers",
-        dependencies=[entity_dump()],
+        dependencies=[prelim_ent_ds],
     )
     fixed_ds = Dataset(
         cfg.entities / lang / "*.zst",
         deserialize=deser_entity,
         name=f"entities/{lang}/fixed",
-        dependencies=[entity_dump(), entity_ids(), entity_redirections()],
+        dependencies=[prelim_ent_ds, entity_ids(), entity_redirections()],
     )
 
     if not dangling_id_ds.has_complete_data():
         logger.info("Getting all entity ids in the dump (including properties)")
         (
-            entity_dump()
-            .get_extended_rdd()
-            .map(partial(WDEntity.from_wikidump, lang="en"))
-            .flatMap(get_child_entities)
+            prelim_ent_rdd.flatMap(get_child_entities)
             .distinct()
             .subtract(entity_ids().get_extended_rdd())
             .save_like_dataset(dangling_id_ds)
@@ -97,10 +107,7 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
 
     if not invalid_qualifier_ds.has_complete_data():
         (
-            entity_dump()
-            .get_extended_rdd()
-            .map(partial(WDEntity.from_wikidump, lang=lang))
-            .map(extract_invalid_qualifier)
+            prelim_ent_rdd.map(extract_invalid_qualifier)
             .filter_update_type(is_not_null)
             .map(ser_entity)
             .save_like_dataset(
@@ -118,10 +125,7 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
         redirected_entities = sc.broadcast(redirected_id_ds.get_dict())
 
         (
-            entity_dump()
-            .get_extended_rdd()
-            .map(partial(WDEntity.from_wikidump, lang=lang))
-            .map(fix_transitive_qualifier)
+            prelim_ent_rdd.map(fix_transitive_qualifier)
             .map(lambda x: fixed_entity(x, unknown_entities, redirected_entities))
             .map(lambda x: x[0])
             .map(ser_entity)
@@ -140,19 +144,11 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
         assert fixed_ds.get_extended_rdd().is_unique(lambda x: x.id)
 
         n_ents = fixed_ds.get_rdd().count()
-        n_ents_from_dump = entity_dump().get_rdd().count()
+        n_ents_from_dump = prelim_ent_ds.get_rdd().count()
         assert n_ents == n_ents_from_dump, f"{n_ents} != {n_ents_from_dump}"
         logger.info("The entity dataset is unique and has {} entities", n_ents)
 
     return fixed_ds
-
-
-def deser_entity(line: Union[str, bytes]) -> WDEntity:
-    return WDEntity.from_dict(orjson.loads(line))
-
-
-def ser_entity(ent: WDEntity):
-    return orjson.dumps(ent.to_dict())
 
 
 def get_child_entities(ent: WDEntity):
