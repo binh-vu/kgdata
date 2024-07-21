@@ -17,9 +17,6 @@ from hugedict.prelude import (
     rocksdb_build_sst_file,
     rocksdb_ingest_sst_files,
 )
-from sm.misc.ray_helper import ray_map, ray_put
-from timer import Timer
-
 from kgdata.config import init_dbdir_from_env
 from kgdata.db import build_database
 from kgdata.wikidata.config import WikidataDirCfg
@@ -27,6 +24,8 @@ from kgdata.wikidata.datasets.class_count import class_count
 from kgdata.wikidata.datasets.property_count import property_count
 from kgdata.wikidata.db import WikidataDB, get_ontcount_db, pack_int
 from kgdata.wikidata.extra_ent_db import EntAttr, build_extra_ent_db
+from sm.misc.ray_helper import ray_map, ray_put
+from timer import Timer
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
@@ -53,8 +52,12 @@ def dataset2db(
     def command(output: str, compact: bool, lang: Optional[str] = None):
         """Build a key-value database for storing dataset."""
         init_dbdir_from_env()
+        if dataset.find(".") == -1:
+            qual_dataset = f"{dataset}.{dataset}"
+        else:
+            qual_dataset = dataset
         build_database(
-            f"kgdata.wikidata.datasets.{dataset}.{dataset}",
+            f"kgdata.wikidata.datasets.{qual_dataset}",
             lambda: getattr(WikidataDB(output, read_only=False), dbname),
             compact=compact,
             format=format,
@@ -250,7 +253,6 @@ def db_ontcount(directory: str, output: str, compact: bool, lang: str):
     ).options
     gc.collect()
 
-    
     def _build_sst_file(
         infile: str, temp_dir: str, posfix: str, options: RocksDBOptions
     ):

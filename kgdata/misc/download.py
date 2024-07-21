@@ -186,6 +186,10 @@ class WikidataDump(BaseDumpCollection):
         self.redirect = self.parse_urls(match_url(url, RegexPattern(r"\d{8}"), RegexPattern(r"wikidatawiki-(\d{8})-redirect\.sql\.gz"), pbar=pbar))
         # fmt: on
 
+        self.pages_articles = self.parse_urls(
+            match_url(url, RegexPattern(r"\d{8}"), "dumpstatus.json")
+        )
+
 
 @dataclass
 class WikipediaDump(BaseDumpCollection):

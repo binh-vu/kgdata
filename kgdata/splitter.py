@@ -117,12 +117,15 @@ def split_a_file(
     data_size_file_size = datasize(file_size)
     success = True
     try:
-        with file_object as f, tqdm(
-            total=file_size,
-            desc="splitting",
-            unit="B",
-            unit_scale=True,
-        ) as pbar:
+        with (
+            file_object as f,
+            tqdm(
+                total=file_size,
+                desc="splitting",
+                unit="B",
+                unit_scale=True,
+            ) as pbar,
+        ):
             last_bytes = 0
             try:
                 tell = currentbyte_constructor(f)

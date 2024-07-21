@@ -5,9 +5,8 @@ from dataclasses import asdict, dataclass
 from typing import Generic, Iterable, TypeVar, Union
 
 import orjson
-from rdflib import BNode, Literal, URIRef
-
 from kgdata.misc.ntriples_parser import Triple, node_from_dict, node_to_dict
+from rdflib import BNode, Literal, URIRef
 
 V = TypeVar("V")
 
@@ -43,14 +42,7 @@ class Resource(Record, Generic[V]):
 @dataclass
 class RDFResource(Resource[Union[URIRef, BNode, Literal]]):
     def ser(self) -> bytes:
-        return orjson.dumps(
-            {
-                "id": self.id,
-                "props": {
-                    k: [node_to_dict(v) for v in vs] for k, vs in self.props.items()
-                },
-            }
-        )
+        return orjson.dumps(self.to_dict())
 
     @classmethod
     def deser(cls, s: str | bytes):
@@ -59,6 +51,19 @@ class RDFResource(Resource[Union[URIRef, BNode, Literal]]):
             id=o["id"],
             props={k: [node_from_dict(v) for v in vs] for k, vs in o["props"].items()},
         )
+    
+    @classmethod
+    def from_dict(cls, o: dict):
+        return cls(
+            id=o["id"],
+            props={k: [node_from_dict(v) for v in vs] for k, vs in o["props"].items()},
+        )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "props": {k: [node_to_dict(v) for v in vs] for k, vs in self.props.items()},
+        }
 
     def merge(self, resource: RDFResource) -> RDFResource:
         for pid, lst in resource.props.items():

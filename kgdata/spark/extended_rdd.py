@@ -23,8 +23,6 @@ from typing import (
 )
 
 import serde.json
-from typing_extensions import TypeGuard
-
 from kgdata.misc.optional_import import RDD, portable_hash
 from kgdata.spark.common import (
     StrPath,
@@ -36,6 +34,7 @@ from kgdata.spark.common import (
     save_as_text_file,
     text_file,
 )
+from typing_extensions import TypeGuard
 
 if TYPE_CHECKING:
     from kgdata.dataset import Dataset
@@ -490,6 +489,18 @@ class ExtendedRDD(Generic[T_co]):
     ):
         return are_records_unique(self.rdd, keyfn, print_error, return_duplication)
 
+    def group_by_key_skip_null(
+        self: ExtendedRDD[Optional[tuple[K, V]]],
+        numPartitions: Optional[int] = None,
+        partitionFunc: Callable[[K], int] = portable_hash,
+    ) -> ExtendedRDD[tuple[K, Iterable[V]]]:
+        return ExtendedRDD(
+            self.rdd.filter(lambda x: x is not None).groupByKey(  # type: ignore
+                numPartitions, partitionFunc
+            ),
+            self.sig,
+        )
+    
     # ======================================================================
 
     @staticmethod
@@ -569,7 +580,10 @@ class ExtendedRDD(Generic[T_co]):
     ) -> ExtendedRDD[U]:
         return ExtendedRDD(self.rdd.flatMap(f, preservesPartitioning), self.sig)
 
-    def filter(self: ExtendedRDD[T], f: Callable[[T], bool]) -> ExtendedRDD[T]:
+    def filter(
+        self: ExtendedRDD[T],
+        f: Callable[[T], bool],
+    ) -> ExtendedRDD[T]:
         return ExtendedRDD(self.rdd.filter(f), self.sig)
 
     def groupByKey(
