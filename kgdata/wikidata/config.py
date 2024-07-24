@@ -6,6 +6,8 @@ from glob import glob
 from pathlib import Path
 from typing import Union
 
+from loguru import logger
+
 
 class WikidataDirCfg:
     """Locations of Wikidata dumps and datasets on disk"""
@@ -127,7 +129,9 @@ class WikidataDirCfg:
         return WikidataDirCfg.instance
 
     @staticmethod
-    def init(datadir: Union[str, Path]):
+    def init(datadir: Union[str, Path], verbose: bool = True):
         """Initialize or update the config object to use the given directory"""
+        if verbose:
+            logger.info("Wikidata directory: {}", datadir)
         WikidataDirCfg.instance = WikidataDirCfg(Path(datadir))
         return WikidataDirCfg.instance

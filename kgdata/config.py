@@ -1,11 +1,10 @@
 import os
 from pathlib import Path
 
-from loguru import logger
-
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikipedia.config import WikipediaDirCfg
+from loguru import logger
 
 DEFAULT_DATA_DIR = Path(os.path.abspath(__file__)).parent.parent.parent / "data"
 
@@ -24,14 +23,14 @@ def init_dbdir_from_env():
 
     if log_config == "1":
         logger.info("Wikidata directory: {}", os.environ[WD_DIR_NAME])
-    WikidataDirCfg.init(os.environ[WD_DIR_NAME])
+    WikidataDirCfg.init(os.environ[WD_DIR_NAME], verbose=False)
 
     if DBP_DIR_NAME not in os.environ:
         raise KeyError(f"Need the env variable {DBP_DIR_NAME} to set DBpedia directory")
 
     if log_config == "1":
         logger.info("DBpedia directory: {}", os.environ[DBP_DIR_NAME])
-    DBpediaDirCfg.init(os.environ[DBP_DIR_NAME])
+    DBpediaDirCfg.init(os.environ[DBP_DIR_NAME], verbose=False)
 
     if WP_DIR_NAME not in os.environ:
         raise KeyError(
@@ -40,7 +39,7 @@ def init_dbdir_from_env():
 
     if log_config == "1":
         logger.info("Wikipedia directory: {}", os.environ[WP_DIR_NAME])
-    WikipediaDirCfg.init(os.environ[WP_DIR_NAME])
+    WikipediaDirCfg.init(os.environ[WP_DIR_NAME], verbose=False)
 
 
 if __name__ == "__main__":

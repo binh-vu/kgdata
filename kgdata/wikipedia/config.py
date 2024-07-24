@@ -4,6 +4,8 @@ from glob import glob
 from pathlib import Path
 from typing import Union
 
+from loguru import logger
+
 
 class WikipediaConfig:
     # url of the wikipedia server, not trailing slash
@@ -61,7 +63,9 @@ class WikipediaDirCfg:
         return WikipediaDirCfg.instance
 
     @staticmethod
-    def init(datadir: Union[str, Path]):
+    def init(datadir: Union[str, Path], verbose: bool = True):
         """Initialize or update the config object to use the given directory"""
+        if verbose:
+            logger.info("Wikipedia directory: {}", datadir)
         WikipediaDirCfg.instance = WikipediaDirCfg(Path(datadir))
         return WikipediaDirCfg.instance

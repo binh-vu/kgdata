@@ -2,7 +2,6 @@ from functools import lru_cache
 from typing import Union
 
 import orjson
-
 from kgdata.dataset import Dataset
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities

@@ -6,6 +6,8 @@ from glob import glob
 from pathlib import Path
 from typing import Union
 
+from loguru import logger
+
 
 class DBpediaDirCfg:
     """Locations of DBpedia dumps and datasets on disk."""
@@ -19,8 +21,10 @@ class DBpediaDirCfg:
         return DBpediaDirCfg.instance
 
     @staticmethod
-    def init(datadir: Union[str, Path]):
+    def init(datadir: Union[str, Path], verbose: bool = True):
         """Initialize or update the config object to use the given directory"""
+        if verbose:
+            logger.info("DBpedia directory: {}", datadir)
         DBpediaDirCfg.instance = DBpediaDirCfg(Path(datadir))
         return DBpediaDirCfg.instance
 

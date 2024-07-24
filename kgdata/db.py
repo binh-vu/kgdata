@@ -18,6 +18,7 @@ from typing import (
     Mapping,
     Optional,
     TypeVar,
+    Union,
 )
 
 import orjson
@@ -30,15 +31,15 @@ from hugedict.prelude import (
     rocksdb_load,
 )
 from hugedict.types import HugeMutableMapping
-from loguru import logger
-from sm.namespaces.namespace import KnowledgeGraphNamespace
-
 from kgdata.models.entity import Entity, EntityMetadata
 from kgdata.models.ont_class import OntologyClass
 from kgdata.models.ont_property import OntologyProperty, get_default_props
+from loguru import logger
+from sm.namespaces.namespace import KnowledgeGraphNamespace
 
 if TYPE_CHECKING:
     from hugedict.core.rocksdb import FileFormat
+    from kgdata.dataset import Dataset
 
 T = TypeVar("T")
 
@@ -292,7 +293,7 @@ class URIMappingWrapper(Mapping[str, T]):
 
 
 def build_database(
-    dataset: str,
+    dataset: Union[str, Dataset],
     get_db: Callable[[], Any],
     compact: bool,
     format: Optional[FileFormat] = None,
@@ -329,8 +330,12 @@ def build_database(
     if lang is not None:
         ds_kwargs["lang"] = lang
 
-    module, func = dataset.rsplit(".", 1)
-    ds = getattr(import_module(module), func)(**ds_kwargs)
+    if isinstance(dataset, str):
+        module, func = dataset.rsplit(".", 1)
+        ds = getattr(import_module(module), func)(**ds_kwargs)
+    else:
+        ds = dataset
+
     assert isinstance(ds, Dataset)
     db_sig_file = Path(dbpath) / "_SIGNATURE"
     if db_sig_file.exists():
