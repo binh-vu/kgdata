@@ -108,7 +108,8 @@ def as_multilingual(terms: list[Literal], default_lang: str = "en"):
     lang2value: dict[str, str] = {
         assert_not_null(term.language): term.value for term in terms
     }
-    return MultiLingualString(lang2value, next(iter(lang2value.keys())))
+    assert default_lang in lang2value, (default_lang, lang2value.keys())
+    return MultiLingualString(lang2value, default_lang)
 
 
 def extract_datatype(resource: RDFResource) -> str:

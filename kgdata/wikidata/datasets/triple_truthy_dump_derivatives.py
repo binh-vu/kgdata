@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 import orjson
 from kgdata.dataset import Dataset
+from kgdata.db import ser_to_dict
 from kgdata.dbpedia.datasets.properties import as_multilingual, rdfs_label
 from kgdata.misc.funcs import split_tab_2
 from kgdata.misc.resource import RDFResource
@@ -18,7 +19,7 @@ from kgdata.spark.common import get_spark_context
 from kgdata.splitter import split_a_list
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.triple_truthy_dump import triple_truthy_dump
-from kgdata.wikidata.models.wdentity import SiteLink, WDEntity
+from kgdata.wikidata.models.wdentity import EntitySiteLinks, SiteLink, WDEntity
 from kgdata.wikidata.models.wdstatement import WDStatement
 from kgdata.wikidata.models.wdvalue import (
     WDValueEntityId,
@@ -84,7 +85,7 @@ norm_datatype = {
 class TruthyDumpDerivativeDatasets:
     entities: Dataset[WDEntity]
     redirections: Dataset[tuple[str, str]]
-    sitelinks: Dataset[tuple[str, dict[str, SiteLink]]]
+    sitelinks: Dataset[EntitySiteLinks]
 
 
 @lru_cache()
@@ -98,7 +99,7 @@ def triple_truthy_dump_derivatives(lang: str = "en") -> TruthyDumpDerivativeData
         dependencies=[triple_truthy_dump()],
     )
 
-    sitelink_ds: Dataset[dict] = Dataset(
+    sitelink_ds: Dataset[EntitySiteLinks] = Dataset(
         cfg.truthy_dump_derivatives / "sitelinks/*.gz",
         name="triple_truthy_dump_derivatives/sitelinks",
         deserialize=orjson.loads,
@@ -142,14 +143,15 @@ def triple_truthy_dump_derivatives(lang: str = "en") -> TruthyDumpDerivativeData
             .map(get_site_links)
             .group_by_key_skip_null()
             .map(
-                lambda id_sites: {
-                    "id": id_sites[0],
-                    "sitelinks": {site.site: site for site in id_sites[1]},
-                }
+                lambda id_sites: EntitySiteLinks(
+                    id=id_sites[0],
+                    sitelinks={site.site: site for site in id_sites[1]},
+                )
             )
-            .map(orjson.dumps)
+            .map(ser_to_dict)
             .save_like_dataset(sitelink_ds, auto_coalesce=True, shuffle=True)
         )
+        assert sitelink_ds.get_extended_rdd().count() == 0
 
     if not ent_ds.has_complete_data():
         p2type = get_spark_context().broadcast(get_property_to_type(prop_ds))
@@ -508,8 +510,10 @@ def extract_entity_label(
         - (2) is mostly duplicated of (1) -- verified in the dump of 2024-03-20 that only
             74 records are different between (1) and (2)
 
-    If (1)
-    (4) proivde
+    In the RDF dump document, they mention:
+    "For labels, only rdfs:label is stored but not schema:name or skos:prefLabel. Since they all have the same data, storing all three is redundant."
+
+    Therefore, we should just take union of the three.
     """
     if rdfs_label not in resource.props:
         assert (
@@ -518,24 +522,13 @@ def extract_entity_label(
         return MultiLingualString({default_lang: ""}, lang=default_lang)
 
     lang2label = {}
-    for label in resource.props[rdfs_label]:
-        assert isinstance(label, Literal)
-        if label.language in lang2label:
-            assert lang2label[label.language] == label.value
-        else:
-            lang2label[label.language] = label.value
-
-    for label in resource.props.get(schema_name, []):
-        assert isinstance(label, Literal)
-        if label.language in lang2label:
-            assert lang2label[label.language] == label.value
-        else:
-            lang2label[label.language] = label.value
-
-    for label in resource.props.get(skos_prefLabel, []):
-        assert isinstance(label, Literal)
-        assert label.language in lang2label
-        assert lang2label[label.language] == label.value
+    for key in [rdfs_label, schema_name, skos_prefLabel]:
+        for label in resource.props[key]:
+            assert isinstance(label, Literal)
+            if label.language in lang2label:
+                assert lang2label[label.language] == label.value
+            else:
+                lang2label[label.language] = label.value
 
     if None in lang2label:
         if default_lang in lang2label:
@@ -543,7 +536,10 @@ def extract_entity_label(
         else:
             lang2label[default_lang] = lang2label.pop(None)
 
-    if reduce_size and default_lang in lang2label:
+    if default_lang not in lang2label:
+        lang2label[default_lang] = ""
+
+    if reduce_size:
         # remove duplicated labels in different languages to reduce the size of the output
         # knowing this will lose information
         val = lang2label[default_lang]
@@ -552,7 +548,8 @@ def extract_entity_label(
                 del lang2label[other_lang]
 
     return as_multilingual(
-        [Literal(label, lang=lang) for lang, label in lang2label.items()]
+        [Literal(label, lang=lang) for lang, label in lang2label.items()],
+        default_lang=default_lang,
     )
 
 

@@ -231,3 +231,22 @@ class SiteLink:
             badges=o["badges"],
             url=o.get("url", None),
         )
+
+
+@dataclass
+class EntitySiteLinks:
+    id: str  # entity id
+    sitelinks: dict[str, SiteLink]
+
+    @staticmethod
+    def from_dict(obj: dict) -> EntitySiteLinks:
+        return EntitySiteLinks(
+            obj["id"],
+            {k: SiteLink.from_dict(v) for k, v in obj["sitelinks"].items()},
+        )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "sitelinks": {k: v.to_dict() for k, v in self.sitelinks.items()},
+        }
