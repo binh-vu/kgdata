@@ -74,6 +74,7 @@ function wikidata_db {
 # wikidata_dataset entity_sitelinks
 
 # wikidata_dataset classes
+wikidata_dataset acyclic_classes
 # wikidata_dataset properties
 
 # wikidata_dataset class_count
@@ -83,19 +84,19 @@ function wikidata_db {
 
 # wikidata_dataset entity_metadata
 # wikidata_dataset entity_all_types
-wikidata_dataset entity_degrees
-wikidata_dataset entity_labels
-wikidata_dataset entity_types_and_degrees
-wikidata_dataset entity_outlinks
-wikidata_dataset entity_pagerank
-wikidata_dataset entity_wiki_aliases
+# wikidata_dataset entity_degrees
+# wikidata_dataset entity_labels
+# wikidata_dataset entity_types_and_degrees
+# wikidata_dataset entity_outlinks
+# wikidata_dataset entity_pagerank
+# wikidata_dataset entity_wiki_aliases
 
-wikidata_dataset cross_wiki_mapping
-wikidata_dataset meta_graph
-wikidata_dataset meta_graph_stats
+# wikidata_dataset cross_wiki_mapping
+# wikidata_dataset meta_graph
+# wikidata_dataset meta_graph_stats
 
-wikidata_dataset mention_to_entities
-wikidata_dataset norm_mentions
+# wikidata_dataset mention_to_entities
+# wikidata_dataset norm_mentions
 
 # ----- unverified dataset -----
 
@@ -129,18 +130,18 @@ wikidata_dataset norm_mentions
 # ======================================================================
 # WIKIDATA Databases
 
-wikidata_db classes
-wikidata_db properties
-wikidata_db entities
-wikidata_db entity_labels
-wikidata_db entity_metadata
-wikidata_db entity_types
-wikidata_db entity_outlinks
-wikidata_db entity_redirections
-wikidata_db wp2wd
-wikidata_db entity_pagerank
-wikidata_db property_domains
-wikidata_db property_ranges
-wikidata_db ontology_count
-wikidata_db mention_to_entities
-wikidata_db norm_mentions
+# wikidata_db classes
+# wikidata_db properties
+# wikidata_db entities
+# wikidata_db entity_labels
+# wikidata_db entity_metadata
+# wikidata_db entity_types
+# wikidata_db entity_outlinks
+# wikidata_db entity_redirections
+# wikidata_db wp2wd
+# wikidata_db entity_pagerank
+# wikidata_db property_domains
+# wikidata_db property_ranges
+# wikidata_db ontology_count
+# wikidata_db mention_to_entities
+# wikidata_db norm_mentions
