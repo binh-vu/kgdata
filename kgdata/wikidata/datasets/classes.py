@@ -16,7 +16,7 @@ from kgdata.wikidata.models import WDClass
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def classes(lang: str = "en") -> Dataset[WDClass]:
+def classes(lang: str = "en", with_deps: bool = True) -> Dataset[WDClass]:
     cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.classes / "ids"):
@@ -35,12 +35,13 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
         cfg.classes / f"{subdir}-{lang}/*.gz",
         deserialize=partial(deser_from_dict, WDClass),
         name=f"classes/{subdir}/{lang}",
-        dependencies=[entities(lang)],
+        dependencies=[entities(lang)] if with_deps else [],
     )
     basic_ds = get_ds("basic")
     full_ds = get_ds("full")
 
     if not basic_ds.has_complete_data():
+        assert with_deps, "Dependencies are required to generate classes"
         sc = get_spark_context()
         class_ids = sc.broadcast(
             set(sc.textFile(str(cfg.classes / "ids/*.gz")).collect())
@@ -54,6 +55,7 @@ def classes(lang: str = "en") -> Dataset[WDClass]:
         )
 
     if not full_ds.has_complete_data():
+        assert with_deps, "Dependencies are required to generate classes"
         classes = basic_ds.get_list()
 
         # fix the class based on manual modification -- even if there is no modification
