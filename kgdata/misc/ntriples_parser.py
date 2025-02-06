@@ -9,10 +9,11 @@ Author: Sean B. Palmer, inamidst.com
 """
 
 import re
+from datetime import date
 from typing import Tuple, Union
 
 from rdflib.compat import decodeUnicodeEscape
-from rdflib.term import _XSD_DATE, BNode, Literal, URIRef, _toPythonMapping, parse_date
+from rdflib.term import _XSD_DATE, BNode, Literal, URIRef, _toPythonMapping
 from six import text_type, unichr
 
 # uriref = r'<([^:]+:[^\s"<>]*)>'
@@ -35,7 +36,7 @@ validate = False
 
 def parse_iso8601_date(datestring):
     try:
-        return parse_date(datestring, expanded=True)
+        return date.fromisoformat(datestring)
     except ValueError:
         # silent error if the year is negative.
         return None
