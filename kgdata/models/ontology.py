@@ -15,3 +15,15 @@ class Ontology:
     kgns: KnowledgeGraphNamespace
     classes: Mapping[InternalID, OntologyClass]
     props: Mapping[InternalID, OntologyProperty]
+
+    def get_class_label(self, id: InternalID) -> str:
+        label = str(self.classes[id].label)
+        if self.kgns.has_encrypted_name(self.kgns.id_to_uri(id)):
+            return f"{label} ({id})"
+        return label
+
+    def get_prop_label(self, id: InternalID) -> str:
+        label = str(self.props[id].label)
+        if self.kgns.has_encrypted_name(self.kgns.id_to_uri(id)):
+            return f"{label} ({id})"
+        return label

@@ -10,6 +10,7 @@ from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.dbpedia.config import DBpediaDirCfg
 from kgdata.dbpedia.datasets.meta_graph import MetaEntity, meta_graph
+from kgdata.wikidata.datasets.meta_graph_stats import PConnection, PCount, POccurrence
 
 
 def get_predicate_count_dataset(with_dep: bool = True):
@@ -175,80 +176,3 @@ def get_poccurrence(meta_entity: MetaEntity):
                 out.append(((p1, p2), 1))
 
     return out
-
-
-@dataclass
-class PCount:
-    predicate: tuple[str, Optional[str]]
-    freq: int
-
-    def to_dict(self):
-        return {
-            "predicate": self.predicate,
-            "freq": self.freq,
-        }
-
-    @staticmethod
-    def from_dict(d: dict):
-        return PCount(
-            predicate=d["predicate"],
-            freq=d["freq"],
-        )
-
-
-@dataclass
-class POccurrence:
-    predicate1: tuple[str, Optional[str]]
-    predicate2: tuple[str, Optional[str]]
-    freq: int
-
-    def to_dict(self):
-        return {
-            "predicate1": self.predicate1,
-            "predicate2": self.predicate2,
-            "freq": self.freq,
-        }
-
-    @staticmethod
-    def from_dict(d: dict):
-        return POccurrence(
-            predicate1=d["predicate1"],
-            predicate2=d["predicate2"],
-            freq=d["freq"],
-        )
-
-
-@dataclass
-class PConnection:
-    prop: str
-    qual: Optional[str]
-    source_type: str
-    target_type: Optional[str]
-    freq: int
-
-    def get_key(self):
-        return (
-            self.prop,
-            self.qual,
-            self.source_type,
-            self.target_type,
-        )
-
-    def to_dict(self):
-        return {
-            "prop": self.prop,
-            "qual": self.qual,
-            "source_type": self.source_type,
-            "target_type": self.target_type,
-            "freq": self.freq,
-        }
-
-    @staticmethod
-    def from_dict(d: dict):
-        return PConnection(
-            prop=d["prop"],
-            qual=d["qual"],
-            source_type=d["source_type"],
-            target_type=d["target_type"],
-            freq=d["freq"],
-        )
