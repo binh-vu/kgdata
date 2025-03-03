@@ -62,6 +62,7 @@ class Ontology:
 
         for resource in resources:
             ent = to_entity(resource, "en")
+            ent.id = kgns.uri_to_id(ent.id)
 
             (stmt,) = ent.props[rdf_type]
             if stmt.value in {RDF.Property, OWL.DatatypeProperty, OWL.ObjectProperty}:
@@ -87,8 +88,14 @@ class Ontology:
                     inverse_properties=[],
                     instanceof=[str(RDF.Property)],
                     ancestors={},
-                    domains=[],
-                    ranges=[],
+                    domains=[
+                        kgns.uri_to_id(stmt.value)
+                        for stmt in ent.props.get(str(RDFS.domain), [])
+                    ],
+                    ranges=[
+                        kgns.uri_to_id(stmt.value)
+                        for stmt in ent.props.get(str(RDFS.range), [])
+                    ],
                 )
             elif stmt.value in {RDFS.Class, OWL.Class}:
                 classes[ent.id] = OntologyClass(
@@ -103,6 +110,7 @@ class Ontology:
                     ancestors={},
                 )
             else:
+                # TODO: detect uri and convert them into id?
                 ents[ent.id] = ent
 
         return Ontology(kgname, kgns, classes, props), ents
