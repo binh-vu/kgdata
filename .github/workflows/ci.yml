@@ -39,7 +39,7 @@ jobs:
           command: build
           args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.10') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
       - name: Run test
-        if: !startsWith(matrix.platform , 'windows')
+        if: "!startsWith(matrix.platform, 'windows')"
         run: |
           mv kgdata kgdata2  
           python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp310*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"

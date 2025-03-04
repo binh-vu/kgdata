@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
-from kgdata.dbpedia.datasets.entities import to_entity
 from kgdata.dbpedia.datasets.ontology_dump import aggregated_triples
 from kgdata.models.entity import Entity
 from kgdata.models.ont_class import OntologyClass
@@ -38,6 +37,8 @@ class Ontology:
     def from_ttl(
         cls, kgname: KGName, kgns: KnowledgeGraphNamespace, ttl_file: Path
     ) -> tuple[Ontology, Mapping[str, Entity]]:
+        from kgdata.dbpedia.datasets.entities import to_entity
+
         g = Graph()
         g.parse(ttl_file)
 
