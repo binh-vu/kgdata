@@ -8,7 +8,6 @@ jobs:
   build:
     strategy:
       matrix:
-        python: ["3.10", "3.11", "3.12"]
         platform: ["ubuntu-22.04", "macos-12", "windows-2022"]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -16,7 +15,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python }}
+          python-version: |
+            3.12
+            3.11
+            3.10
+      - name: Discover python
+        run: |
+          echo "PYTHONS=$(python .github/workflows/pydiscovery.py --min-version 3.10 --delimiter ' ' --root-dir ${{ runner.tool_cache }}/Python)" >> "$GITHUB_ENV"
       - name: Cache Rust target directory
         uses: actions/cache@v3
         with:
@@ -25,7 +30,7 @@ jobs:
             ~/.cargo  
             target
       - name: Run test
-        if: matrix.python == '3.10'
+        if: startsWith(matrix.platform, 'ubuntu')
         run: cargo test --no-default-features --features pyo3/auto-initialize
       - uses: messense/maturin-action@v1
         env:
@@ -34,16 +39,16 @@ jobs:
           command: build
           args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.10') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
       - name: Run test
-        if: matrix.python == '3.10' && !startsWith(matrix.platform, 'windows')
+        if: !startsWith(matrix.platform , 'windows')
         run: |
           mv kgdata kgdata2  
           python -c "import subprocess, glob, os; file = glob.glob(os.path.join('dist', '*cp310*.whl'))[0]; subprocess.check_output(['pip', 'install', file + '[spark]'])"
           pip install pytest
           pytest -xs tests/
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.platform }}
           path: dist
 
   build-manylinux:
@@ -64,9 +69,9 @@ jobs:
             quay.io/pypa/manylinux2014_x86_64:latest \
             bash /project/.github/workflows/build.sh -t x86_64-unknown-linux-gnu
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-manylinux
           path: dist
 
   release-crate:
@@ -89,13 +94,30 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/dev-ci')
     needs: [build, build-manylinux]
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v4
         with:
-          name: wheels
-      - name: Publish to PyPI
-        uses: messense/maturin-action@v1
+          name: wheels-manylinux
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-ubuntu-22.04
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-macos-12
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-windows-2022
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheels-manylinux
+          path: dist
+      - name: release
+        run: |
+          pip install twine
+          twine upload --skip-existing dist/* -u $PYPI_USER -p $PYPI_PWD
         env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        with:
-          command: upload
-          args: --skip-existing *
+          PYPI_USER: __token__
+          PYPI_PWD: ${{ secrets.PYPI_TOKEN }}
