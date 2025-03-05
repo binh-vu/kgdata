@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        platform: ["ubuntu-22.04", "macos-13", "windows-2022"]
+        platform: ["ubuntu-22.04", "macos-14", "windows-2022"]
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v3
@@ -34,7 +34,7 @@ jobs:
         run: cargo test --no-default-features --features pyo3/auto-initialize
       - uses: messense/maturin-action@v1
         env:
-          MACOSX_DEPLOYMENT_TARGET: 11.0
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
         with:
           command: build
           args: --release ${{ startsWith(matrix.platform, 'ubuntu') && startsWith(matrix.python, '3.10') && '--sdist' || '' }} -o dist -i python ${{ startsWith(matrix.platform, 'macos') && '--target universal2-apple-darwin' || '' }}
@@ -104,7 +104,7 @@ jobs:
           path: dist
       - uses: actions/download-artifact@v4
         with:
-          name: wheels-macos-13
+          name: wheels-macos-14
           path: dist
       - uses: actions/download-artifact@v4
         with:
