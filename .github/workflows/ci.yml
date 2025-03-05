@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        platform: ["ubuntu-22.04", "macos-latest", "windows-2022"]
+        platform: ["ubuntu-22.04", "macos-13", "windows-2022"]
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v3
@@ -104,7 +104,7 @@ jobs:
           path: dist
       - uses: actions/download-artifact@v4
         with:
-          name: wheels-macos-latest
+          name: wheels-macos-13
           path: dist
       - uses: actions/download-artifact@v4
         with:
