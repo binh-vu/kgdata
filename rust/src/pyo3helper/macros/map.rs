@@ -17,7 +17,7 @@
 macro_rules! pymap {
     ($structname:ident (module = $module:literal, key = $key:ty as $keyview:ty, value = $value:ty as $valueview:ty $(, derive = ($( $derivetrait:ident ),*) )? )) => {
         pub mod $structname {
-            use kgdata::pyo3helper::unsafe_update_view_lifetime_signature;
+            use kgdata_core::pyo3helper::unsafe_update_view_lifetime_signature;
             use pyo3::prelude::*;
             use pyo3::types::PyTuple;
 

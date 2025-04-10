@@ -8,24 +8,24 @@ pub use self::macros::*;
 pub use self::strview::*;
 pub use self::usizeview::*;
 
-kgdata::pylist!(list_str_view(
+kgdata_core::pylist!(list_str_view(
     module = "kgdata_core.pyo3helper",
-    item = String as kgdata::pyo3helper::PyStrView
+    item = String as kgdata_core::pyo3helper::PyStrView
 ));
 
-kgdata::pyset!(set_str_view(
+kgdata_core::pyset!(set_str_view(
     module = "kgdata_core.pyo3helper",
-    item = String as kgdata::pyo3helper::PyStrView
+    item = String as kgdata_core::pyo3helper::PyStrView
 ));
 
-kgdata::pymap!(map_str_view(
+kgdata_core::pymap!(map_str_view(
     module = "kgdata_core.pyo3helper",
-    key = String as kgdata::pyo3helper::PyStrView,
-    value = String as kgdata::pyo3helper::PyStrView
+    key = String as kgdata_core::pyo3helper::PyStrView,
+    value = String as kgdata_core::pyo3helper::PyStrView
 ));
 
-kgdata::pymap!(map_usize_view(
+kgdata_core::pymap!(map_usize_view(
     module = "kgdata_core.pyo3helper",
-    key = String as kgdata::pyo3helper::PyStrView,
-    value = usize as kgdata::pyo3helper::PyUsizeView
+    key = String as kgdata_core::pyo3helper::PyStrView,
+    value = usize as kgdata_core::pyo3helper::PyUsizeView
 ));

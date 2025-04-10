@@ -1,4 +1,4 @@
-use kgdata::error::KGDataError;
+use self::error::KGDataError;
 use log::info;
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, Ordering};

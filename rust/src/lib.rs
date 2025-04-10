@@ -1,4 +1,4 @@
-extern crate self as kgdata;
+extern crate self as kgdata_core;
 
 pub mod conversions;
 pub mod db;

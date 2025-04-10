@@ -4,7 +4,7 @@ use super::Map;
 use super::Request;
 use super::Response;
 use hashbrown::HashMap;
-use kgdata::error::KGDataError;
+use kgdata_core::error::KGDataError;
 use rayon::prelude::*;
 use std::cmp::Eq;
 use std::hash::Hash;

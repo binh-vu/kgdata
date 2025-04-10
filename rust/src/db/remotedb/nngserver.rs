@@ -1,5 +1,5 @@
 use super::{ipcserde, Client, Request, Response};
-use kgdata::error::KGDataError;
+use kgdata_core::error::KGDataError;
 use log::info;
 use nng::{
     options::{Options, RecvTimeout},

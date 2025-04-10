@@ -1,6 +1,6 @@
 use crate::read_lines;
 use anyhow::Result;
-use kgdata::conversions::WDEntity;
+use kgdata_core::conversions::WDEntity;
 
 #[test]
 fn parse_entity() -> Result<()> {
@@ -27,7 +27,7 @@ fn parse_entity() -> Result<()> {
 #[test]
 fn parse_multilingual() -> Result<()> {
     let val = r#"{"lang2value":{"en":"Tunisian geographic code","fr":"code géographique tunisien","ar":"الترميز الجغرافي التونسي","de":"tunesische Ortskennung","ru":"географический код Туниса","pt":"código geográfico tunisiano","mk":"туниски географски код","uk":"географічний код Тунісу","zh-hans":"突尼斯地区代码","es":"código geográfico tunesino","nl":"geografie Tunesië-identificatiecode","pl":"Tunezyjski kod geograficzny"},"lang":"en"}"#;
-    let ml: kgdata::models::multilingual::MultiLingualString = serde_json::from_str(val)?;
+    let ml: kgdata_core::models::multilingual::MultiLingualString = serde_json::from_str(val)?;
     assert_eq!(ml.lang2value.len(), 12);
     Ok(())
 }

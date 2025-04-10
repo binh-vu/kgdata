@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
-use kgdata::db::{serve_db, PredefinedDB};
-use kgdata::error::KGDataError;
+use kgdata_core::db::{serve_db, PredefinedDB};
+use kgdata_core::error::KGDataError;
 use std::ffi::OsStr;
 
 /// Read some lines of a file

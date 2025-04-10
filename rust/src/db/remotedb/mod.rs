@@ -1,5 +1,5 @@
 use super::Map;
-use kgdata::error::KGDataError;
+use kgdata_core::error::KGDataError;
 
 pub mod ipcserde;
 pub mod nngserver;

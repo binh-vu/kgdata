@@ -15,7 +15,7 @@
 macro_rules! pyset {
     ($structname:ident (module = $module:literal, item = $item:ty as $itemview:ty $(, derive = ($( $derivetrait:ident ),*) )? )) => {
         pub mod $structname {
-            use kgdata::pyo3helper::unsafe_update_view_lifetime_signature;
+            use kgdata_core::pyo3helper::unsafe_update_view_lifetime_signature;
             use pyo3::prelude::*;
 
             #[pyclass(module = $module, name = "SetView")]
