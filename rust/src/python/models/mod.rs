@@ -37,7 +37,7 @@ pub(crate) fn register(py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     py.import("sys")?
         .getattr("modules")?
-        .set_item("kgdata.core.models", submodule)?;
+        .set_item("kgdata_core.models", submodule)?;
 
     Ok(())
 }

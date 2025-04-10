@@ -7,7 +7,7 @@ use crate::{pylist, pymirror, pyview, pywrap};
 use pyo3::prelude::*;
 
 pyview!(
-    ValueView(module = "kgdata.core.models", name = "ValueView", cls = Value, derive=(Clone, Debug)) {
+    ValueView(module = "kgdata_core.models", name = "ValueView", cls = Value, derive=(Clone, Debug)) {
         f(get_type: &'static str),
         f(is_str: bool),
         f(is_entity_id: bool),
@@ -19,7 +19,7 @@ pyview!(
     }
 );
 pywrap!(
-    PyValue(module = "kgdata.core.models", name = "Value", cls = Value, derive=(Clone, Debug)) {
+    PyValue(module = "kgdata_core.models", name = "Value", cls = Value, derive=(Clone, Debug)) {
         f(get_type: &'static str),
         f(is_str: bool),
         f(is_entity_id: bool),
@@ -31,7 +31,7 @@ pywrap!(
     }
 );
 pylist!(value_list_view(
-    module = "kgdata.core.models",
+    module = "kgdata_core.models",
     item = super::Value as super::ValueView
 ));
 
@@ -242,18 +242,18 @@ impl PyValue {
 // =================================================================================================
 // Now to the list of specific value types that are located in Python's heap to avoid repeated conversion overhead.
 
-pymirror!(PyEntityId(module = "kgdata.core.models", name = "EntityId", cls = EntityId) {
+pymirror!(PyEntityId(module = "kgdata_core.models", name = "EntityId", cls = EntityId) {
     b(id), b(entity_type), c(numeric_id)
 });
-pymirror!(PyTime(module = "kgdata.core.models", name = "Time", cls = Time) {
+pymirror!(PyTime(module = "kgdata_core.models", name = "Time", cls = Time) {
     b(time), c(timezone), c(before), c(after), c(precision), b(calendarmodel)
 });
-pymirror!(PyQuantity(module = "kgdata.core.models", name = "Quantity", cls = Quantity) {
+pymirror!(PyQuantity(module = "kgdata_core.models", name = "Quantity", cls = Quantity) {
     b(amount), r(upper_bound), r(lower_bound), b(unit)
 });
-pymirror!(PyGlobeCoordinate(module = "kgdata.core.models", name = "GlobeCoordinate", cls = GlobeCoordinate) {
+pymirror!(PyGlobeCoordinate(module = "kgdata_core.models", name = "GlobeCoordinate", cls = GlobeCoordinate) {
     c(latitude), c(longitude), c(precision), c(altitude), b(globe)
 });
-pymirror!(PyMonolingualText(module = "kgdata.core.models", name = "MonolingualText", cls = MonolingualText) {
+pymirror!(PyMonolingualText(module = "kgdata_core.models", name = "MonolingualText", cls = MonolingualText) {
     b(text), b(language)
 });

@@ -6,7 +6,7 @@ use crate::{pyview, pywrap};
 use pyo3::prelude::*;
 
 pyview!(
-    PropertyView(module = "kgdata.core.models", name = "PropertyView", cls = Property) {
+    PropertyView(module = "kgdata_core.models", name = "PropertyView", cls = Property) {
         b(id: String),
         v(label: MultiLingualStringView),
         v(description: MultiLingualStringView),
@@ -26,7 +26,7 @@ pyview!(
 );
 
 pywrap!(
-    PyProperty(module = "kgdata.core.models", name = "Property", cls = Property) {
+    PyProperty(module = "kgdata_core.models", name = "Property", cls = Property) {
         b(id: String),
         v(label: MultiLingualStringView),
         v(description: MultiLingualStringView),

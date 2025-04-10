@@ -6,7 +6,7 @@ use hashbrown::HashSet;
 use pyo3::prelude::*;
 
 pywrap!(
-    PyEntityMetadata(module = "kgdata.core.models", name = "EntityMetadata", cls = EntityMetadata) {
+    PyEntityMetadata(module = "kgdata_core.models", name = "EntityMetadata", cls = EntityMetadata) {
         b(id: String),
         v(label: MultiLingualStringView),
         v(description: MultiLingualStringView),

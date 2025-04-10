@@ -6,7 +6,7 @@ use crate::{pyview, pywrap};
 use pyo3::prelude::*;
 
 pyview!(
-    ClassView(module = "kgdata.core.models", name = "ClassView", cls = Class) {
+    ClassView(module = "kgdata_core.models", name = "ClassView", cls = Class) {
         b(id: String),
         v(label: MultiLingualStringView),
         v(description: MultiLingualStringView),
@@ -20,7 +20,7 @@ pyview!(
 );
 
 pywrap!(
-    PyClass(module = "kgdata.core.models", name = "Class", cls = Class) {
+    PyClass(module = "kgdata_core.models", name = "Class", cls = Class) {
         b(id: String),
         v(label: MultiLingualStringView),
         v(description: MultiLingualStringView),

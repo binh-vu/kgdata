@@ -5,13 +5,13 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 
 // pyview!(
-//     MultiLingualStringView(module = "kgdata.core.models", name = "MultiLingualStringView", cls = MultiLingualString) {
+//     MultiLingualStringView(module = "kgdata_core.models", name = "MultiLingualStringView", cls = MultiLingualString) {
 //         b(lang: String),
 //         b(lang2value: std::collections::HashMap<String, String>),
 //     }
 // )
 
-#[pyclass(module = "kgdata.core.models", name = "MultiLingualStringView")]
+#[pyclass(module = "kgdata_core.models", name = "MultiLingualStringView")]
 pub struct MultiLingualStringView(pub &'static MultiLingualString);
 
 impl MultiLingualStringView {
@@ -46,7 +46,7 @@ impl MultiLingualStringView {
     }
 }
 
-#[pyclass(module = "kgdata.core.models", name = "MultiLingualStringListView")]
+#[pyclass(module = "kgdata_core.models", name = "MultiLingualStringListView")]
 pub struct MultiLingualStringListView(pub &'static MultiLingualStringList);
 
 impl MultiLingualStringListView {

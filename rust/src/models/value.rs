@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::KGDataError;
 
-#[pyclass(module = "kgdata.core.models", name = "EntityType")]
+#[pyclass(module = "kgdata_core.models", name = "EntityType")]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum EntityType {
     #[serde(rename = "item")]

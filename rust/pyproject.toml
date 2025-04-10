@@ -1,6 +1,6 @@
 [project]
 name = "kgdata_core"
-version = "1.0.0"
+version = "4.0.1"
 description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
 readme = "README.md"
 authors = [{ name = "Binh Vu", email = "binh@toan2.com" }]
@@ -46,7 +46,7 @@ ray = ['ray >= 2.0.1, < 3.0.0']
 all = ["kgdata[dev,spark,ray]"]
 
 [tool.maturin]
-module-name = "kgdata.core"
+module-name = "kgdata_core"
 features = ["extension-module"]
 
 [build-system]

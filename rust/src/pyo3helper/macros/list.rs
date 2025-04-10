@@ -13,7 +13,7 @@
 /// ```ignore
 /// use kgdata::pyo3helper::PyStr;
 ///
-/// pylist!(ListStrView (module = "kgdata.core.test", derive = (Clone, Debug)) {
+/// pylist!(ListStrView (module = "kgdata_core.test", derive = (Clone, Debug)) {
 ///     String: PyStr,
 /// });
 /// ```
@@ -24,7 +24,7 @@
 ///     use pyo3::prelude::*;
 ///     use kgdata::pyo3helper::PyStr;
 ///
-///     #[pyclass(module = "kgdata.core.test", name = "ListView")]
+///     #[pyclass(module = "kgdata_core.test", name = "ListView")]
 ///     #[derive(Clone, Debug)]
 ///     pub struct ListView(pub &'static [String]);
 ///

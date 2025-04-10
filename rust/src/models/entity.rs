@@ -13,7 +13,7 @@ pub struct Entity {
     pub props: HashMap<String, Vec<Statement>>,
 }
 
-#[pyclass(module = "kgdata.core.models", name = "StatementRank")]
+#[pyclass(module = "kgdata_core.models", name = "StatementRank")]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum StatementRank {
     #[serde(rename = "normal")]
