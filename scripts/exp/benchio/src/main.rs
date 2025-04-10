@@ -4,9 +4,9 @@
 use std::time::{Duration, Instant};
 
 use indicatif::*;
-use kgdata::db::remotedb::shmemhelper::AllocatedMem;
-use kgdata::db::remotedb::Client;
-use kgdata::{
+use kgdata_core::db::remotedb::shmemhelper::AllocatedMem;
+use kgdata_core::db::remotedb::Client;
+use kgdata_core::{
     db::{deser_entity, open_entity_db, Map, PredefinedDB, RemoteKGDB, RemoteRocksDBDict, KGDB},
     models::Entity,
 };
