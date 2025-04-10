@@ -17,6 +17,7 @@ pub fn init_env_logger() -> PyResult<()> {
 
 #[cfg(feature = "extension-module")]
 #[pymodule]
+#[pyo3(name = "kgdata_core")]
 fn core(py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.setattr("__path__", pyo3::types::PyList::empty(py))?;

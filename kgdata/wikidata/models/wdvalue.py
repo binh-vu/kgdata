@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Generic, Literal, TypedDict, TypeVar, Union
 
 import orjson
-from kgdata.core.models import Value
+from kgdata_core.models import Value
 from rdflib import XSD
 from rdflib import Literal as LiteralTerm
 from rdflib import URIRef

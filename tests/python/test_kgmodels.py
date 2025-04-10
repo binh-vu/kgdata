@@ -2,8 +2,7 @@ from pathlib import Path
 
 import orjson
 import pytest
-
-from kgdata.core.models import Entity
+from kgdata_core.models import Entity
 
 
 @pytest.fixture()

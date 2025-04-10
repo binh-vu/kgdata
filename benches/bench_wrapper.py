@@ -6,7 +6,7 @@ import orjson
 import serde.byteline
 import serde.jl
 import serde.textline
-from kgdata.core import Test
+from kgdata_core import Test
 from pybench.base import BenchSetup
 from pybench.helper import get_module
 
