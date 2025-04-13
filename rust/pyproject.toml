@@ -20,7 +20,7 @@ repository = "https://github.com/binh-vu/kgdata"
 
 [project.optional-dependencies]
 dev = ['python-dotenv >= 0.19.0, < 0.20.0', 'pytest >= 8.3.2, < 9.0.0']
-all = ["kgdata[dev]"]
+all = ["kgdata_core[dev]"]
 
 [tool.maturin]
 module-name = "kgdata_core"
