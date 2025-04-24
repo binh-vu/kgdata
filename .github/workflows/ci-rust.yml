@@ -43,6 +43,7 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: "10.14"
         with:
           command: build
+          working-directory: rust
           args: >
             -o dist -i ${{ env.PYTHONS }}
             --release ${{ startsWith(matrix.platform, 'ubuntu') && '--sdist' || '' }}
