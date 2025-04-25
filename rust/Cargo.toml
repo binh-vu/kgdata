@@ -1,6 +1,6 @@
 [package]
 name = "kgdata_core"
-version = "4.0.1"
+version = "4.0.2"
 edition = "2021"
 readme = "README.md"
 homepage = "https://github.com/binh-vu/kgdata"
