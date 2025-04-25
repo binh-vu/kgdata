@@ -18,7 +18,7 @@ jobs:
           pip install poetry twine
           poetry install
       - name: run test
-        run: poetry run pytest -x
+        run: poetry run pytest -x tests/
       - name: publish
         if: ${{ startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/dev-ci')  }}
         run: |
