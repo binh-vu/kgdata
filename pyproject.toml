@@ -11,7 +11,7 @@ homepage = "https://github.com/binh-vu/kgdata"
 repository = "https://github.com/binh-vu/kgdata"
 
 [tool.poetry.dependencies]
-python = ">=3.10"
+python = ">=3.10,<4.0"
 orjson = "^3.9.0"
 tqdm = "^4.64.0"
 beautifulsoup4 = "^4.9.3"
