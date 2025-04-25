@@ -15,7 +15,7 @@ from kgdata.wikidata.models import WDEntity
 from pybench.base import BenchSetup
 from pybench.helper import get_module
 
-# from kgdata.core.bench import EntityDesign1, EntityDesign2
+# from kgdata_core.bench import EntityDesign1, EntityDesign2
 
 # fmt: off
 WD_ENT_FILE = Path(__file__).parent / "resources" / "wdentities.jl"

@@ -1,13 +1,13 @@
 use std::{fs::File, io::BufReader};
 
-use kgdata::{conversions::WDEntity, db::deser_entity};
+use kgdata_core::{conversions::WDEntity, db::deser_entity};
 use pyo3::prelude::*;
 
 use serde_jsonlines::BufReadExt;
 use serde_jsonlines::{json_lines, write_json_lines};
 
 #[pyclass]
-struct Entities(pub Vec<kgdata::models::Entity>);
+struct Entities(pub Vec<kgdata_core::models::Entity>);
 
 #[pyfunction]
 fn read_entities(path: &str) -> Entities {

@@ -91,7 +91,7 @@ else
     for PYTHON_HOME in "${PYTHON_HOMES[@]}"
     do
         echo "Found $PYTHON_HOME"
-    done    
+    done
 fi
 echo "::endgroup::"
 echo

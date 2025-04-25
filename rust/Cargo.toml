@@ -1,0 +1,60 @@
+[package]
+name = "kgdata_core"
+version = "4.0.2"
+edition = "2021"
+readme = "README.md"
+homepage = "https://github.com/binh-vu/kgdata"
+repository = "https://github.com/binh-vu/kgdata"
+license-file = "LICENSE"
+description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
+keywords = ["knowledge-graph", "wikidata", "wikipedia", "dbpedia"]
+include = ["/src"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "kgdata_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+ahash = "0.8.5"
+anyhow = { version = "1.0.58", features = ["backtrace"] }
+bincode = "1.3.3"
+bzip2 = "0.4.3"
+clap = { version = "4.4.6", features = ["derive"] }
+ctrlc = { version = "3.4.1", features = ["termination"] }
+env_logger = "0.9.0"
+flate2 = { version = "1.0.24", features = [
+    "zlib-ng",
+], default-features = false }
+glob = "0.3.1"
+hashbrown = { version = "0.14.0", features = ["serde", "rayon"] }
+itertools = "0.11.0"
+log = "0.4.17"
+nng = "1.0.1"
+ord_subset = "3.1.1"
+petgraph = "0.6.3"
+pyo3 = { version = "0.19.2", features = [
+    "anyhow",
+    "multiple-pymethods",
+    "hashbrown",
+] }
+rayon = "1.7.0"
+rocksdb = "0.20.1"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0.81"
+shared_memory = "0.12.4"
+thiserror = "1.0.31"
+thread_local = "1.1.7"
+zstd = "0.13.0"
+
+[dev-dependencies]
+rstest = "0.13.0"
+tempfile = "3.3.0"
+criterion = "0.4.0"
+
+[features]
+extension-module = ["pyo3/extension-module"]
+
+# [[bench]]
+# name = "rc_vs_py"
+# harness = false

@@ -1,0 +1,31 @@
+[project]
+name = "kgdata_core"
+version = "4.0.1"
+description = "Library to process dumps of knowledge graphs (Wikipedia, DBpedia, Wikidata)"
+readme = "README.md"
+authors = [{ name = "Binh Vu", email = "binh@toan2.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+requires-python = ">=3.10"
+
+dependencies = []
+
+[project.urls]
+homepage = "https://github.com/binh-vu/kgdata"
+repository = "https://github.com/binh-vu/kgdata"
+
+[project.optional-dependencies]
+dev = ['python-dotenv >= 0.19.0, < 0.20.0', 'pytest >= 8.3.2, < 9.0.0']
+all = ["kgdata_core[dev]"]
+
+[tool.maturin]
+module-name = "kgdata_core"
+features = ["extension-module"]
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
