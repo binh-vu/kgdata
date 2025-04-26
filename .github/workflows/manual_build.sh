@@ -10,7 +10,7 @@ fi
 
 docker run --rm -w /project -v $(pwd):/project \
     -e EXTRA_PATH=/opt/python/cp310-cp310/bin \
-    -e PYTHON_HOME=/opt/python \
+    -e PYTHON_ROOT_DIR=/opt/python \
     -e CARGO_NET_GIT_FETCH_WITH_CLI=false \
     quay.io/pypa/manylinux2014_aarch64:latest \
     bash /project/.github/workflows/build.sh -t aarch64-unknown-linux-gnu

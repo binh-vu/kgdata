@@ -2,11 +2,11 @@ name: CI Rust
 
 on:
   push:
-    paths:
-      - "rust/**"
+    # paths:
+    #   - "rust/**"
   pull_request:
-    paths:
-      - "rust/**"
+    # paths:
+    #   - "rust/**"
 
 jobs:
   build:
@@ -25,7 +25,8 @@ jobs:
             3.10
       - name: Discover python
         run: |
-          echo "PYTHONS=$(python .github/workflows/pydiscovery.py --min-version 3.10 --delimiter ' ' --root-dir ${{ runner.tool_cache }}/Python)" >> "$GITHUB_ENV"
+          pip install wherepy
+          echo "PYTHONS=$(python -m wherepy --minimum-version 3.10 --delimiter ' ' --return-execpath --search-dir ${{ runner.tool_cache }}/Python)" >> "$GITHUB_ENV"
       - name: Cache Rust target directory
         uses: actions/cache@v3
         with:
@@ -67,7 +68,7 @@ jobs:
         run: |
           docker run --rm -w /project/rust -v $(pwd):/project \
             -e EXTRA_PATH=/opt/python/cp310-cp310/bin \
-            -e PYTHON_HOMES=/opt/python \
+            -e PYTHON_ROOT_DIR=/opt/python \
             -e CARGO_NET_GIT_FETCH_WITH_CLI=false \
             quay.io/pypa/manylinux2014_x86_64:latest \
             bash /project/.github/workflows/build.sh -t x86_64-unknown-linux-gnu

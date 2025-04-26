@@ -6,10 +6,7 @@ set -e
 # The script needs yum or apt
 #
 # Envionment Arguments: (handled by `args.py`)
-#   PYTHON_HOME: the path to the Python installation, which will be used to build the wheels for. 
-#        Empty if you want to use multiple Pythons by providing PYTHON_HOMES. This has the highest priority. If set, we won't consider PYTHON_HOMES and PYTHON_VERSIONS
-#   PYTHON_HOMES: comma-separated directories that either contains Python installations or are Python installations.
-#   PYTHON_VERSIONS: versions of Python separated by comma if you want to restricted to specific versions.
+#   PYTHON_ROOT_DIR: path to the Python installation. This is used to find the Python interpreters.
 # Arguments:
 #   -t <target>: target platform. See https://doc.rust-lang.org/nightly/rustc/platform-support.html
 
@@ -84,25 +81,26 @@ fi
 
 # ##############################################
 echo "::group::Discovering Python"
-IFS=':' read -a PYTHON_HOMES < <(MINIMUM_PYTHON_VERSION=3.9 python $SCRIPT_DIR/pydiscovery.py)
-if [ ${#PYTHON_HOMES[@]} -eq 0 ]; then
-    echo "No Python found. Did you forget to set any environment variable PYTHON_HOME or PYTHON_HOMES?"
+pip install wherepy  # to find local Python interpreters
+IFS=':' read -a PYTHON_INTERPRETERS < <(python -m wherepy --minimum-version 3.10 --return-execpath --search-dir "$PYTHON_ROOT_DIR")
+if [ ${#PYTHON_INTERPRETERS[@]} -eq 0 ]; then
+    echo "No Python found. Did you forget to set the environment variable PYTHON_ROOT_DIR?"
 else
-    for PYTHON_HOME in "${PYTHON_HOMES[@]}"
+    for PYTHON_INTERPRETER in "${PYTHON_INTERPRETERS[@]}"
     do
-        echo "Found $PYTHON_HOME"
+        echo "Found $PYTHON_INTERPRETER"
     done
 fi
 echo "::endgroup::"
 echo
 
 # ##############################################
-for PYTHON_HOME in "${PYTHON_HOMES[@]}"
+for PYTHON_INTERPRETER in "${PYTHON_INTERPRETERS[@]}"
 do
-    echo "::group::Building for Python $PYTHON_HOME"
+    echo "::group::Building for Python $PYTHON_INTERPRETER"
 
-    echo "Run: maturin build -r -o dist -i $PYTHON_HOME/bin/python3 --target $target"
-    "maturin" build -r -o dist -i "$PYTHON_HOME/bin/python3" --target $target
+    echo "Run: maturin build -r -o dist -i $PYTHON_INTERPRETER --target $target"
+    "maturin" build -r -o dist -i "$PYTHON_INTERPRETER" --target $target
 
     echo "::endgroup::"
     echo
