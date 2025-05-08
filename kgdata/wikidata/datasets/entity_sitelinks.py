@@ -5,9 +5,9 @@ from typing import Optional
 import orjson
 from kgdata.dataset import Dataset
 from kgdata.db import ser_to_dict
-from kgdata.dbpedia.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.config import WikidataDirCfg
 from kgdata.wikidata.datasets.entities import entities
+from kgdata.wikidata.datasets.entity_redirections import entity_redirections
 from kgdata.wikidata.datasets.triple_truthy_dump_derivatives import (
     triple_truthy_dump_derivatives,
 )
