@@ -3,7 +3,6 @@ from functools import partial
 from typing import List
 
 import orjson
-
 from kgdata.dataset import Dataset
 from kgdata.db import deser_from_dict, ser_to_dict
 from kgdata.misc.hierarchy import build_ancestors
@@ -19,7 +18,7 @@ from kgdata.wikidata.models import WDProperty
 from kgdata.wikidata.models.wdentity import WDEntity
 
 
-def properties(lang="en") -> Dataset[WDProperty]:
+def properties(lang="en", with_dep: bool = False) -> Dataset[WDProperty]:
     cfg = WikidataDirCfg.get_instance()
 
     if not does_result_dir_exist(cfg.properties / "ids"):
@@ -39,7 +38,7 @@ def properties(lang="en") -> Dataset[WDProperty]:
         cfg.properties / f"{subdir}-{lang}/*.gz",
         deserialize=partial(deser_from_dict, WDProperty),
         name=f"properties/{subdir}/{lang}",
-        dependencies=[entities(lang)],
+        dependencies=[entities(lang)] if with_dep else [],
     )
     basic_ds = get_ds("basic")
     full_ds = get_ds("full")
