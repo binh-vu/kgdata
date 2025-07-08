@@ -25,13 +25,13 @@ class EntityTypeAndDegree(Record):
 
 
 @lru_cache()
-def entity_types_and_degrees() -> Dataset[EntityTypeAndDegree]:
+def entity_types_and_degrees(with_dep: bool = False) -> Dataset[EntityTypeAndDegree]:
     cfg = WikidataDirCfg.get_instance()
     ds = Dataset(
         cfg.entity_types_and_degrees / "*.gz",
         deserialize=EntityTypeAndDegree.deser,
         name="entity-types-and-degrees",
-        dependencies=[entity_all_types(), entity_degrees()],
+        dependencies=[entity_all_types(), entity_degrees()] if with_dep else [],
     )
     if not ds.has_complete_data():
         (
@@ -48,7 +48,7 @@ def entity_types_and_degrees() -> Dataset[EntityTypeAndDegree]:
 
 
 def merge_type_degree(
-    tup: tuple[str, tuple[EntityAllTypes, EntityDegree]]
+    tup: tuple[str, tuple[EntityAllTypes, EntityDegree]],
 ) -> EntityTypeAndDegree:
     return EntityTypeAndDegree(
         id=tup[0],

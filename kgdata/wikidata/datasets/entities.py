@@ -21,7 +21,7 @@ from sm.misc.funcs import filter_duplication, is_not_null
 
 
 @lru_cache()
-def entities(lang: str = "en") -> Dataset[WDEntity]:
+def entities(lang: str = "en", with_dep: bool = False) -> Dataset[WDEntity]:
     """Normalize Wikidata entity from Wikidata entity json dumps.
 
     In the json dumps, an entity can linked to an entity that either:
@@ -37,6 +37,14 @@ def entities(lang: str = "en") -> Dataset[WDEntity]:
         Dataset[WDEntity]
     """
     cfg = WikidataDirCfg.get_instance()
+
+    if not with_dep:
+        return Dataset(
+            cfg.entities / lang / "*.zst",
+            deserialize=deser_entity,
+            name=f"entities/{lang}/fixed",
+            dependencies=[],
+        )
 
     if cfg.has_json_dump():
         prelim_ent_ds = entity_dump()
