@@ -8,7 +8,7 @@ if [ -d "$(pwd)/dist" ]; then
     rm -r $(pwd)/dist
 fi
 
-docker run --rm -w /project -v $(pwd):/project \
+docker run --rm -w /project/rust -v $(pwd):/project \
     -e EXTRA_PATH=/opt/python/cp310-cp310/bin \
     -e PYTHON_ROOT_DIR=/opt/python \
     -e CARGO_NET_GIT_FETCH_WITH_CLI=false \

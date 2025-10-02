@@ -98,7 +98,6 @@ PYTHON_INTERPRETERS_JOINED=$(IFS=' ' ; echo "${PYTHON_INTERPRETERS[*]/#/-i }")
 echo "::group::Building for Python ${PYTHON_INTERPRETERS[@]}"
 
 echo "Run: maturin build -r -o dist $PYTHON_INTERPRETERS_JOINED --target $target"
-cd rust
 maturin build -r -o dist $PYTHON_INTERPRETERS_JOINED --target $target
 
 echo "::endgroup::"
