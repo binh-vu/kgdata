@@ -38,10 +38,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         apt update
         apt install -y clang-11
     else
-        # centos
-        # https://developers.redhat.com/blog/2018/07/07/yum-install-gcc7-clang#
-        yum install -y llvm-toolset-7
-        source /opt/rh/llvm-toolset-7/enable
+        # almalinux
+        yum install -y llvm-toolset
     fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Skip on MacOS. Assuming you have CLang and LLVM installed."    
@@ -95,13 +93,13 @@ echo "::endgroup::"
 echo
 
 # ##############################################
-for PYTHON_INTERPRETER in "${PYTHON_INTERPRETERS[@]}"
-do
-    echo "::group::Building for Python $PYTHON_INTERPRETER"
+PYTHON_INTERPRETERS_JOINED=$(IFS=' ' ; echo "${PYTHON_INTERPRETERS[*]/#/-i }")
 
-    echo "Run: maturin build -r -o dist -i $PYTHON_INTERPRETER --target $target"
-    "maturin" build -r -o dist -i "$PYTHON_INTERPRETER" --target $target
+echo "::group::Building for Python ${PYTHON_INTERPRETERS[@]}"
 
-    echo "::endgroup::"
-    echo
-done
+echo "Run: maturin build -r -o dist $PYTHON_INTERPRETERS_JOINED --target $target"
+cd rust
+maturin build -r -o dist $PYTHON_INTERPRETERS_JOINED --target $target
+
+echo "::endgroup::"
+echo
