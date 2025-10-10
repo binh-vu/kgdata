@@ -122,6 +122,7 @@ def query_wikidata_entities(
             "ids": "|".join(qnode_ids),
             "format": "json",
         },
+        headers={"User-Agent": "Python KGData Client"},
     )
     assert resp.status_code, resp
     data = resp.json()

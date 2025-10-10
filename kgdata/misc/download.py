@@ -17,7 +17,7 @@ from typing import Optional, cast
 from urllib.parse import urlparse
 
 import requests
-from hugedict.sqlitedict import SqliteDict
+from hugedict.sqlite import SqliteDict
 from loguru import logger
 from rsoup.core import Document
 from tqdm.auto import tqdm
